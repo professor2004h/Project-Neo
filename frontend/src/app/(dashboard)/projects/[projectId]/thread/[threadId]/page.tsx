@@ -557,7 +557,6 @@ export default function ThreadPage({
         isMobile={isMobile}
         initialLoadCompleted={initialLoadCompleted}
         agentName={agent && agent.name}
-        agentName={agent && agent.name}
       >
         <ThreadError error={error} />
       </ThreadLayout>
@@ -601,7 +600,6 @@ export default function ThreadPage({
         isMobile={isMobile}
         initialLoadCompleted={initialLoadCompleted}
         agentName={agent && agent.name}
-        agentName={agent && agent.name}
       >
         <ThreadContent
           messages={messages}
@@ -643,7 +641,6 @@ export default function ThreadPage({
               onFileBrowse={handleOpenFileViewer}
               sandboxId={sandboxId || undefined}
               messages={messages}
-              agentName={agent && agent.name}
               agentName={agent && agent.name}
             />
           </div>
