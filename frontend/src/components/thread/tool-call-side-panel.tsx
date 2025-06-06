@@ -299,6 +299,52 @@ export function ToolCallSidePanel({
     internalNavigate(totalCalls - 1, 'user_explicit');
   }, [totalCalls, internalNavigate]);
 
+  const renderStatusButton = React.useCallback(() => {
+    const baseClasses = "flex items-center justify-center gap-1.5 px-2 py-0.5 rounded-full w-[116px]";
+    const dotClasses = "w-1.5 h-1.5 rounded-full";
+    const textClasses = "text-xs font-medium";
+
+    if (isLiveMode) {
+      if (agentStatus === 'running') {
+        return (
+          <div className={`${baseClasses} bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800`}>
+            <div className={`${dotClasses} bg-green-500 animate-pulse`} />
+            <span className={`${textClasses} text-green-700 dark:text-green-400`}>Live Updates</span>
+          </div>
+        );
+      } else {
+        return (
+          <div className={`${baseClasses} bg-neutral-50 dark:bg-neutral-900/20 border border-neutral-200 dark:border-neutral-800`}>
+            <div className={`${dotClasses} bg-neutral-500`} />
+            <span className={`${textClasses} text-neutral-700 dark:text-neutral-400`}>Latest Tool</span>
+          </div>
+        );
+      }
+    } else {
+      if (agentStatus === 'running') {
+        return (
+          <div
+            className={`${baseClasses} bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors cursor-pointer`}
+            onClick={jumpToLive}
+          >
+            <div className={`${dotClasses} bg-green-500 animate-pulse`} />
+            <span className={`${textClasses} text-green-700 dark:text-green-400`}>Jump to Live</span>
+          </div>
+        );
+      } else {
+        return (
+          <div
+            className={`${baseClasses} bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer`}
+            onClick={jumpToLatest}
+          >
+            <div className={`${dotClasses} bg-blue-500`} />
+            <span className={`${textClasses} text-blue-700 dark:text-blue-400`}>Jump to Latest</span>
+          </div>
+        );
+      }
+    }
+  }, [isLiveMode, agentStatus, jumpToLive, jumpToLatest]);
+
   const handleSliderChange = React.useCallback(([newValue]: [number]) => {
     const targetSnapshot = completedToolCalls[newValue];
     if (targetSnapshot) {
@@ -681,31 +727,17 @@ export function ToolCallSidePanel({
                 size="sm"
                 onClick={navigateToPrevious}
                 disabled={displayIndex <= 0}
-                className="h-9 px-3"
+                className="h-8 px-2.5 text-xs"
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                <span>Previous</span>
+                <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+                <span>Prev</span>
               </Button>
 
-              <div className="flex items-center gap-2">
-                {isLiveMode && agentStatus === 'running' ? (
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs font-medium text-green-700 dark:text-green-400">Live</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neutral-50 dark:bg-neutral-900/20 border border-neutral-200 dark:border-neutral-800">
-                    <div className="w-1.5 h-1.5 bg-neutral-500 rounded-full"></div>
-                    <span className="text-xs font-medium text-neutral-700 dark:text-neutral-400">Live</span>
-                  </div>
-                )}
-
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {displayIndex + 1} / {displayTotalCalls}
-                  {isCurrentToolStreaming && totalCompletedCalls > 0 && (
-                    <span className="text-blue-600 dark:text-blue-400"> • Running</span>
-                  )}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium tabular-nums min-w-[44px]">
+                  {displayIndex + 1}/{displayTotalCalls}
                 </span>
+                {renderStatusButton()}
               </div>
 
               <Button
@@ -713,32 +745,35 @@ export function ToolCallSidePanel({
                 size="sm"
                 onClick={navigateToNext}
                 disabled={displayIndex >= displayTotalCalls - 1}
-                className="h-9 px-3"
+                className="h-8 px-2.5 text-xs"
               >
                 <span>Next</span>
-                <ChevronRight className="h-4 w-4 ml-1" />
+                <ChevronRight className="h-3.5 w-3.5 ml-1" />
               </Button>
             </div>
           ) : (
-            <div className="relative flex items-center gap-1.5">
+            <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={navigateToPrevious}
                   disabled={displayIndex <= 0}
-                  className="h-6 w-6 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  className="h-7 w-7 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                 >
-                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
+                <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium tabular-nums px-1 min-w-[44px] text-center">
+                  {displayIndex + 1}/{displayTotalCalls}
+                </span>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={navigateToNext}
                   disabled={displayIndex >= displayTotalCalls - 1}
-                  className="h-6 w-6 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  className="h-7 w-7 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                 >
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
 
@@ -764,8 +799,12 @@ export function ToolCallSidePanel({
                   step={1}
                   value={[displayIndex]}
                   onValueChange={handleSliderChange}
-                  className="w-full [&>span:first-child]:h-1 [&>span:first-child]:bg-zinc-200 dark:[&>span:first-child]:bg-zinc-800 [&>span:first-child>span]:bg-zinc-500 dark:[&>span:first-child>span]:bg-zinc-400 [&>span:first-child>span]:h-1"
+                  className="w-full [&>span:first-child]:h-1.5 [&>span:first-child]:bg-zinc-200 dark:[&>span:first-child]:bg-zinc-800 [&>span:first-child>span]:bg-zinc-500 dark:[&>span:first-child>span]:bg-zinc-400 [&>span:first-child>span]:h-1.5"
                 />
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {renderStatusButton()}
               </div>
             </div>
           )}
