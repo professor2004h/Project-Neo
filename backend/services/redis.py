@@ -39,36 +39,31 @@ class RedisConnectionManager:
         # Connection pool configuration
         max_connections = int(os.getenv('REDIS_MAX_CONNECTIONS', '100'))
         
-        logger.info(f"Creating Redis connection pool to {redis_host}:{redis_port} with max_connections={max_connections}")
+        logger.info(f"Creating Redis connection pool to {redis_host}:{redis_port} with max_connections={max_connections}, SSL={redis_ssl}")
         
-        # Determine connection class and SSL configuration
+
+        # Create connection pool arguments
+        pool_kwargs = {
+            'host': redis_host,
+            'port': redis_port,
+            'password': redis_password,
+            'decode_responses': True,
+            'max_connections': max_connections,
+            'socket_timeout': 10.0,
+            'socket_connect_timeout': 10.0,
+            'socket_keepalive': True,
+            'socket_keepalive_options': {},
+            'retry_on_timeout': True,
+            'health_check_interval': 30,
+        }
+        
+        # Only add SSL parameter if it's actually True
+        # redis.asyncio doesn't accept ssl=False, but works fine without the parameter
         if redis_ssl:
-            connection_class = redis.SSLConnection
-            connection_kwargs = {
-                'ssl_cert_reqs': 'none',  # Use 'none' for less strict SSL validation
-                'ssl_check_hostname': False,
-            }
-        else:
-            connection_class = redis.Connection
-            connection_kwargs = {}
+            pool_kwargs['ssl'] = True
         
-        # Create connection pool
-        self._connection_pool = redis.ConnectionPool(
-            host=redis_host,
-            port=redis_port,
-            password=redis_password,
-            decode_responses=True,
-            max_connections=max_connections,
-            socket_timeout=10.0,
-            socket_connect_timeout=10.0,
-            socket_keepalive=True,
-            socket_keepalive_options={},
-            retry_on_timeout=True,
-            health_check_interval=30,
-            # Connection pool specific settings
-            connection_class=connection_class,
-            **connection_kwargs,
-        )
+        self._connection_pool = redis.ConnectionPool(**pool_kwargs)
+
 
     def _create_client(self):
         """Create Redis client using the connection pool."""
@@ -165,8 +160,6 @@ def initialize():
     global client, _initialized
     
     if not _initialized:
-        # For backward compatibility, create a basic client
-        # This will be replaced by the async initialization
         load_dotenv()
         
         redis_host = os.getenv('REDIS_HOST', 'redis')
@@ -177,33 +170,24 @@ def initialize():
         
         logger.info(f"Initializing Redis connection to {redis_host}:{redis_port} (legacy method)")
         
-        # Create a simple client for backward compatibility
+        # Create client arguments
+        client_kwargs = {
+            'host': redis_host,
+            'port': redis_port,
+            'password': redis_password,
+            'decode_responses': True,
+            'socket_timeout': 5.0,
+            'socket_connect_timeout': 5.0,
+            'retry_on_timeout': True,
+            'health_check_interval': 30
+        }
+        
+        # Only add SSL parameter if it's actually True
         if redis_ssl:
-            # Use SSL connection parameters directly
-            client = redis.Redis(
-                host=redis_host,
-                port=redis_port,
-                password=redis_password,
-                ssl=True,
-                ssl_cert_reqs='none',
-                ssl_check_hostname=False,
-                decode_responses=True,
-                socket_timeout=5.0,
-                socket_connect_timeout=5.0,
-                retry_on_timeout=True,
-                health_check_interval=30
-            )
-        else:
-            client = redis.Redis(
-                host=redis_host,
-                port=redis_port,
-                password=redis_password,
-                decode_responses=True,
-                socket_timeout=5.0,
-                socket_connect_timeout=5.0,
-                retry_on_timeout=True,
-                health_check_interval=30
-            )
+            client_kwargs['ssl'] = True
+        
+        client = redis.Redis(**client_kwargs)
+
         
         _initialized = True
     

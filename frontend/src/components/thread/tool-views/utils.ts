@@ -431,27 +431,119 @@ export function extractStrReplaceContent(content: string | object | undefined | 
   const contentStr = normalizeContentToString(content);
   if (!contentStr) return { oldStr: null, newStr: null };
 
-  // First try to extract from a str-replace tag with attributes
-  const strReplaceMatch = contentStr.match(/<str-replace[^>]*>([\s\S]*?)<\/str-replace>/);
-  if (strReplaceMatch) {
-    const innerContent = strReplaceMatch[1];
-    const oldMatch = innerContent.match(/<old_str>([\s\S]*?)<\/old_str>/);
-    const newMatch = innerContent.match(/<new_str>([\s\S]*?)<\/new_str>/);
+  // If content is an object, try extracting directly first
+  if (typeof content === 'object' && content !== null) {
+    // Check for direct properties
+    if ('old_str' in content && 'new_str' in content) {
+      return {
+        oldStr: content.old_str as string,
+        newStr: content.new_str as string,
+      };
+    }
     
-    return {
-      oldStr: oldMatch ? oldMatch[1] : null,
-      newStr: newMatch ? newMatch[1] : null,
-    };
+    // Check for nested arguments
+    if ('arguments' in content && typeof content.arguments === 'object') {
+      const args = content.arguments as any;
+      if (args.old_str && args.new_str) {
+        return {
+          oldStr: args.old_str,
+          newStr: args.new_str,
+        };
+      }
+    }
   }
 
-  // Fall back to direct search for old_str and new_str tags
-  const oldMatch = contentStr.match(/<old_str>([\s\S]*?)<\/old_str>/);
-  const newMatch = contentStr.match(/<new_str>([\s\S]*?)<\/new_str>/);
+  // Try multiple extraction patterns in order of preference
+  const extractionPatterns = [
+    // Pattern 1: str-replace tag with inner old_str/new_str tags
+    () => {
+      const strReplaceMatch = contentStr.match(/<str-replace[^>]*>([\s\S]*?)<\/str-replace>/i);
+      if (strReplaceMatch) {
+        const innerContent = strReplaceMatch[1];
+        const oldMatch = innerContent.match(/<old_str>([\s\S]*?)<\/old_str>/i);
+        const newMatch = innerContent.match(/<new_str>([\s\S]*?)<\/new_str>/i);
+        
+        if (oldMatch && newMatch) {
+          return { oldStr: oldMatch[1], newStr: newMatch[1] };
+        }
+      }
+      return null;
+    },
+    
+    // Pattern 2: str_replace tag (underscore variant)
+    () => {
+      const strReplaceMatch = contentStr.match(/<str_replace[^>]*>([\s\S]*?)<\/str_replace>/i);
+      if (strReplaceMatch) {
+        const innerContent = strReplaceMatch[1];
+        const oldMatch = innerContent.match(/<old_str>([\s\S]*?)<\/old_str>/i);
+        const newMatch = innerContent.match(/<new_str>([\s\S]*?)<\/new_str>/i);
+        
+        if (oldMatch && newMatch) {
+          return { oldStr: oldMatch[1], newStr: newMatch[1] };
+        }
+      }
+      return null;
+    },
+    
+    // Pattern 3: Direct old_str and new_str tags
+    () => {
+      const oldMatch = contentStr.match(/<old_str>([\s\S]*?)<\/old_str>/i);
+      const newMatch = contentStr.match(/<new_str>([\s\S]*?)<\/new_str>/i);
+      
+      if (oldMatch && newMatch) {
+        return { oldStr: oldMatch[1], newStr: newMatch[1] };
+      }
+      return null;
+    },
+    
+    // Pattern 4: Hyphenated variants
+    () => {
+      const oldMatch = contentStr.match(/<old-str>([\s\S]*?)<\/old-str>/i);
+      const newMatch = contentStr.match(/<new-str>([\s\S]*?)<\/new-str>/i);
+      
+      if (oldMatch && newMatch) {
+        return { oldStr: oldMatch[1], newStr: newMatch[1] };
+      }
+      return null;
+    },
+    
+    // Pattern 5: JSON-like patterns within the string
+    () => {
+      const oldJsonMatch = contentStr.match(/"old_str"\s*:\s*"([\s\S]*?)"/i);
+      const newJsonMatch = contentStr.match(/"new_str"\s*:\s*"([\s\S]*?)"/i);
+      
+      if (oldJsonMatch && newJsonMatch) {
+        return { 
+          oldStr: oldJsonMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n'),
+          newStr: newJsonMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n')
+        };
+      }
+      return null;
+    },
+    
+    // Pattern 6: Parameter format
+    () => {
+      const oldParamMatch = contentStr.match(/old_str=["']([\s\S]*?)["']/i);
+      const newParamMatch = contentStr.match(/new_str=["']([\s\S]*?)["']/i);
+      
+      if (oldParamMatch && newParamMatch) {
+        return { oldStr: oldParamMatch[1], newStr: newParamMatch[1] };
+      }
+      return null;
+    }
+  ];
 
-  return {
-    oldStr: oldMatch ? oldMatch[1] : null,
-    newStr: newMatch ? newMatch[1] : null,
-  };
+  // Try each pattern until one succeeds
+  for (const pattern of extractionPatterns) {
+    const result = pattern();
+    if (result) {
+      console.debug('StrReplace extraction successful with pattern:', pattern.name);
+      return result;
+    }
+  }
+
+  console.warn('StrReplace extraction failed - no patterns matched:', contentStr.substring(0, 200));
+  return { oldStr: null, newStr: null };
 }
 
 // Helper to extract file content from create-file or file-rewrite
