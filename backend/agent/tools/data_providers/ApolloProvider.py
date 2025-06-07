@@ -116,6 +116,29 @@ class ApolloProvider:
             response = requests.post(url, json=request_data, headers=headers, timeout=30)
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 422:
+                raise requests.RequestException(
+                    f"Apollo API call failed with 422 Unprocessable Entity. "
+                    f"This typically occurs because: "
+                    f"1) You're on Apollo's free plan (search endpoints require a paid plan), "
+                    f"2) Invalid search parameters, or "
+                    f"3) Missing required API permissions. "
+                    f"Please upgrade your Apollo plan or check your search criteria. "
+                    f"Original error: {str(e)}"
+                )
+            elif response.status_code == 401:
+                raise requests.RequestException(
+                    f"Apollo API authentication failed. Please check your APOLLO_API_KEY. "
+                    f"Original error: {str(e)}"
+                )
+            elif response.status_code == 429:
+                raise requests.RequestException(
+                    f"Apollo API rate limit exceeded. Please wait before making more requests. "
+                    f"Original error: {str(e)}"
+                )
+            else:
+                raise requests.RequestException(f"Apollo API call failed: {str(e)}")
         except requests.exceptions.RequestException as e:
             raise requests.RequestException(f"Apollo API call failed: {str(e)}")
     
