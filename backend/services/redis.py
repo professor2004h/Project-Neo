@@ -41,12 +41,22 @@ class RedisConnectionManager:
         
         logger.info(f"Creating Redis connection pool to {redis_host}:{redis_port} with max_connections={max_connections}")
         
+        # Determine connection class and SSL configuration
+        if redis_ssl:
+            connection_class = redis.SSLConnection
+            connection_kwargs = {
+                'ssl_cert_reqs': 'none',  # Use 'none' for less strict SSL validation
+                'ssl_check_hostname': False,
+            }
+        else:
+            connection_class = redis.Connection
+            connection_kwargs = {}
+        
         # Create connection pool
         self._connection_pool = redis.ConnectionPool(
             host=redis_host,
             port=redis_port,
             password=redis_password,
-            ssl=redis_ssl,
             decode_responses=True,
             max_connections=max_connections,
             socket_timeout=10.0,
@@ -56,7 +66,8 @@ class RedisConnectionManager:
             retry_on_timeout=True,
             health_check_interval=30,
             # Connection pool specific settings
-            connection_class=redis.Connection,
+            connection_class=connection_class,
+            **connection_kwargs,
         )
 
     def _create_client(self):
@@ -167,17 +178,32 @@ def initialize():
         logger.info(f"Initializing Redis connection to {redis_host}:{redis_port} (legacy method)")
         
         # Create a simple client for backward compatibility
-        client = redis.Redis(
-            host=redis_host,
-            port=redis_port,
-            password=redis_password,
-            ssl=redis_ssl,
-            decode_responses=True,
-            socket_timeout=5.0,
-            socket_connect_timeout=5.0,
-            retry_on_timeout=True,
-            health_check_interval=30
-        )
+        if redis_ssl:
+            # Use SSL connection parameters directly
+            client = redis.Redis(
+                host=redis_host,
+                port=redis_port,
+                password=redis_password,
+                ssl=True,
+                ssl_cert_reqs='none',
+                ssl_check_hostname=False,
+                decode_responses=True,
+                socket_timeout=5.0,
+                socket_connect_timeout=5.0,
+                retry_on_timeout=True,
+                health_check_interval=30
+            )
+        else:
+            client = redis.Redis(
+                host=redis_host,
+                port=redis_port,
+                password=redis_password,
+                decode_responses=True,
+                socket_timeout=5.0,
+                socket_connect_timeout=5.0,
+                retry_on_timeout=True,
+                health_check_interval=30
+            )
         
         _initialized = True
     
