@@ -176,6 +176,28 @@ const extractFromLegacyFormat = (content: any): {
   return { serviceName: null, route: null, payload: null, endpoints: null };
 };
 
+const extractProviderName = (content: string | object | undefined | null): string | null => {
+  const contentStr = normalizeContentToString(content);
+  if (!contentStr) return null;
+
+  let detectedServiceName = extractServiceName(contentStr);
+  if (detectedServiceName) {
+    return detectedServiceName.toLowerCase();
+  }
+
+  const content_lower = contentStr.toLowerCase();
+  
+  if (content_lower.includes('apollo')) return 'apollo';
+  if (content_lower.includes('linkedin')) return 'linkedin';
+  if (content_lower.includes('twitter')) return 'twitter';
+  if (content_lower.includes('zillow')) return 'zillow';
+  if (content_lower.includes('amazon')) return 'amazon';
+  if (content_lower.includes('yahoo') || content_lower.includes('finance')) return 'yahoo_finance';
+  if (content_lower.includes('jobs') || content_lower.includes('active')) return 'active_jobs';
+  
+  return null;
+};
+
 export function extractDataProviderCallData(
   assistantContent: any,
   toolContent: any,
@@ -247,6 +269,10 @@ export function extractDataProviderCallData(
     route = assistantLegacy.route || toolLegacy.route;
     payload = assistantLegacy.payload || toolLegacy.payload;
     
+    if (!serviceName) {
+      serviceName = extractProviderName(assistantContent || toolContent);
+    }
+
     console.log('DataProviderCallToolView: Using legacy format data:', {
       serviceName,
       route,
@@ -339,29 +365,12 @@ export function extractDataProviderEndpointsData(
     });
 
     if (!serviceName) {
-      const extractProviderName = (content: string | object | undefined | null): string => {
-        const contentStr = normalizeContentToString(content);
-        const detectedServiceName = extractServiceName(contentStr || '');
-        if (detectedServiceName) {
-          return detectedServiceName.toLowerCase();
-        }
-
-        if (!contentStr) return 'linkedin';
-
-        const content_lower = contentStr.toLowerCase();
-        
-        if (content_lower.includes('linkedin')) return 'linkedin';
-        if (content_lower.includes('twitter')) return 'twitter';
-        if (content_lower.includes('zillow')) return 'zillow';
-        if (content_lower.includes('amazon')) return 'amazon';
-        if (content_lower.includes('yahoo') || content_lower.includes('finance')) return 'yahoo_finance';
-        if (content_lower.includes('jobs') || content_lower.includes('active')) return 'active_jobs';
-        if (content_lower.includes('apollo')) return 'apollo';
-        
-        return 'linkedin';
-      };
-
       serviceName = extractProviderName(assistantContent || toolContent);
+      
+      // Default to linkedin if no provider name is found
+      if (!serviceName) {
+        serviceName = 'linkedin';
+      }
     }
   }
 
