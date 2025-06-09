@@ -11,6 +11,7 @@ services:
 
   worker:
     command: python -m dramatiq --processes 40 --threads 8 run_agent_background
+
     deploy:
       resources:
         limits:

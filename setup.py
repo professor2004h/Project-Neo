@@ -459,6 +459,7 @@ def configure_backend_env(env_vars, use_docker=True):
         'REDIS_PORT': '6379',
         'REDIS_PASSWORD': '',
         'REDIS_SSL': 'false',
+        'REDIS_MAX_CONNECTIONS': '100',
     }
 
     # RabbitMQ configuration (based on deployment method)
