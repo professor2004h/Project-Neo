@@ -167,7 +167,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
     }
 
     try {
-      let configToSave: any = { 
+      const configToSave: any = { 
         url: configText.trim(),
         headers: getHeadersObject()
       };
@@ -276,8 +276,9 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
 
         <div className="flex-1 overflow-hidden flex flex-col">
           {step === 'setup' ? (
-            <div className="space-y-6 p-1 flex-1">
-              <div className="space-y-4">
+            <ScrollArea className="flex-1 max-h-[60vh]">
+              <div className="space-y-6 p-1">
+                <div className="space-y-4">
                 <div className="space-y-3">
                   <Label className="text-base font-medium">How would you like to connect?</Label>
                   <RadioGroup 
@@ -420,7 +421,8 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
                   <AlertDescription>{validationError}</AlertDescription>
                 </Alert>
               )}
-            </div>
+              </div>
+            </ScrollArea>
           ) : (
             <div className="space-y-6 p-1 flex-1 flex flex-col">
               <Alert className="border-green-200 bg-green-50 text-green-800">
