@@ -75,7 +75,7 @@ class ApolloProvider:
             dict: The JSON response from the Apollo API
             
         Raises:
-            ValueError: If the endpoint route is not found
+            ValueError: If the endpoint route is not found or required parameters are missing
             requests.RequestException: If the API call fails
         """
         if route not in self.endpoints:
@@ -108,13 +108,96 @@ class ApolloProvider:
             request_data["page"] = 1
         if "per_page" not in request_data:
             request_data["per_page"] = 25
+            
+        # Validate required search criteria for Apollo endpoints
+        self._validate_search_criteria(route, request_data)
         
         try:
             response = requests.post(url, json=request_data, headers=headers, timeout=30)
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 422:
+                raise requests.RequestException(
+                    f"Apollo API call failed with 422 Unprocessable Entity. "
+                    f"This typically occurs because: "
+                    f"1) You're on Apollo's free plan (search endpoints require a paid plan), "
+                    f"2) Invalid search parameters, or "
+                    f"3) Missing required API permissions. "
+                    f"Please upgrade your Apollo plan or check your search criteria. "
+                    f"Original error: {str(e)}"
+                )
+            elif response.status_code == 401:
+                raise requests.RequestException(
+                    f"Apollo API authentication failed. Please check your APOLLO_API_KEY. "
+                    f"Original error: {str(e)}"
+                )
+            elif response.status_code == 429:
+                raise requests.RequestException(
+                    f"Apollo API rate limit exceeded. Please wait before making more requests. "
+                    f"Original error: {str(e)}"
+                )
+            else:
+                raise requests.RequestException(f"Apollo API call failed: {str(e)}")
         except requests.exceptions.RequestException as e:
             raise requests.RequestException(f"Apollo API call failed: {str(e)}")
+    
+    def _validate_search_criteria(self, route: str, request_data: Dict[str, Any]) -> None:
+        """
+        Validate that required search criteria are provided for Apollo API calls.
+        Apollo's search endpoints require at least one search criterion beyond pagination.
+        
+        Args:
+            route: The endpoint route key
+            request_data: The prepared request data
+            
+        Raises:
+            ValueError: If no search criteria are provided
+        """
+        # Define search criteria fields for each endpoint
+        people_search_criteria = [
+            "person_titles[]", "person_locations[]", "person_seniorities[]",
+            "organization_locations[]", "q_organization_domains[]", 
+            "contact_email_status[]", "organization_ids[]",
+            "organization_num_employees_ranges[]", "q_keywords"
+        ]
+        
+        organization_search_criteria = [
+            "q_organization_domains[]", "organization_locations[]",
+            "organization_num_employees_ranges[]", "organization_industry_tag_ids[]",
+            "organization_keyword_tags[]", "q_keywords", "sort_by_field"
+        ]
+        
+        # Skip validation for non-search endpoints (pagination params only are ok)
+        excluded_keys = {"api_key", "page", "per_page", "sort_ascending"}
+        
+        if route == "people_search":
+            # Check if any people search criteria are provided
+            has_criteria = any(
+                key in request_data and request_data[key] 
+                for key in people_search_criteria
+            )
+            
+            if not has_criteria:
+                raise ValueError(
+                    "Apollo people search requires at least one search criterion. "
+                    f"Please provide one of: {', '.join(people_search_criteria)}. "
+                    "Example: person_titles=['software engineer'], organization_locations=['san francisco'], or q_keywords='marketing'"
+                )
+                
+        elif route == "organization_search":
+            # Check if any organization search criteria are provided
+            has_criteria = any(
+                key in request_data and request_data[key] 
+                for key in organization_search_criteria
+            )
+            
+            if not has_criteria:
+                raise ValueError(
+                    "Apollo organization search requires at least one search criterion. "
+                    f"Please provide one of: {', '.join(organization_search_criteria)}. "
+                    "Example: organization_locations=['new york'], organization_num_employees_ranges=['51,200'], or q_keywords='technology'"
+                )
     
     def search_people(
         self, 

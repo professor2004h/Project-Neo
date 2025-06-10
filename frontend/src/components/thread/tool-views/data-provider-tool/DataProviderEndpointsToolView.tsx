@@ -62,6 +62,13 @@ const PROVIDER_CONFIG = {
     color: 'from-indigo-500 to-indigo-600',
     bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
     textColor: 'text-indigo-700 dark:text-indigo-300'
+  },
+  'apollo': {
+    name: 'Apollo Data Provider',
+    icon: Globe,
+    color: 'from-cyan-500 to-cyan-600',
+    bgColor: 'bg-cyan-50 dark:bg-cyan-900/20',
+    textColor: 'text-cyan-700 dark:text-cyan-300'
   }
 };
 
