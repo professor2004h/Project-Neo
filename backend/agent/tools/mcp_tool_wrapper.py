@@ -120,27 +120,79 @@ class MCPToolWrapper(Tool):
                 else:
                     raise
     
-    async def _connect_streamable_http_server(self, url):
-        async with streamablehttp_client(url) as (
-            read_stream,
-            write_stream,
-            _,
-        ):
-            async with ClientSession(read_stream, write_stream) as session:
-                await session.initialize()
-                tool_result = await session.list_tools()
-                print(f"Connected via HTTP ({len(tool_result.tools)} tools)")
-                
-                tools_info = []
-                for tool in tool_result.tools:
-                    tool_info = {
-                        "name": tool.name,
-                        "description": tool.description,
-                        "inputSchema": tool.inputSchema
-                    }
-                    tools_info.append(tool_info)
-                
-                return tools_info
+    async def _connect_streamable_http_server(self, url, headers=None):
+        if headers is None:
+            headers = {}
+        
+        try:
+            if headers:
+                async with streamablehttp_client(url, headers=headers) as (
+                    read_stream,
+                    write_stream,
+                    _,
+                ):
+                    async with ClientSession(read_stream, write_stream) as session:
+                        await session.initialize()
+                        tool_result = await session.list_tools()
+                        logger.info(f"Connected via HTTP with headers ({len(tool_result.tools)} tools)")
+                        
+                        tools_info = []
+                        for tool in tool_result.tools:
+                            tool_info = {
+                                "name": tool.name,
+                                "description": tool.description,
+                                "inputSchema": tool.inputSchema
+                            }
+                            tools_info.append(tool_info)
+                        
+                        return tools_info
+            else:
+                async with streamablehttp_client(url) as (
+                    read_stream,
+                    write_stream,
+                    _,
+                ):
+                    async with ClientSession(read_stream, write_stream) as session:
+                        await session.initialize()
+                        tool_result = await session.list_tools()
+                        logger.info(f"Connected via HTTP ({len(tool_result.tools)} tools)")
+                        
+                        tools_info = []
+                        for tool in tool_result.tools:
+                            tool_info = {
+                                "name": tool.name,
+                                "description": tool.description,
+                                "inputSchema": tool.inputSchema
+                            }
+                            tools_info.append(tool_info)
+                        
+                        return tools_info
+        except TypeError as e:
+            if "unexpected keyword argument" in str(e) and headers:
+                # Fallback for MCP client versions that don't support headers parameter
+                logger.warning("MCP client doesn't support headers parameter, falling back to connection without headers")
+                async with streamablehttp_client(url) as (
+                    read_stream,
+                    write_stream,
+                    _,
+                ):
+                    async with ClientSession(read_stream, write_stream) as session:
+                        await session.initialize()
+                        tool_result = await session.list_tools()
+                        logger.info(f"Connected via HTTP fallback ({len(tool_result.tools)} tools)")
+                        
+                        tools_info = []
+                        for tool in tool_result.tools:
+                            tool_info = {
+                                "name": tool.name,
+                                "description": tool.description,
+                                "inputSchema": tool.inputSchema
+                            }
+                            tools_info.append(tool_info)
+                        
+                        return tools_info
+            else:
+                raise
         
     async def _connect_stdio_server(self, server_name, server_config, all_tools, timeout):
         """Connect to a stdio-based MCP server."""
@@ -236,8 +288,8 @@ class MCPToolWrapper(Tool):
                     logger.info(f"Initializing custom MCP {url} with HTTP type")
                     
                     try:
-
-                        tools_info = await self._connect_streamable_http_server(url)
+                        headers = server_config.get('headers', {})
+                        tools_info = await self._connect_streamable_http_server(url, headers)
                         tools_registered = 0
                         
                         for tool_info in tools_info:
@@ -568,33 +620,92 @@ class MCPToolWrapper(Tool):
             elif custom_type == 'http':
                 # Execute HTTP-based custom MCP
                 url = custom_config['url']
+                headers = custom_config.get('headers', {})
                 
                 async with asyncio.timeout(30):  # 30 second timeout for tool execution
-                    async with streamablehttp_client(url) as (read, write, _):
-                        async with ClientSession(read, write) as session:
-                            await session.initialize()
-                            result = await session.call_tool(original_tool_name, arguments)
-                            
-                            # Handle the result properly
-                            if hasattr(result, 'content'):
-                                content = result.content
-                                if isinstance(content, list):
-                                    # Extract text from content list
-                                    text_parts = []
-                                    for item in content:
-                                        if hasattr(item, 'text'):
-                                            text_parts.append(item.text)
+                    try:
+                        if headers:
+                            async with streamablehttp_client(url, headers=headers) as (read, write, _):
+                                async with ClientSession(read, write) as session:
+                                    await session.initialize()
+                                    result = await session.call_tool(original_tool_name, arguments)
+                                    
+                                    # Handle the result properly
+                                    if hasattr(result, 'content'):
+                                        content = result.content
+                                        if isinstance(content, list):
+                                            # Extract text from content list
+                                            text_parts = []
+                                            for item in content:
+                                                if hasattr(item, 'text'):
+                                                    text_parts.append(item.text)
+                                                else:
+                                                    text_parts.append(str(item))
+                                            content_str = "\n".join(text_parts)
+                                        elif hasattr(content, 'text'):
+                                            content_str = content.text
                                         else:
-                                            text_parts.append(str(item))
-                                    content_str = "\n".join(text_parts)
-                                elif hasattr(content, 'text'):
-                                    content_str = content.text
-                                else:
-                                    content_str = str(content)
-                                
-                                return self.success_response(content_str)
-                            else:
-                                return self.success_response(str(result))
+                                            content_str = str(content)
+                                        
+                                        return self.success_response(content_str)
+                                    else:
+                                        return self.success_response(str(result))
+                        else:
+                            async with streamablehttp_client(url) as (read, write, _):
+                                async with ClientSession(read, write) as session:
+                                    await session.initialize()
+                                    result = await session.call_tool(original_tool_name, arguments)
+                                    
+                                    # Handle the result properly
+                                    if hasattr(result, 'content'):
+                                        content = result.content
+                                        if isinstance(content, list):
+                                            # Extract text from content list
+                                            text_parts = []
+                                            for item in content:
+                                                if hasattr(item, 'text'):
+                                                    text_parts.append(item.text)
+                                                else:
+                                                    text_parts.append(str(item))
+                                            content_str = "\n".join(text_parts)
+                                        elif hasattr(content, 'text'):
+                                            content_str = content.text
+                                        else:
+                                            content_str = str(content)
+                                        
+                                        return self.success_response(content_str)
+                                    else:
+                                        return self.success_response(str(result))
+                    except TypeError as e:
+                        if "unexpected keyword argument" in str(e) and headers:
+                            # Fallback: try without headers
+                            async with streamablehttp_client(url) as (read, write, _):
+                                async with ClientSession(read, write) as session:
+                                    await session.initialize()
+                                    result = await session.call_tool(original_tool_name, arguments)
+                                    
+                                    # Handle the result properly
+                                    if hasattr(result, 'content'):
+                                        content = result.content
+                                        if isinstance(content, list):
+                                            # Extract text from content list
+                                            text_parts = []
+                                            for item in content:
+                                                if hasattr(item, 'text'):
+                                                    text_parts.append(item.text)
+                                                else:
+                                                    text_parts.append(str(item))
+                                            content_str = "\n".join(text_parts)
+                                        elif hasattr(content, 'text'):
+                                            content_str = content.text
+                                        else:
+                                            content_str = str(content)
+                                        
+                                        return self.success_response(content_str)
+                                    else:
+                                        return self.success_response(str(result))
+                        else:
+                            raise
                                 
             elif custom_type == 'json':
                 # Execute stdio-based custom MCP using the same pattern as _connect_stdio_server
