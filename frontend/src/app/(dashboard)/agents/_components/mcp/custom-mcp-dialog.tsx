@@ -276,8 +276,8 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
 
         <div className="flex-1 overflow-hidden flex flex-col">
           {step === 'setup' ? (
-            <ScrollArea className="flex-1 max-h-[60vh]">
-              <div className="space-y-6 p-1">
+            <ScrollArea className="h-full w-full">
+              <div className="space-y-6 p-4">
                 <div className="space-y-4">
                 <div className="space-y-3">
                   <Label className="text-base font-medium">How would you like to connect?</Label>
@@ -424,7 +424,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
               </div>
             </ScrollArea>
           ) : (
-            <div className="space-y-6 p-1 flex-1 flex flex-col">
+                          <div className="space-y-6 p-4 flex-1 flex flex-col">
               <Alert className="border-green-200 bg-green-50 text-green-800">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                 <div className="ml-2">
@@ -460,8 +460,8 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
                   </Button>
                 </div>
 
-                <div className="flex-1 min-h-0">
-                  <ScrollArea className="h-[400px] border border-border rounded-lg">
+                <div className="flex-1 min-h-0 h-[400px]">
+                  <ScrollArea className="h-full w-full border border-border rounded-lg">
                     <div className="space-y-3 p-4">
                       {discoveredTools.map((tool) => (
                         <div 
