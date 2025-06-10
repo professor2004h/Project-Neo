@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, AlertCircle, CheckCircle2, Zap, Globe, Code, ChevronRight, Sparkles, Database, Wifi, Server } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Zap, Globe, Code, ChevronRight, Sparkles, Database, Wifi, Server, Plus, X } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,11 @@ interface MCPTool {
   inputSchema?: any;
 }
 
+interface HeaderPair {
+  key: string;
+  value: string;
+}
+
 export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
   open,
   onOpenChange,
@@ -43,11 +48,39 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
   const [configText, setConfigText] = useState('');
   const [serverName, setServerName] = useState('');
   const [manualServerName, setManualServerName] = useState('');
+  const [headers, setHeaders] = useState<HeaderPair[]>([{ key: '', value: '' }]);
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [discoveredTools, setDiscoveredTools] = useState<MCPTool[]>([]);
   const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
   const [processedConfig, setProcessedConfig] = useState<any>(null);
+
+  const addHeader = () => {
+    setHeaders([...headers, { key: '', value: '' }]);
+  };
+
+  const removeHeader = (index: number) => {
+    if (headers.length > 1) {
+      const newHeaders = headers.filter((_, i) => i !== index);
+      setHeaders(newHeaders);
+    }
+  };
+
+  const updateHeader = (index: number, field: 'key' | 'value', value: string) => {
+    const newHeaders = [...headers];
+    newHeaders[index][field] = value;
+    setHeaders(newHeaders);
+  };
+
+  const getHeadersObject = () => {
+    const headersObj: Record<string, string> = {};
+    headers.forEach(({ key, value }) => {
+      if (key.trim() && value.trim()) {
+        headersObj[key.trim()] = value.trim();
+      }
+    });
+    return headersObj;
+  };
 
   const validateAndDiscoverTools = async () => {
     setIsValidating(true);
@@ -66,7 +99,10 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
           throw new Error('Please enter a name for this connection.');
         }
         
-        parsedConfig = { url };
+        parsedConfig = { 
+          url,
+          headers: getHeadersObject()
+        };
         setServerName(manualServerName.trim());
       }
 
@@ -131,7 +167,10 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
     }
 
     try {
-      let configToSave: any = { url: configText.trim() };
+      let configToSave: any = { 
+        url: configText.trim(),
+        headers: getHeadersObject()
+      };
       
       onSave({
         name: serverName,
@@ -142,6 +181,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
       
       setConfigText('');
       setManualServerName('');
+      setHeaders([{ key: '', value: '' }]);
       setDiscoveredTools([]);
       setSelectedTools(new Set());
       setServerName('');
@@ -172,6 +212,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
   const handleReset = () => {
     setConfigText('');
     setManualServerName('');
+    setHeaders([{ key: '', value: '' }]);
     setDiscoveredTools([]);
     setSelectedTools(new Set());
     setServerName('');
@@ -315,6 +356,61 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
                   <p className="text-sm text-muted-foreground">
                     Paste the complete connection URL provided by your service
                   </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-medium">
+                      Custom Headers (Optional)
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addHeader}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Header
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Add custom headers for authentication or other requirements (e.g., Authorization, X-API-Key)
+                  </p>
+                  <div className="space-y-3">
+                    {headers.map((header, index) => (
+                      <div key={index} className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <Input
+                            placeholder="Header name (e.g., Authorization)"
+                            value={header.key}
+                            onChange={(e) => updateHeader(index, 'key', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Input
+                            placeholder="Header value (e.g., Bearer your-token)"
+                            value={header.value}
+                            onChange={(e) => updateHeader(index, 'value', e.target.value)}
+                            className="text-sm"
+                            type={header.key.toLowerCase().includes('authorization') || header.key.toLowerCase().includes('token') || header.key.toLowerCase().includes('key') ? 'password' : 'text'}
+                          />
+                        </div>
+                        {headers.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeHeader(index)}
+                            className="p-2 h-9 w-9 flex-shrink-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
