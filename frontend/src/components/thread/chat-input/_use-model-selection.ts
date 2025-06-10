@@ -288,19 +288,38 @@ export const useModelSelection = () => {
       // Process API-provided models
       models = modelsData.models.map(model => {
         const shortName = model.short_name || model.id;
-        const displayName = model.display_name || shortName;
+        // const displayName = model.display_name || shortName;  // OLD: Use API display name
         
-        // Format the display label
-        let cleanLabel = displayName;
-        if (cleanLabel.includes('/')) {
-          cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
+        // NEW: Override display name for our custom model, otherwise use API display name
+        let cleanLabel;
+        if (shortName === 'claude-sonnet-4') {
+          // Use our custom name for Claude Sonnet 4
+          cleanLabel = 'Omni Agent 03';
+        } else {
+          // OLD LOGIC: Use API display name and format it
+          // const displayName = model.display_name || shortName;
+          // cleanLabel = displayName;
+          // if (cleanLabel.includes('/')) {
+          //   cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
+          // }
+          // cleanLabel = cleanLabel
+          //   .replace(/-/g, ' ')
+          //   .split(' ')
+          //   .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          //   .join(' ');
+          
+          // NEW: Since we only have one model now, this shouldn't be reached
+          const displayName = model.display_name || shortName;
+          cleanLabel = displayName;
+          if (cleanLabel.includes('/')) {
+            cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
+          }
+          cleanLabel = cleanLabel
+            .replace(/-/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
         }
-        
-        cleanLabel = cleanLabel
-          .replace(/-/g, ' ')
-          .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' ');
         
         // Get model data from our central MODELS constant
         const modelData = MODELS[shortName] || {};
