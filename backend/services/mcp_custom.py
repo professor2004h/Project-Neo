@@ -11,27 +11,81 @@ from mcp import ClientSession
 from mcp.client.sse import sse_client # type: ignore
 from mcp.client.streamable_http import streamablehttp_client # type: ignore
 
-async def connect_streamable_http_server(url):
-    async with streamablehttp_client(url) as (
-        read_stream,
-        write_stream,
-        _,
-    ):
-        async with ClientSession(read_stream, write_stream) as session:
-            await session.initialize()
-            tool_result = await session.list_tools()
-            print(f"Connected via HTTP ({len(tool_result.tools)} tools)")
-            
-            tools_info = []
-            for tool in tool_result.tools:
-                tool_info = {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "inputSchema": tool.inputSchema
-                }
-                tools_info.append(tool_info)
-            
-            return tools_info
+async def connect_streamable_http_server(url, headers=None):
+    if headers is None:
+        headers = {}
+    
+    try:
+        # Try with headers first if provided
+        if headers:
+            async with streamablehttp_client(url, headers=headers) as (
+                read_stream,
+                write_stream,
+                _,
+            ):
+                async with ClientSession(read_stream, write_stream) as session:
+                    await session.initialize()
+                    tool_result = await session.list_tools()
+                    logger.info(f"Connected via HTTP with headers ({len(tool_result.tools)} tools)")
+                    
+                    tools_info = []
+                    for tool in tool_result.tools:
+                        tool_info = {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "inputSchema": tool.inputSchema
+                        }
+                        tools_info.append(tool_info)
+                    
+                    return tools_info
+        else:
+            # Fallback to no headers
+            async with streamablehttp_client(url) as (
+                read_stream,
+                write_stream,
+                _,
+            ):
+                async with ClientSession(read_stream, write_stream) as session:
+                    await session.initialize()
+                    tool_result = await session.list_tools()
+                    logger.info(f"Connected via HTTP ({len(tool_result.tools)} tools)")
+                    
+                    tools_info = []
+                    for tool in tool_result.tools:
+                        tool_info = {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "inputSchema": tool.inputSchema
+                        }
+                        tools_info.append(tool_info)
+                    
+                    return tools_info
+    except TypeError as e:
+        if "unexpected keyword argument" in str(e) and headers:
+            # Fallback for MCP client versions that don't support headers parameter
+            logger.warning("MCP client doesn't support headers parameter, falling back to connection without headers")
+            async with streamablehttp_client(url) as (
+                read_stream,
+                write_stream,
+                _,
+            ):
+                async with ClientSession(read_stream, write_stream) as session:
+                    await session.initialize()
+                    tool_result = await session.list_tools()
+                    logger.info(f"Connected via HTTP fallback ({len(tool_result.tools)} tools)")
+                    
+                    tools_info = []
+                    for tool in tool_result.tools:
+                        tool_info = {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "inputSchema": tool.inputSchema
+                        }
+                        tools_info.append(tool_info)
+                    
+                    return tools_info
+        else:
+            raise
 
 async def discover_custom_tools(request_type: str, config: Dict[str, Any]):
     logger.info(f"Received custom MCP discovery request: type={request_type}")
@@ -44,10 +98,11 @@ async def discover_custom_tools(request_type: str, config: Dict[str, Any]):
         if 'url' not in config:
             raise HTTPException(status_code=400, detail="HTTP configuration must include 'url' field")
         url = config['url']
+        headers = config.get('headers', {})
         
         try:
             async with asyncio.timeout(15):
-                tools_info = await connect_streamable_http_server(url)
+                tools_info = await connect_streamable_http_server(url, headers)
                 for tool_info in tools_info:
                     tools.append({
                         "name": tool_info["name"],

@@ -296,7 +296,7 @@ def collect_llm_api_keys():
     # Model aliases for reference
     model_aliases = {
         'OPENAI': ['openai/gpt-4o', 'openai/gpt-4o-mini'],
-        'ANTHROPIC': ['anthropic/claude-3-7-sonnet-latest', 'anthropic/claude-3-5-sonnet-latest'],
+        'ANTHROPIC': ['anthropic/claude-sonnet-4-20250514', 'anthropic/claude-3-5-sonnet-latest'],
         'OPENROUTER': ['openrouter/google/gemini-2.5-pro-preview', 'openrouter/deepseek/deepseek-chat-v3-0324:free', 'openrouter/openai/gpt-4o-2024-11-20'],
     }
     
@@ -336,14 +336,14 @@ def collect_llm_api_keys():
                     for i, model in enumerate(model_aliases['ANTHROPIC'], 1):
                         print(f"{Colors.CYAN}[{i}] {Colors.GREEN}{model}{Colors.ENDC}")
                     
-                    model_choice = input("Select default model (1-3) or press Enter for claude-3-7-sonnet: ").strip()
+                    model_choice = input("Select default model (1-3) or press Enter for claude-sonnet-4: ").strip()
                     if not model_choice or model_choice == '1':
-                        model_info['default_model'] = 'anthropic/claude-3-7-sonnet-latest'
+                        model_info['default_model'] = 'anthropic/claude-sonnet-4-20250514'
                     elif model_choice.isdigit() and 1 <= int(model_choice) <= len(model_aliases['ANTHROPIC']):
                         model_info['default_model'] = model_aliases['ANTHROPIC'][int(model_choice) - 1]
                     else:
-                        model_info['default_model'] = 'anthropic/claude-3-7-sonnet-latest'
-                        print_warning(f"Invalid selection, using default: anthropic/claude-3-7-sonnet-latest")
+                        model_info['default_model'] = 'anthropic/claude-sonnet-4-20250514'
+                        print_warning(f"Invalid selection, using default: anthropic/claude-sonnet-4-20250514")
                     break
                 print_error("Invalid API key format. It should be at least 10 characters long.")
         
@@ -373,7 +373,7 @@ def collect_llm_api_keys():
     # If no default model has been set, check which provider was selected and set an appropriate default
     if 'default_model' not in model_info:
         if 'ANTHROPIC_API_KEY' in api_keys:
-            model_info['default_model'] = 'anthropic/claude-3-7-sonnet-latest'
+            model_info['default_model'] = 'anthropic/claude-sonnet-4-20250514'
         elif 'OPENAI_API_KEY' in api_keys:
             model_info['default_model'] = 'openai/gpt-4o'
         elif 'OPENROUTER_API_KEY' in api_keys:

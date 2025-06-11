@@ -41,6 +41,7 @@ class RedisConnectionManager:
         
         logger.info(f"Creating Redis connection pool to {redis_host}:{redis_port} with max_connections={max_connections}, SSL={redis_ssl}")
         
+
         # Create connection pool arguments
         pool_kwargs = {
             'host': redis_host,
@@ -62,6 +63,7 @@ class RedisConnectionManager:
             pool_kwargs['ssl'] = True
         
         self._connection_pool = redis.ConnectionPool(**pool_kwargs)
+
 
     def _create_client(self):
         """Create Redis client using the connection pool."""
@@ -168,23 +170,12 @@ def initialize():
         
         logger.info(f"Initializing Redis connection to {redis_host}:{redis_port} (legacy method)")
         
-        # Create client arguments
-        client_kwargs = {
-            'host': redis_host,
-            'port': redis_port,
-            'password': redis_password,
-            'decode_responses': True,
-            'socket_timeout': 5.0,
-            'socket_connect_timeout': 5.0,
-            'retry_on_timeout': True,
-            'health_check_interval': 30
-        }
-        
-        # Only add SSL parameter if it's actually True
+        # Create a simple client for backward compatibility
         if redis_ssl:
             client_kwargs['ssl'] = True
         
         client = redis.Redis(**client_kwargs)
+
         
         _initialized = True
     
