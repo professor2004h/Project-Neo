@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, CheckCircle2, Zap, Globe, Code, ChevronRight, Sparkles, Database, Wifi, Server, Plus, X } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
@@ -274,7 +273,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[50vh] px-1">
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent">
           <div className="p-6 space-y-6">
             {step === 'setup' ? (
               <>
@@ -504,7 +503,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
               </>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="flex-shrink-0 pt-4 border-t bg-background">
           {step === 'tools' ? (
