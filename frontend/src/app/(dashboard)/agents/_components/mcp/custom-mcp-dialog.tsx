@@ -231,7 +231,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
       onOpenChange(open);
       if (!open) handleReset();
     }}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0 pb-4 border-b">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -274,7 +274,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-1">
+        <ScrollArea className="flex-1 max-h-[50vh] px-1">
           <div className="p-6 space-y-6">
             {step === 'setup' ? (
               <>
