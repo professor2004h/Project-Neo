@@ -380,6 +380,7 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
             streamHookStatus={streamHookStatus}
             agentName="Agent Builder"
             agentAvatar={'🤖'}
+            isSidePanelOpen={false}
             emptyStateComponent={
               <div className="mt-6 flex flex-col items-center text-center text-muted-foreground/80">
                 <div className="flex w-20 aspect-square items-center justify-center rounded-2xl bg-muted-foreground/10 p-4 mb-4">
