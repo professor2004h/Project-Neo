@@ -347,7 +347,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     }, [displayMessages, sandboxId, session?.access_token, preloadFiles]);
 
     return (
-        <>
+        <div className="relative flex-1 flex flex-col">
             {displayMessages.length === 0 && !streamingTextContent && !streamingToolCall &&
                 !streamingText && !currentToolCall && agentStatus === 'idle' ? (
                 // Render empty state outside scrollable container
@@ -860,7 +860,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
             {/* Scroll to bottom button - Enhanced ChatGPT-style implementation */}
             {(showScrollButton || (!readOnly && (agentStatus === 'running' || agentStatus === 'connecting'))) && (
-                <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-20">
+                <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-20">
                     <button
                         onClick={() => scrollToBottom('smooth')}
                         className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 animate-in slide-in-from-bottom-5"
@@ -870,7 +870,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                     </button>
                 </div>
             )}
-        </>
+        </div>
     );
 };
 
