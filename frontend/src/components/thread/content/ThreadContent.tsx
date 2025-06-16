@@ -259,6 +259,7 @@ export interface ThreadContentProps {
     agentName?: string;
     agentAvatar?: React.ReactNode;
     emptyStateComponent?: React.ReactNode; // Add custom empty state component prop
+    isSidePanelOpen?: boolean; // Add side panel state prop
 }
 
 export const ThreadContent: React.FC<ThreadContentProps> = ({
@@ -281,6 +282,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     agentName = 'Operator',
     agentAvatar = <OmniLogo />,
     emptyStateComponent,
+    isSidePanelOpen = false,
 }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -307,9 +309,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
         setUserHasScrolled(isScrolledUp);
     };
 
-    const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
         messagesEndRef.current?.scrollIntoView({ behavior });
-    }, []);
+    };
 
     // Preload all message attachments when messages change or sandboxId is provided
     React.useEffect(() => {
@@ -858,16 +860,21 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 </div>
             )}
 
-            {/* Scroll to bottom button */}
-            {showScrollButton && (
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="fixed bottom-20 right-6 z-10 h-8 w-8 rounded-full shadow-md"
-                    onClick={() => scrollToBottom('smooth')}
-                >
-                    <ArrowDown className="h-4 w-4" />
-                </Button>
+            {/* Scroll to bottom button - Enhanced ChatGPT-style implementation */}
+            {(showScrollButton || (!readOnly && (agentStatus === 'running' || agentStatus === 'connecting'))) && (
+                <div className={`fixed bottom-32 z-20 transform -translate-x-1/2 transition-all duration-200 ease-in-out ${
+                    isSidePanelOpen 
+                        ? 'left-[5%] sm:left-[calc(50%-225px)] md:left-[calc(50%-250px)] lg:left-[calc(50%-275px)] xl:left-[calc(50%-325px)]'
+                        : 'left-1/2'
+                }`}>
+                    <button
+                        onClick={() => scrollToBottom('smooth')}
+                        className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 animate-in slide-in-from-bottom-5"
+                    >
+                        <ArrowDown className="h-4 w-4" />
+                        <span>Scroll to latest</span>
+                    </button>
+                </div>
             )}
         </>
     );

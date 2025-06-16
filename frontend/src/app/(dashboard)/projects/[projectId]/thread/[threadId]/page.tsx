@@ -429,24 +429,6 @@ export default function ThreadPage({
   }, [agentRunId, startStreaming, currentHookRunId]);
 
   useEffect(() => {
-    const lastMsg = messages[messages.length - 1];
-    const isNewUserMessage = lastMsg?.type === 'user';
-    if ((isNewUserMessage || agentStatus === 'running') && !userHasScrolled) {
-      scrollToBottom('smooth');
-    }
-  }, [messages, agentStatus, userHasScrolled]);
-
-  useEffect(() => {
-    if (!latestMessageRef.current || messages.length === 0) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setShowScrollButton(!entry?.isIntersecting),
-      { root: messagesContainerRef.current, threshold: 0.1 },
-    );
-    observer.observe(latestMessageRef.current);
-    return () => observer.disconnect();
-  }, [messages, streamingTextContent, streamingToolCall]);
-
-  useEffect(() => {
     console.log(`[PAGE] 🔄 Page AgentStatus: ${agentStatus}, Hook Status: ${streamHookStatus}, Target RunID: ${agentRunId || 'none'}, Hook RunID: ${currentHookRunId || 'none'}`);
 
     if ((streamHookStatus === 'completed' || streamHookStatus === 'stopped' ||
@@ -556,7 +538,7 @@ export default function ThreadPage({
         debugMode={debugMode}
         isMobile={isMobile}
         initialLoadCompleted={initialLoadCompleted}
-        agentName={agent && agent.name}
+        agentName={agent?.name || 'Operator'}
       >
         <ThreadError error={error} />
       </ThreadLayout>
@@ -599,7 +581,7 @@ export default function ThreadPage({
         debugMode={debugMode}
         isMobile={isMobile}
         initialLoadCompleted={initialLoadCompleted}
-        agentName={agent && agent.name}
+        agentName={agent?.name || 'Operator'}
       >
         <ThreadContent
           messages={messages}
@@ -613,8 +595,9 @@ export default function ThreadPage({
           sandboxId={sandboxId}
           project={project}
           debugMode={debugMode}
-          agentName={agent && agent.name}
-          agentAvatar={agent && agent.avatar}
+          agentName={agent?.name || 'Operator'}
+          agentAvatar={agent?.avatar}
+          isSidePanelOpen={isSidePanelOpen}
         />
 
         <div
@@ -632,7 +615,7 @@ export default function ThreadPage({
               value={newMessage}
               onChange={setNewMessage}
               onSubmit={handleSubmitMessage}
-              placeholder={`Ask ${agent && agent.name} anything...`}
+              placeholder={`Ask ${agent?.name || 'Operator'} anything...`}
               loading={isSending}
               disabled={isSending || agentStatus === 'running' || agentStatus === 'connecting'}
               isAgentRunning={agentStatus === 'running' || agentStatus === 'connecting'}
@@ -641,7 +624,7 @@ export default function ThreadPage({
               onFileBrowse={handleOpenFileViewer}
               sandboxId={sandboxId || undefined}
               messages={messages}
-              agentName={agent && agent.name}
+              agentName={agent?.name || 'Operator'}
             />
           </div>
         </div>
