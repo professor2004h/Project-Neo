@@ -4,10 +4,9 @@ from dotenv import load_dotenv
 import asyncio
 from utils.logger import logger
 from typing import List, Any
-from utils.retry import retry
 
 # Redis client
-client: redis.Redis | None = None
+client = None
 _initialized = False
 _init_lock = asyncio.Lock()
 
@@ -23,12 +22,12 @@ def initialize():
     load_dotenv()
 
     # Get Redis configuration
-    redis_host = os.getenv("REDIS_HOST", "redis")
-    redis_port = int(os.getenv("REDIS_PORT", 6379))
-    redis_password = os.getenv("REDIS_PASSWORD", "")
+    redis_host = os.getenv('REDIS_HOST', 'redis')
+    redis_port = int(os.getenv('REDIS_PORT', 6379))
+    redis_password = os.getenv('REDIS_PASSWORD', '')
     # Convert string 'True'/'False' to boolean
-    redis_ssl_str = os.getenv("REDIS_SSL", "False")
-    redis_ssl = redis_ssl_str.lower() == "true"
+    redis_ssl_str = os.getenv('REDIS_SSL', 'False')
+    redis_ssl = redis_ssl_str.lower() == 'true'
 
     logger.info(f"Initializing Redis connection to {redis_host}:{redis_port}")
 
@@ -42,7 +41,7 @@ def initialize():
         socket_timeout=5.0,
         socket_connect_timeout=5.0,
         retry_on_timeout=True,
-        health_check_interval=30,
+        health_check_interval=30
     )
 
     return client
@@ -57,15 +56,14 @@ async def initialize_async():
             logger.info("Initializing Redis connection")
             initialize()
 
-        try:
-            await client.ping()
-            logger.info("Successfully connected to Redis")
-            _initialized = True
-        except Exception as e:
-            logger.error(f"Failed to connect to Redis: {e}")
-            client = None
-            _initialized = False
-            raise
+            try:
+                await client.ping()
+                logger.info("Successfully connected to Redis")
+                _initialized = True
+            except Exception as e:
+                logger.error(f"Failed to connect to Redis: {e}")
+                client = None
+                raise
 
     return client
 
@@ -85,15 +83,15 @@ async def get_client():
     """Get the Redis client, initializing if necessary."""
     global client, _initialized
     if client is None or not _initialized:
-        await retry(lambda: initialize_async())
+        await initialize_async()
     return client
 
 
 # Basic Redis operations
-async def set(key: str, value: str, ex: int = None, nx: bool = False):
+async def set(key: str, value: str, ex: int = None):
     """Set a Redis key."""
     redis_client = await get_client()
-    return await redis_client.set(key, value, ex=ex, nx=nx)
+    return await redis_client.set(key, value, ex=ex)
 
 
 async def get(key: str, default: str = None):
