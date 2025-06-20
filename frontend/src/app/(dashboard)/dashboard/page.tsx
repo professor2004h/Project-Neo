@@ -1,4 +1,8 @@
-'use client';
+import { cn } from "@/lib/utils";
+import { DashboardContent } from "./_components/dashboard-content";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { isFlagEnabled } from "@/lib/feature-flags";
 
 export default async function DashboardPage() {
   return (
