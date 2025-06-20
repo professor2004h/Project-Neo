@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,9 +55,11 @@ export const ConfigDialog: React.FC<ConfigDialogProps> = ({
         <div className="flex items-center gap-3 mb-2">
           {server.iconUrl ? (
             <div className="relative">
-              <img 
+              <Image 
                 src={server.iconUrl} 
                 alt={server.displayName || server.name} 
+                width={32}
+                height={32}
                 className="w-8 h-8 rounded-lg shadow-sm" 
               />
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-lg pointer-events-none" />
