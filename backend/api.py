@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
-import sentry
+import sentry # Keep this import here, right after fastapi imports
 from contextlib import asynccontextmanager
 from agentpress.thread_manager import ThreadManager
 from services.supabase import DBConnection
@@ -9,19 +9,23 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from utils.config import config, EnvMode
 import asyncio
-from utils.logger import logger
+from utils.logger import logger, structlog
 import time
 from collections import OrderedDict
 from typing import Dict, Any
 
 from pydantic import BaseModel
+import uuid
 # Import the agent API module
 from agent import api as agent_api
 from sandbox import api as sandbox_api
 from services import billing as billing_api
+from flags import api as feature_flags_api
 from services import transcription as transcription_api
 from services.mcp_custom import discover_custom_tools
 import sys
+from services import email_api
+
 
 load_dotenv()
 
@@ -54,10 +58,6 @@ async def lifespan(app: FastAPI):
         try:
             await redis.initialize_async()
             logger.info("Redis connection initialized successfully")
-            
-            # Log connection pool information
-            pool_info = await redis.get_connection_info()
-            logger.info(f"Redis connection pool info: {pool_info}")
         except Exception as e:
             logger.error(f"Failed to initialize Redis connection: {e}")
             # Continue without Redis - the application will handle Redis failures gracefully
@@ -90,13 +90,23 @@ app = FastAPI(lifespan=lifespan)
 
 @app.middleware("http")
 async def log_requests_middleware(request: Request, call_next):
+    structlog.contextvars.clear_contextvars()
+
+    request_id = str(uuid.uuid4())
     start_time = time.time()
     client_ip = request.client.host
     method = request.method
-    url = str(request.url)
     path = request.url.path
     query_params = str(request.query_params)
-    
+
+    structlog.contextvars.bind_contextvars(
+        request_id=request_id,
+        client_ip=client_ip,
+        method=method,
+        path=path,
+        query_params=query_params
+    )
+
     # Log the incoming request
     logger.info(f"Request started: {method} {path} from {client_ip} | Query: {query_params}")
     
@@ -111,7 +121,7 @@ async def log_requests_middleware(request: Request, call_next):
         raise
 
 # Define allowed origins based on environment
-allowed_origins = [ "http://localhost:3000", "https://operator.becomeomni.com", "https://operator.staging.becomeomni.com", "https://dev1.operator.becomeomni.com", "https://huston.becomeomni.net"]
+allowed_origins = ["https://www.suna.so", "https://suna.so", "http://localhost:3000"]
 allow_origin_regex = None
 
 # Add staging-specific origins
@@ -134,37 +144,27 @@ app.include_router(sandbox_api.router, prefix="/api")
 
 app.include_router(billing_api.router, prefix="/api")
 
+app.include_router(feature_flags_api.router, prefix="/api")
+
 from mcp_local import api as mcp_api
 
 app.include_router(mcp_api.router, prefix="/api")
 
+
 app.include_router(transcription_api.router, prefix="/api")
+
+app.include_router(email_api.router, prefix="/api")
 
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint to verify API is working."""
     logger.info("Health check endpoint called")
-    
-    # Basic API health
-    health_response = {
+    return {
         "status": "ok", 
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "instance_id": instance_id
     }
-    
-    # Add Redis health information
-    try:
-        from services import redis
-        redis_health = await redis.health_check()
-        health_response["redis"] = redis_health
-    except Exception as e:
-        logger.warning(f"Redis health check failed: {e}")
-        health_response["redis"] = {
-            "status": "unhealthy",
-            "error": str(e)
-        }
-    
-    return health_response
+
 
 class CustomMCPDiscoverRequest(BaseModel):
     type: str

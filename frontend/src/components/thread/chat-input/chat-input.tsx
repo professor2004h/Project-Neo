@@ -249,27 +249,16 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             }
           }}
         >
-          <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">            
-            <CardContent className={`w-full p-1.5 pb-2 ${bgColor} rounded-2xl border`}>              
-              {onAgentSelect && (                
-                <div className="mb-2 px-2">                  
-                <AgentSelector                    
-                selectedAgentId={selectedAgentId}                    
-                onAgentSelect={onAgentSelect}                    
-                disabled={loading || disabled}                    
-                className="w-full"                 
-                />                
-                </div>              
-              )}                            
-              <AttachmentGroup                
-              files={uploadedFiles || []}                
-              sandboxId={sandboxId}                
-              onRemove={removeUploadedFile}                
-              layout="inline"                
-              maxHeight="216px"                
-              showPreviews={true}              
+          <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
+            <CardContent className={`w-full p-1.5 pb-2 ${bgColor} rounded-2xl border`}>
+              <AttachmentGroup
+                files={uploadedFiles || []}
+                sandboxId={sandboxId}
+                onRemove={removeUploadedFile}
+                layout="inline"
+                maxHeight="216px"
+                showPreviews={true}
               />
-
               <MessageInput
                 ref={textareaRef}
                 value={value}
