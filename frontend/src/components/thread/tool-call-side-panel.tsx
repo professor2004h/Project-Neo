@@ -683,7 +683,7 @@ export function ToolCallSidePanel({
         <div
           className={cn(
             'border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900',
-            isMobile ? 'p-2' : 'px-4 py-2.5',
+            isMobile ? 'p-3' : 'p-4 space-y-2',
           )}
         >
           {isMobile ? (
