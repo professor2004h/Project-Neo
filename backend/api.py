@@ -54,10 +54,6 @@ async def lifespan(app: FastAPI):
         try:
             await redis.initialize_async()
             logger.info("Redis connection initialized successfully")
-            
-            # Log connection pool information
-            pool_info = await redis.get_connection_info()
-            logger.info(f"Redis connection pool info: {pool_info}")
         except Exception as e:
             logger.error(f"Failed to initialize Redis connection: {e}")
             # Continue without Redis - the application will handle Redis failures gracefully
@@ -144,27 +140,11 @@ app.include_router(transcription_api.router, prefix="/api")
 async def health_check():
     """Health check endpoint to verify API is working."""
     logger.info("Health check endpoint called")
-    
-    # Basic API health
-    health_response = {
+    return {
         "status": "ok", 
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "instance_id": instance_id
     }
-    
-    # Add Redis health information
-    try:
-        from services import redis
-        redis_health = await redis.health_check()
-        health_response["redis"] = redis_health
-    except Exception as e:
-        logger.warning(f"Redis health check failed: {e}")
-        health_response["redis"] = {
-            "status": "unhealthy",
-            "error": str(e)
-        }
-    
-    return health_response
 
 class CustomMCPDiscoverRequest(BaseModel):
     type: str
