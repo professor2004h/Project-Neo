@@ -1,0 +1,57 @@
+version: "1"
+services:
+  - type: worker
+    name: Operator-worker
+    runtime: docker
+    repo: https://github.com/Omniscience-Labs/Operator
+    plan: pro
+    region: oregon
+    dockerCommand: python -m dramatiq run_agent_background
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    rootDir: backend
+    autoDeployTrigger: commit
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetCPUPercent: 81
+      targetMemoryPercent: 80
+    envVars:
+      - fromGroup: Operator Backend
+
+  - type: web
+    name: Operator-backend
+    runtime: docker
+    repo: https://github.com/Omniscience-Labs/Operator
+    plan: pro
+    region: oregon
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    rootDir: backend
+    autoDeployTrigger: commit
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetCPUPercent: 81
+      targetMemoryPercent: 80
+    envVars:
+      - fromGroup: Operator Backend
+
+  - type: pserv
+    name: rabbitmq
+    runtime: docker
+    envVars:
+      - key: PORT
+        value: "5672"
+      - key: RABBITMQ_ERLANG_COOKIE
+        generateValue: true
+      - key: RABBITMQ_DEFAULT_USER
+        value: rabbitmq
+      - key: RABBITMQ_DEFAULT_PASS
+        value: rabbitmq
+      - key: RABBITMQ_DEFAULT_VHOST
+        value: rabbitmq
+    disk:
+      name: rabbit
+      mountPath: /var/lib/rabbitmq
+      sizeGB: 10
