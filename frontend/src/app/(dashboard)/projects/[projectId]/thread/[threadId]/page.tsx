@@ -597,6 +597,7 @@ export default function ThreadPage({
           debugMode={debugMode}
           agentName={agent?.name || 'Operator'}
           agentAvatar={agent?.avatar}
+          isSidePanelOpen={isSidePanelOpen}
         />
 
         <div

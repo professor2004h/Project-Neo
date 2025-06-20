@@ -838,6 +838,7 @@ export default function ThreadPage({
           currentToolCall={playbackState.currentToolCall}
           sandboxId={sandboxId || ''}
           project={project}
+          isSidePanelOpen={isSidePanelOpen}
         />
         {renderWelcomeOverlay()}
         {renderFloatingControls()}

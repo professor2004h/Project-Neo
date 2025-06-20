@@ -37,16 +37,6 @@ interface MCPServerDetailResponse {
   tools?: any[];
 }
 
-interface PopularServersResponse {
-  servers: Array<{
-    qualifiedName: string;
-    displayName: string;
-    description: string;
-    icon: string;
-    category: string;
-  }>;
-}
-
 interface PopularServersV2Response {
   success: boolean;
   servers: Array<{
@@ -71,6 +61,12 @@ interface PopularServersV2Response {
   }>>;
   total: number;
   categoryCount: number;
+  pagination: {
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+    totalCount: number;
+  };
 }
 
 export const useMCPServers = (query?: string, page: number = 1, pageSize: number = 20) => {
@@ -136,45 +132,22 @@ export const useMCPServerDetails = (qualifiedName: string, enabled: boolean = tr
   });
 };
 
-export const usePopularMCPServers = () => {
+export const usePopularMCPServersV2 = (page: number = 1, pageSize: number = 50) => {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ['mcp-servers-popular'],
-    queryFn: async (): Promise<PopularServersResponse> => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No session');
-
-      const response = await fetch(
-        `${API_URL}/mcp/popular-servers`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch popular MCP servers');
-      }
-
-      return response.json();
-    },
-    staleTime: 30 * 60 * 1000,
-  });
-};
-
-export const usePopularMCPServersV2 = () => {
-  const supabase = createClient();
-
-  return useQuery({
-    queryKey: ['mcp-servers-popular-v2'],
+    queryKey: ['mcp-servers-popular-v2', page, pageSize],
     queryFn: async (): Promise<PopularServersV2Response> => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No session');
 
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
+      });
+
       const response = await fetch(
-        `${API_URL}/mcp/popular-servers/v2`,
+        `${API_URL}/mcp/popular-servers/v2?${params}`,
         {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
