@@ -86,11 +86,12 @@ class ApolloProvider:
         
         headers = {
             "Content-Type": "application/json",
-            "Cache-Control": "no-cache"
+            "Cache-Control": "no-cache",
+            "x-api-key": self.api_key
         }
         
         # Prepare the request payload
-        request_data = {"api_key": self.api_key}
+        request_data = {}
         
         if payload:
             # Handle array parameters for Apollo API
