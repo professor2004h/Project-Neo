@@ -36,7 +36,7 @@ class ApolloProvider:
                     "organization_num_employees_ranges[]": "Employee count ranges (e.g., '1,10', '250,500', '10000,20000')",
                     "q_keywords": "General keywords to filter results",
                     "page": "Page number (default: 1)",
-                    "per_page": "Results per page (default: 25, max: 100)"
+                    "per_page": "Results per page (default: 10, max: 100) - Use smaller values to avoid context limits"
                 }
             },
             "organization_search": {
@@ -108,7 +108,7 @@ class ApolloProvider:
         if "page" not in request_data:
             request_data["page"] = 1
         if "per_page" not in request_data:
-            request_data["per_page"] = 25
+            request_data["per_page"] = 10  # Reduced from 25 to prevent context overflow
             
         # Validate required search criteria for Apollo endpoints
         self._validate_search_criteria(route, request_data)
