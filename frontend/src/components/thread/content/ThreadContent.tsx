@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowDown, CircleDashed, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Markdown } from '@/components/ui/markdown';
@@ -921,20 +921,69 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 </div>
             )}
 
-            {/* Scroll to bottom button - Only show when not running (since it shows in ChatInput when running) */}
-            {showScrollButton && !(!readOnly && (agentStatus === 'running' || agentStatus === 'connecting')) && (
+            {/* Unified floating pill - shows either "Working" or "Scroll to latest" */}
+            {((!readOnly && (agentStatus === 'running' || agentStatus === 'connecting')) || showScrollButton) && (
                 <div className={`fixed bottom-48 z-20 transform -translate-x-1/2 transition-all duration-200 ease-in-out ${
                     isSidePanelOpen 
                         ? 'left-[5%] sm:left-[calc(50%-225px)] md:left-[calc(50%-250px)] lg:left-[calc(50%-275px)] xl:left-[calc(50%-325px)]'
                         : 'left-1/2'
                 }`}>
-                    <button
-                        onClick={() => scrollToBottom('smooth')}
-                        className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 animate-in slide-in-from-bottom-5"
-                    >
-                        <ArrowDown className="h-4 w-4" />
-                        <span>Scroll to latest</span>
-                    </button>
+                    <AnimatePresence mode="wait">
+                        {!readOnly && (agentStatus === 'running' || agentStatus === 'connecting') ? (
+                            <motion.button
+                                key="working"
+                                initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ 
+                                    opacity: 0, 
+                                    scale: 0.8, 
+                                    rotateX: 180,
+                                    transition: { 
+                                        duration: 0.5, 
+                                        ease: [0.22, 1, 0.36, 1],
+                                        rotateX: { delay: 0.1 }
+                                    } 
+                                }}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => scrollToBottom('smooth')}
+                                className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+                            >
+                                <ThreeSpinner size={16} color="currentColor" />
+                                <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
+                            </motion.button>
+                        ) : showScrollButton ? (
+                            <motion.button
+                                key="scroll"
+                                initial={{ 
+                                    opacity: 0, 
+                                    scale: 0.8, 
+                                    y: 10,
+                                    rotateX: -180
+                                }}
+                                animate={{ 
+                                    opacity: 1, 
+                                    scale: 1, 
+                                    y: 0,
+                                    rotateX: 0,
+                                    transition: { 
+                                        duration: 0.6, 
+                                        ease: [0.22, 1, 0.36, 1],
+                                        delay: 0.1,
+                                        rotateX: { delay: 0.2 }
+                                    }
+                                }}
+                                exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => scrollToBottom('smooth')}
+                                className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+                            >
+                                <ArrowDown className="h-4 w-4" />
+                                <span>Scroll to latest</span>
+                            </motion.button>
+                        ) : null}
+                    </AnimatePresence>
                 </div>
             )}
         </>

@@ -18,8 +18,6 @@ import { AgentSelector } from './agent-selector';
 import { useFileDelete } from '@/hooks/react-query/files';
 import { useQueryClient } from '@tanstack/react-query';
 import { ThreeSpinner } from '@/components/ui/three-spinner';
-import { ArrowDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export interface ChatInputHandles {
   getPendingFiles: () => File[];
@@ -47,8 +45,6 @@ export interface ChatInputProps {
   agentName?: string;
   messages?: any[];
   bgColor?: string;
-  onScrollToBottom?: () => void;
-  showScrollButton?: boolean;
 }
 
 export interface UploadedFile {
@@ -79,8 +75,6 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       agentName,
       messages = [],
       bgColor = 'bg-sidebar',
-      onScrollToBottom,
-      showScrollButton = false,
     },
     ref,
   ) => {
@@ -258,31 +252,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
         >
           <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
             <CardContent className={`w-full p-1.5 pb-2 ${bgColor} rounded-2xl border`}>
-              {isAgentRunning && (
-                <motion.div
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-2 w-full flex items-center justify-center"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="text-xs text-muted-foreground flex items-center gap-3 bg-muted/50 px-3 py-2 rounded-md border border-border/20">
-                      <ThreeSpinner size={32} color="currentColor" />
-                      <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
-                    </div>
-                    {showScrollButton && onScrollToBottom && (
-                      <Button
-                        onClick={onScrollToBottom}
-                        size="sm"
-                        variant="outline"
-                        className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
-                      >
-                        <ArrowDown className="h-3 w-3" />
-                        <span>Scroll to latest</span>
-                      </Button>
-                    )}
-                  </div>
-                </motion.div>
-              )}
+
               <AttachmentGroup
                 files={uploadedFiles || []}
                 sandboxId={sandboxId}

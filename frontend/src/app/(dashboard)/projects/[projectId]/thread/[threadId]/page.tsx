@@ -625,8 +625,7 @@ export default function ThreadPage({
               sandboxId={sandboxId || undefined}
               messages={messages}
               agentName={agent?.name || 'Operator'}
-              onScrollToBottom={scrollToBottom}
-              showScrollButton={true}
+
             />
           </div>
         </div>
