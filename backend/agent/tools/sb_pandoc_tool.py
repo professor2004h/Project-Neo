@@ -432,12 +432,12 @@ class SandboxPandocTool(SandboxToolsBase):
                     "recursive": {
                         "type": "boolean",
                         "description": "Whether to search recursively in subdirectories",
-                        "default": false
+                        "default": False
                     },
                     "include_dirs": {
                         "type": "boolean",
                         "description": "Whether to include directories in results",
-                        "default": false
+                        "default": False
                     },
                     "file_extensions": {
                         "type": "array",
@@ -556,12 +556,12 @@ class SandboxPandocTool(SandboxToolsBase):
                     "show_hidden": {
                         "type": "boolean",
                         "description": "Whether to show hidden files and directories",
-                        "default": false
+                        "default": False
                     },
                     "show_size": {
                         "type": "boolean", 
                         "description": "Whether to show file sizes",
-                        "default": true
+                        "default": True
                     }
                 },
                 "required": []
