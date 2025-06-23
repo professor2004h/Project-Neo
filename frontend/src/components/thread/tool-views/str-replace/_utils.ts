@@ -31,6 +31,29 @@ export const extractFromNewFormat = (content: any): ExtractedData => {
     return { filePath: null, oldStr: null, newStr: null };
   }
 
+  if (typeof content === 'string') {
+    // Only try to parse if it looks like JSON
+    const trimmed = content.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        console.debug('StrReplaceToolView: Attempting to parse JSON string:', content.substring(0, 100) + '...');
+        const parsed = JSON.parse(content);
+        console.debug('StrReplaceToolView: Successfully parsed JSON:', parsed);
+        return extractFromNewFormat(parsed);
+      } catch (error) {
+        console.error('StrReplaceToolView: JSON parse error:', error, 'Content:', content.substring(0, 200));
+        return { filePath: null, oldStr: null, newStr: null };
+      }
+    } else {
+      console.debug('StrReplaceToolView: String content does not look like JSON, skipping parse');
+      return { filePath: null, oldStr: null, newStr: null };
+    }
+  }
+
+  if (typeof content !== 'object') {
+    return { filePath: null, oldStr: null, newStr: null };
+  }
+
   // Enhanced string parsing with better JSON detection
   if (typeof content === 'string') {
     const trimmed = content.trim();
@@ -99,42 +122,14 @@ export const extractFromNewFormat = (content: any): ExtractedData => {
     };
   }
 
-  // Handle role/content structures
-  if ('role' in content && 'content' in content) {
-    if (typeof content.content === 'string') {
-      console.debug('StrReplaceToolView: Found role/content structure with string content, parsing...');
-      return extractFromNewFormat(content.content);
-    } else if (typeof content.content === 'object') {
-      console.debug('StrReplaceToolView: Found role/content structure with object content');
-      return extractFromNewFormat(content.content);
-    }
+  if ('role' in content && 'content' in content && typeof content.content === 'string') {
+    console.debug('StrReplaceToolView: Found role/content structure with string content, parsing...');
+    return extractFromNewFormat(content.content);
   }
 
-  // Handle direct arguments in object
-  if ('arguments' in content && typeof content.arguments === 'object') {
-    const args = content.arguments;
-    if (args.old_str && args.new_str) {
-      console.debug('StrReplaceToolView: Found arguments in content object');
-      return {
-        filePath: args.file_path || null,
-        oldStr: args.old_str || null,
-        newStr: args.new_str || null,
-        success: content.success,
-        timestamp: content.timestamp
-      };
-    }
-  }
-
-  // Handle direct properties
-  if ('old_str' in content && 'new_str' in content) {
-    console.debug('StrReplaceToolView: Found direct old_str/new_str properties');
-    return {
-      filePath: content.file_path || null,
-      oldStr: content.old_str || null,
-      newStr: content.new_str || null,
-      success: content.success,
-      timestamp: content.timestamp
-    };
+  if ('role' in content && 'content' in content && typeof content.content === 'object') {
+    console.debug('StrReplaceToolView: Found role/content structure with object content');
+    return extractFromNewFormat(content.content);
   }
 
   return { filePath: null, oldStr: null, newStr: null };

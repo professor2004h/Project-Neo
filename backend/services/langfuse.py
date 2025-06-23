@@ -9,10 +9,4 @@ enabled = False
 if public_key and secret_key:
     enabled = True
 
-# Initialize langfuse with proper configuration for v3
-langfuse = Langfuse(
-    public_key=public_key,
-    secret_key=secret_key,
-    host=host,
-    tracing_enabled=enabled  # v3 uses tracing_enabled instead of enabled
-)
+langfuse = Langfuse(enabled=enabled)

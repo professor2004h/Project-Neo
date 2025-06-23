@@ -29,6 +29,13 @@ export class BillingError extends Error {
   }
 }
 
+export class NoAccessTokenAvailableError extends Error {
+  constructor(message?: string, options?: { cause?: Error }) {
+    super(message || 'No access token available', options);
+  }
+  name = 'NoAccessTokenAvailableError';
+}
+
 // Type Definitions (moved from potential separate file for clarity)
 export type Project = {
   id: string;
@@ -504,23 +511,39 @@ export const addUserMessage = async (
 export const getMessages = async (threadId: string): Promise<Message[]> => {
   const supabase = createClient();
 
-  const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .eq('thread_id', threadId)
-    .neq('type', 'cost')
-    .neq('type', 'summary')
-    .order('created_at', { ascending: true });
+  let allMessages: Message[] = [];
+  let from = 0;
+  const batchSize = 1000;
+  let hasMore = true;
 
-  if (error) {
-    console.error('Error fetching messages:', error);
-    handleApiError(error, { operation: 'load messages', resource: `messages for thread ${threadId}` });
-    throw new Error(`Error getting messages: ${error.message}`);
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('thread_id', threadId)
+      .neq('type', 'cost')
+      .neq('type', 'summary')
+      .order('created_at', { ascending: true })
+      .range(from, from + batchSize - 1);
+
+    if (error) {
+      console.error('Error fetching messages:', error);
+      handleApiError(error, { operation: 'load messages', resource: `messages for thread ${threadId}` });
+      throw new Error(`Error getting messages: ${error.message}`);
+    }
+
+    if (data && data.length > 0) {
+      allMessages = allMessages.concat(data);
+      from += batchSize;
+      hasMore = data.length === batchSize;
+    } else {
+      hasMore = false;
+    }
   }
 
-  console.log('[API] Messages fetched:', data);
+  console.log('[API] Messages fetched count:', allMessages.length);
 
-  return data || [];
+  return allMessages;
 };
 
 // Agent APIs
@@ -541,7 +564,7 @@ export const startAgent = async (
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      throw new Error('No access token available');
+      throw new NoAccessTokenAvailableError();
     }
 
     // Check if backend URL is configured
@@ -633,6 +656,10 @@ export const startAgent = async (
       throw error;
     }
 
+    if (error instanceof NoAccessTokenAvailableError) {
+      throw error;
+    }
+
     console.error('[API] Failed to start agent:', error);
     
     // Handle different error types with appropriate user messages
@@ -673,7 +700,7 @@ export const stopAgent = async (agentRunId: string): Promise<void> => {
   } = await supabase.auth.getSession();
 
   if (!session?.access_token) {
-    const authError = new Error('No access token available');
+    const authError = new NoAccessTokenAvailableError();
     handleApiError(authError, { operation: 'stop agent', resource: 'AI assistant' });
     throw authError;
   }
@@ -714,7 +741,7 @@ export const getAgentStatus = async (agentRunId: string): Promise<AgentRun> => {
 
     if (!session?.access_token) {
       console.error('[API] No access token available for getAgentStatus');
-      throw new Error('No access token available');
+      throw new NoAccessTokenAvailableError();
     }
 
     const url = `${API_URL}/agent-run/${agentRunId}`;
@@ -771,7 +798,7 @@ export const getAgentRuns = async (threadId: string): Promise<AgentRun[]> => {
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      throw new Error('No access token available');
+      throw new NoAccessTokenAvailableError();
     }
 
     const response = await fetch(`${API_URL}/thread/${threadId}/agent-runs`, {
@@ -789,6 +816,10 @@ export const getAgentRuns = async (threadId: string): Promise<AgentRun[]> => {
     const data = await response.json();
     return data.agent_runs || [];
   } catch (error) {
+    if (error instanceof NoAccessTokenAvailableError) {
+      throw error;
+    }
+
     console.error('Failed to get agent runs:', error);
     handleApiError(error, { operation: 'load agent runs', resource: 'conversation history' });
     throw error;
@@ -875,8 +906,9 @@ export const streamAgent = (
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
+        const authError = new NoAccessTokenAvailableError();
         console.error('[STREAM] No auth token available');
-        callbacks.onError(new Error('Authentication required'));
+        callbacks.onError(authError);
         callbacks.onClose();
         return;
       }
@@ -1247,7 +1279,7 @@ export const listSandboxFiles = async (
     return data.files || [];
   } catch (error) {
     console.error('Failed to list sandbox files:', error);
-    handleApiError(error, { operation: 'list files', resource: `directory ${path}` });
+    // handleApiError(error, { operation: 'list files', resource: `directory ${path}` });
     throw error;
   }
 };
@@ -1398,7 +1430,7 @@ export const initiateAgent = async (
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      throw new Error('No access token available');
+      throw new NoAccessTokenAvailableError();
     }
 
     if (!API_URL) {
@@ -1475,8 +1507,6 @@ export const checkApiHealth = async (): Promise<HealthCheckResponse> => {
 
     return response.json();
   } catch (error) {
-    console.error('API health check failed:', error);
-    handleApiError(error, { operation: 'check system health', resource: 'system status' });
     throw error;
   }
 };
@@ -1486,6 +1516,7 @@ export interface CreateCheckoutSessionRequest {
   price_id: string;
   success_url: string;
   cancel_url: string;
+  referral_id?: string;
 }
 
 export interface CreatePortalSessionRequest {
@@ -1572,16 +1603,20 @@ export const createCheckoutSession = async (
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      throw new Error('No access token available');
+      throw new NoAccessTokenAvailableError();
     }
-
+    
+    
+    const requestBody = { ...request, tolt_referral: window.tolt_referral };
+    console.log('Tolt Referral ID:', requestBody.tolt_referral);
+    
     const response = await fetch(`${API_URL}/billing/create-checkout-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -1639,7 +1674,7 @@ export const createPortalSession = async (
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      throw new Error('No access token available');
+      throw new NoAccessTokenAvailableError();
     }
 
     const response = await fetch(`${API_URL}/billing/create-portal-session`, {
@@ -1681,7 +1716,7 @@ export const getSubscription = async (): Promise<SubscriptionStatus> => {
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      throw new Error('No access token available');
+      throw new NoAccessTokenAvailableError();
     }
 
     const response = await fetch(`${API_URL}/billing/subscription`, {
@@ -1705,6 +1740,10 @@ export const getSubscription = async (): Promise<SubscriptionStatus> => {
 
     return response.json();
   } catch (error) {
+    if (error instanceof NoAccessTokenAvailableError) {
+      throw error;
+    }
+
     console.error('Failed to get subscription:', error);
     handleApiError(error, { operation: 'load subscription', resource: 'billing information' });
     throw error;
@@ -1719,7 +1758,7 @@ export const getAvailableModels = async (): Promise<AvailableModelsResponse> => 
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      throw new Error('No access token available');
+      throw new NoAccessTokenAvailableError();
     }
 
     const response = await fetch(`${API_URL}/billing/available-models`, {
@@ -1743,6 +1782,10 @@ export const getAvailableModels = async (): Promise<AvailableModelsResponse> => 
 
     return response.json();
   } catch (error) {
+    if (error instanceof NoAccessTokenAvailableError) {
+      throw error;
+    }
+
     console.error('Failed to get available models:', error);
     handleApiError(error, { operation: 'load available models', resource: 'AI models' });
     throw error;
@@ -1758,7 +1801,7 @@ export const checkBillingStatus = async (): Promise<BillingStatusResponse> => {
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      throw new Error('No access token available');
+      throw new NoAccessTokenAvailableError();
     }
 
     const response = await fetch(`${API_URL}/billing/check-status`, {
@@ -1782,8 +1825,11 @@ export const checkBillingStatus = async (): Promise<BillingStatusResponse> => {
 
     return response.json();
   } catch (error) {
+    if (error instanceof NoAccessTokenAvailableError) {
+      throw error;
+    }
+
     console.error('Failed to check billing status:', error);
-    handleApiError(error, { operation: 'check billing status', resource: 'account status' });
     throw error;
   }
 };
@@ -1802,7 +1848,7 @@ export const transcribeAudio = async (audioFile: File): Promise<TranscriptionRes
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      throw new Error('No access token available');
+      throw new NoAccessTokenAvailableError();
     }
 
     const formData = new FormData();
@@ -1831,6 +1877,10 @@ export const transcribeAudio = async (audioFile: File): Promise<TranscriptionRes
 
     return response.json();
   } catch (error) {
+    if (error instanceof NoAccessTokenAvailableError) {
+      throw error;
+    }
+
     console.error('Failed to transcribe audio:', error);
     handleApiError(error, { operation: 'transcribe audio', resource: 'speech-to-text' });
     throw error;
@@ -1844,7 +1894,7 @@ export const getAgentBuilderChatHistory = async (agentId: string): Promise<{mess
   } = await supabase.auth.getSession();
 
   if (!session?.access_token) {
-    throw new Error('No access token available');
+    throw new NoAccessTokenAvailableError();
   }
 
   const response = await fetch(`${API_URL}/agents/${agentId}/builder-chat-history`, {
