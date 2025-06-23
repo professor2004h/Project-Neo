@@ -1,7 +1,9 @@
 import React, { useRef, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { ArrowDown, CircleDashed, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Markdown } from '@/components/ui/markdown';
+import { ThreeSpinner } from '@/components/ui/three-spinner';
 import { UnifiedMessage, ParsedContent, ParsedMetadata } from '@/components/thread/types';
 import { FileAttachmentGrid } from '@/components/thread/file-attachment';
 import { useFilePreloader, FileCache } from '@/hooks/react-query/files';
@@ -919,9 +921,14 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 </div>
             )}
 
-            {/* Scroll to bottom button - Centered in chat window */}
-            {(showScrollButton || (!readOnly && (agentStatus === 'running' || agentStatus === 'connecting'))) && (
-                <div className="fixed bottom-28 left-1/2 transform -translate-x-1/2 z-20">
+            {/* Scroll to bottom button and agent status - Centered in message area */}
+            <div className={`fixed bottom-32 z-20 flex flex-col items-center gap-3 transition-all duration-200 ease-in-out ${
+                isSidePanelOpen 
+                    ? 'left-[calc(50%-11.25rem)] sm:left-[calc(50%-11.25rem)] md:left-[calc(50%-12.5rem)] lg:left-[calc(50%-13.75rem)] xl:left-[calc(50%-16.25rem)]' 
+                    : 'left-1/2'
+                } transform -translate-x-1/2`}>
+                {/* Scroll button - only show when user has scrolled up */}
+                {showScrollButton && (
                     <button
                         onClick={() => scrollToBottom('smooth')}
                         className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 animate-in slide-in-from-bottom-5"
@@ -929,8 +936,22 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         <ArrowDown className="h-4 w-4" />
                         <span>Scroll to latest</span>
                     </button>
-                </div>
-            )}
+                )}
+                
+                {/* Agent working indicator - positioned below scroll button when both present */}
+                {!readOnly && (agentStatus === 'running' || agentStatus === 'connecting') && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center justify-center"
+                    >
+                        <div className="text-xs text-muted-foreground flex items-center gap-3 bg-muted/50 px-3 py-2 rounded-md border border-border/20 backdrop-blur-sm">
+                            <ThreeSpinner size={32} color="currentColor" />
+                            <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
+                        </div>
+                    </motion.div>
+                )}
+            </div>
         </>
     );
 };
