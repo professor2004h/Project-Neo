@@ -561,7 +561,7 @@ class SandboxPandocTool(SandboxToolsBase):
                     "show_size": {
                         "type": "boolean", 
                         "description": "Whether to show file sizes",
-                        "default": true
+                        "default": True
                     }
                 },
                 "required": []
