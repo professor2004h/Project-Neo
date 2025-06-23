@@ -227,19 +227,6 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
 
     return (
       <div className="mx-auto w-full max-w-4xl">
-        {isAgentRunning && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 w-full flex items-center justify-center"
-          >
-            <div className="text-xs text-muted-foreground flex items-center gap-2">
-              <ThreeSpinner size={16} color="currentColor" />
-              <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
-            </div>
-          </motion.div>
-        )}
-        
         <Card
           className="shadow-none w-full max-w-4xl mx-auto bg-transparent border-none rounded-xl overflow-hidden"
           onDragOver={handleDragOver}
@@ -265,6 +252,18 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
         >
           <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
             <CardContent className={`w-full p-1.5 pb-2 ${bgColor} rounded-2xl border`}>
+              {isAgentRunning && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-2 w-full flex items-center justify-center"
+                >
+                  <div className="text-xs text-muted-foreground flex items-center gap-2 bg-muted/50 px-2 py-1 rounded-md border border-border/20">
+                    <ThreeSpinner size={14} color="currentColor" />
+                    <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
+                  </div>
+                </motion.div>
+              )}
               <AttachmentGroup
                 files={uploadedFiles || []}
                 sandboxId={sandboxId}
