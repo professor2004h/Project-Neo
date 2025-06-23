@@ -932,24 +932,29 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         {!readOnly && (agentStatus === 'running' || agentStatus === 'connecting') ? (
                             <motion.button
                                 key="working"
-                                initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ 
+                                    opacity: 1, 
+                                    scale: 1,
+                                    transition: { 
+                                        duration: 0.4, 
+                                        ease: [0.16, 1, 0.3, 1]
+                                    }
+                                }}
                                 exit={{ 
                                     opacity: 0, 
-                                    scale: 0.8, 
-                                    rotateX: 180,
+                                    scale: 0.9,
                                     transition: { 
-                                        duration: 0.5, 
-                                        ease: [0.22, 1, 0.36, 1],
-                                        rotateX: { delay: 0.1 }
+                                        duration: 0.3, 
+                                        ease: [0.16, 1, 0.3, 1]
                                     } 
                                 }}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => scrollToBottom('smooth')}
-                                className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+                                className="flex items-center gap-3 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
                             >
-                                <ThreeSpinner size={16} color="currentColor" />
+                                <ThreeSpinner size={28} color="currentColor" />
                                 <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
                             </motion.button>
                         ) : showScrollButton ? (
@@ -957,23 +962,25 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 key="scroll"
                                 initial={{ 
                                     opacity: 0, 
-                                    scale: 0.8, 
-                                    y: 10,
-                                    rotateX: -180
+                                    scale: 0.9
                                 }}
                                 animate={{ 
                                     opacity: 1, 
-                                    scale: 1, 
-                                    y: 0,
-                                    rotateX: 0,
+                                    scale: 1,
                                     transition: { 
-                                        duration: 0.6, 
-                                        ease: [0.22, 1, 0.36, 1],
-                                        delay: 0.1,
-                                        rotateX: { delay: 0.2 }
+                                        duration: 0.4, 
+                                        ease: [0.16, 1, 0.3, 1],
+                                        delay: 0.1
                                     }
                                 }}
-                                exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                                exit={{ 
+                                    opacity: 0, 
+                                    scale: 0.9,
+                                    transition: { 
+                                        duration: 0.3, 
+                                        ease: [0.16, 1, 0.3, 1]
+                                    }
+                                }}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => scrollToBottom('smooth')}
