@@ -921,8 +921,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 </div>
             )}
 
-            {/* Scroll to bottom button - Enhanced ChatGPT-style implementation */}
-            {(showScrollButton || (!readOnly && (agentStatus === 'running' || agentStatus === 'connecting'))) && (
+            {/* Scroll to bottom button - Only show when not running (since it shows in ChatInput when running) */}
+            {showScrollButton && !(!readOnly && (agentStatus === 'running' || agentStatus === 'connecting')) && (
                 <div className={`fixed bottom-48 z-20 transform -translate-x-1/2 transition-all duration-200 ease-in-out ${
                     isSidePanelOpen 
                         ? 'left-[5%] sm:left-[calc(50%-225px)] md:left-[calc(50%-250px)] lg:left-[calc(50%-275px)] xl:left-[calc(50%-325px)]'
