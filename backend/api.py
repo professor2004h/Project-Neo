@@ -165,7 +165,6 @@ async def health_check():
         "instance_id": instance_id
     }
 
-
 class CustomMCPDiscoverRequest(BaseModel):
     type: str
     config: Dict[str, Any]

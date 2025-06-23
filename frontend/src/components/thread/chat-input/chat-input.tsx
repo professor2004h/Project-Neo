@@ -8,7 +8,7 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { handleFiles } from './file-upload-handler';
 import { MessageInput } from './message-input';
@@ -226,6 +226,142 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
 
     return (
       <div className="mx-auto w-full max-w-4xl">
+        {isAgentRunning && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 w-full flex items-center justify-center"
+          >
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              <div className="relative flex items-center justify-center wire-ball-spinner">
+                                  <svg
+                    width={16}
+                    height={16}
+                    viewBox="0 0 100 100"
+                    className="fidget-spinner"
+                    style={{ 
+                      animation: 'fidget-spin 4s ease-in-out infinite',
+                      transformOrigin: 'center center'
+                    }}
+                  >
+                    {/* Outer ring */}
+                    <ellipse
+                      cx="50"
+                      cy="50"
+                      rx="40"
+                      ry="40"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="opacity-60"
+                    />
+                    
+                    {/* Middle ring - horizontal */}
+                    <ellipse
+                      cx="50"
+                      cy="50"
+                      rx="30"
+                      ry="12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      className="opacity-80"
+                    />
+                    
+                    {/* Middle ring - vertical */}
+                    <ellipse
+                      cx="50"
+                      cy="50"
+                      rx="12"
+                      ry="30"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      className="opacity-70"
+                    />
+                    
+                    {/* Inner ring - diagonal */}
+                    <ellipse
+                      cx="50"
+                      cy="50"
+                      rx="20"
+                      ry="20"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      className="opacity-90"
+                      transform="rotate(45 50 50)"
+                    />
+                    
+                    {/* Cross lines */}
+                    <line
+                      x1="25"
+                      y1="50"
+                      x2="75"
+                      y2="50"
+                      stroke="currentColor"
+                      strokeWidth="1"
+                      className="opacity-50"
+                    />
+                    <line
+                      x1="50"
+                      y1="25"
+                      x2="50"
+                      y2="75"
+                      stroke="currentColor"
+                      strokeWidth="1"
+                      className="opacity-50"
+                    />
+                    
+                    {/* Additional mesh lines for more complex wireframe look */}
+                    <path
+                      d="M35 30 Q50 20 65 30 Q70 50 65 70 Q50 80 35 70 Q30 50 35 30"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1"
+                      className="opacity-40"
+                    />
+                    
+                    {/* Center hub */}
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="2"
+                      fill="currentColor"
+                      className="opacity-90"
+                    />
+                  </svg>
+                  
+                  <style jsx>{`
+                    @keyframes fidget-spin {
+                      0% { 
+                        transform: rotateY(0deg);
+                        animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                      }
+                      25% { 
+                        transform: rotateY(900deg);
+                        animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+                      }
+                      50% { 
+                        transform: rotateY(1440deg);
+                        animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                      }
+                      75% { 
+                        transform: rotateY(1980deg);
+                        animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+                      }
+                      100% { 
+                        transform: rotateY(2520deg);
+                        animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                      }
+                    }
+                  `}</style>
+              </div>
+              <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
+            </div>
+          </motion.div>
+        )}
+        
         <Card
           className="shadow-none w-full max-w-4xl mx-auto bg-transparent border-none rounded-xl overflow-hidden"
           onDragOver={handleDragOver}
@@ -292,19 +428,6 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             </CardContent>
           </div>
         </Card>
-
-        {isAgentRunning && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="pb-4 -mt-4 w-full flex items-center justify-center"
-          >
-            <div className="text-xs text-muted-foreground flex items-center gap-2">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
-            </div>
-          </motion.div>
-        )}
       </div>
     );
   },

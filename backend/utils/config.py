@@ -135,7 +135,6 @@ class Configuration:
     REDIS_PORT: int = 6379
     REDIS_PASSWORD: str
     REDIS_SSL: bool = True
-    REDIS_MAX_CONNECTIONS: int = 100
     
     # Daytona sandbox configuration
     DAYTONA_API_KEY: str
