@@ -8,9 +8,12 @@ logger = logging.getLogger(__name__)
 
 class EmailService:
     def __init__(self):
+        logger.info("Initializing EmailService...")
         self.api_key = os.getenv('RESEND_API_KEY')
         self.sender_email = os.getenv('RESEND_SENDER_EMAIL', 'confirm@onboarding.becomeomni.com')
         self.sender_name = os.getenv('RESEND_SENDER_NAME', 'OMNI Team')
+        
+        logger.debug(f"EmailService configuration - Sender: {self.sender_name} <{self.sender_email}>")
         
         if not self.api_key:
             logger.warning("RESEND_API_KEY not found in environment variables")
@@ -18,18 +21,29 @@ class EmailService:
         else:
             resend.api_key = self.api_key
             self.client = resend
+            logger.info("EmailService initialized successfully with Resend API")
     
     def send_welcome_email(self, user_email: str, user_name: Optional[str] = None) -> bool:
+        logger.info(f"Starting to send welcome email to: {user_email}")
+        
         if not self.api_key:
             logger.error("Cannot send email: RESEND_API_KEY not configured")
             return False
     
         if not user_name:
             user_name = user_email.split('@')[0].title()
+            logger.debug(f"No user name provided, generated from email: {user_name}")
+        
+        logger.debug(f"Preparing welcome email for user: {user_name} ({user_email})")
         
         subject = "🎉 Welcome to OMNI — Let's Get Started "
+        logger.debug(f"Email subject: {subject}")
+        
+        logger.debug("Generating email templates...")
         html_content = self._get_welcome_email_template(user_name)
         text_content = self._get_welcome_email_text(user_name)
+        logger.debug(f"Generated HTML template length: {len(html_content)} characters")
+        logger.debug(f"Generated text template length: {len(text_content)} characters")
         
         return self._send_email(
             to_email=user_email,
@@ -47,6 +61,8 @@ class EmailService:
         html_content: str, 
         text_content: str
     ) -> bool:
+        logger.debug(f"Preparing to send email - To: {to_name} <{to_email}>, Subject: {subject}")
+        
         try:
             params: resend.Emails.SendParams = {
                 "from": f"{self.sender_name} <{self.sender_email}>",
@@ -62,16 +78,24 @@ class EmailService:
                 ]
             }
             
+            logger.debug("Sending email via Resend API...")
             response = resend.Emails.send(params)
             
-            logger.info(f"Welcome email sent to {to_email}. Response: {response}")
+            if response and hasattr(response, 'id'):
+                logger.info(f"Welcome email sent successfully to {to_email}. Message ID: {response.id}")
+            else:
+                logger.info(f"Welcome email sent successfully to {to_email}. Response: {response}")
+            
+            logger.debug(f"Full Resend API response: {response}")
             return True
                 
         except Exception as e:
-            logger.error(f"Error sending email to {to_email}: {str(e)}")
+            logger.error(f"Error sending email to {to_email}: {str(e)}", exc_info=True)
+            logger.debug(f"Email parameters that failed: From={self.sender_name} <{self.sender_email}>, To={to_name} <{to_email}>, Subject={subject}")
             return False
     
     def _get_welcome_email_template(self, user_name: str) -> str:
+        logger.debug(f"Generating HTML welcome email template for user: {user_name}")
         return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -163,6 +187,7 @@ class EmailService:
 </html>"""
     
     def _get_welcome_email_text(self, user_name: str) -> str:
+        logger.debug(f"Generating text welcome email template for user: {user_name}")
         return f"""Hi {user_name},
 
 Welcome to OMNI — we're excited to have you on board!
@@ -179,4 +204,7 @@ Go to the platform: https://operator.becomeomni.com/
 © 2025 Omni. All rights reserved.
 You received this email because you signed up for a Omni account."""
 
+# Initialize the email service instance
+logger.info("Creating EmailService instance...")
 email_service = EmailService() 
+logger.info("EmailService instance created and ready for use") 
