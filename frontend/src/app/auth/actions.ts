@@ -95,9 +95,7 @@ export async function signUp(prevState: any, formData: FormData) {
     password,
   });
 
-  if (signInData) {
-    sendWelcomeEmail(email, userName);
-  }
+  // Welcome email removed - using Supabase confirmation email instead
 
   if (signInError) {
     return {

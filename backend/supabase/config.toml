@@ -164,14 +164,14 @@ otp_length = 6
 otp_expiry = 3600
 
 # Enable SMTP for production emails
-[auth.email.smtp]
-enabled = true
-host = "smtp.resend.com"  # or your preferred SMTP provider
-port = 465
-user = "resend"
-pass = "env(RESEND_API_KEY)"
-admin_email = "confirm@onboarding.becomeomni.com"
-sender_name = "OMNI Team"
+#[auth.email.smtp]
+#enabled = false
+#host = "smtp.resend.com"  # or your preferred SMTP provider
+#port = 465
+#user = "resend"
+#pass = "env(RESEND_API_KEY)"
+#admin_email = "confirm@onboarding.becomeomni.com"
+#sender_name = "OMNI Team"
 
 # Configure signup confirmation template
 [auth.email.template.confirm]
