@@ -921,14 +921,13 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 </div>
             )}
 
-            {/* Scroll to bottom button and agent status - Centered in message area */}
-            <div className={`fixed bottom-32 z-20 flex flex-col items-center gap-3 transition-all duration-200 ease-in-out ${
-                isSidePanelOpen 
-                    ? 'left-[calc(50%-11.25rem)] sm:left-[calc(50%-11.25rem)] md:left-[calc(50%-12.5rem)] lg:left-[calc(50%-13.75rem)] xl:left-[calc(50%-16.25rem)]' 
-                    : 'left-1/2'
-                } transform -translate-x-1/2`}>
-                {/* Scroll button - only show when user has scrolled up */}
-                {showScrollButton && (
+            {/* Scroll to bottom button - Enhanced ChatGPT-style implementation */}
+            {(showScrollButton || (!readOnly && (agentStatus === 'running' || agentStatus === 'connecting'))) && (
+                <div className={`fixed bottom-32 z-20 transform -translate-x-1/2 transition-all duration-200 ease-in-out ${
+                    isSidePanelOpen 
+                        ? 'left-[5%] sm:left-[calc(50%-225px)] md:left-[calc(50%-250px)] lg:left-[calc(50%-275px)] xl:left-[calc(50%-325px)]'
+                        : 'left-1/2'
+                }`}>
                     <button
                         onClick={() => scrollToBottom('smooth')}
                         className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 animate-in slide-in-from-bottom-5"
@@ -936,22 +935,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         <ArrowDown className="h-4 w-4" />
                         <span>Scroll to latest</span>
                     </button>
-                )}
-                
-                {/* Agent working indicator - positioned below scroll button when both present */}
-                {!readOnly && (agentStatus === 'running' || agentStatus === 'connecting') && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center justify-center"
-                    >
-                        <div className="text-xs text-muted-foreground flex items-center gap-3 bg-muted/50 px-3 py-2 rounded-md border border-border/20 backdrop-blur-sm">
-                            <ThreeSpinner size={32} color="currentColor" />
-                            <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
-                        </div>
-                    </motion.div>
-                )}
-            </div>
+                </div>
+            )}
         </>
     );
 };
