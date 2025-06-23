@@ -932,57 +932,52 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         {!readOnly && (agentStatus === 'running' || agentStatus === 'connecting') ? (
                             <motion.button
                                 key="working"
-                                initial={{ opacity: 0, scale: 0.9 }}
+                                initial={{ opacity: 0 }}
                                 animate={{ 
-                                    opacity: 1, 
-                                    scale: 1,
+                                    opacity: 1,
                                     transition: { 
-                                        duration: 0.4, 
-                                        ease: [0.16, 1, 0.3, 1]
+                                        duration: 0.6, 
+                                        ease: [0.25, 0.46, 0.45, 0.94]
                                     }
                                 }}
                                 exit={{ 
-                                    opacity: 0, 
-                                    scale: 0.9,
+                                    opacity: 0,
                                     transition: { 
-                                        duration: 0.3, 
-                                        ease: [0.16, 1, 0.3, 1]
+                                        duration: 0.4, 
+                                        ease: [0.25, 0.46, 0.45, 0.94]
                                     } 
                                 }}
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
                                 onClick={() => scrollToBottom('smooth')}
-                                className="flex items-center gap-3 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+                                className="flex items-center gap-4 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-5 py-3 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
                             >
-                                <ThreeSpinner size={28} color="currentColor" />
+                                <ThreeSpinner size={36} color="currentColor" />
                                 <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
                             </motion.button>
                         ) : showScrollButton ? (
                             <motion.button
                                 key="scroll"
                                 initial={{ 
-                                    opacity: 0, 
-                                    scale: 0.9
+                                    opacity: 0
                                 }}
                                 animate={{ 
-                                    opacity: 1, 
-                                    scale: 1,
+                                    opacity: 1,
                                     transition: { 
-                                        duration: 0.4, 
-                                        ease: [0.16, 1, 0.3, 1],
+                                        duration: 0.6, 
+                                        ease: [0.25, 0.46, 0.45, 0.94],
                                         delay: 0.1
                                     }
                                 }}
                                 exit={{ 
-                                    opacity: 0, 
-                                    scale: 0.9,
+                                    opacity: 0,
                                     transition: { 
-                                        duration: 0.3, 
-                                        ease: [0.16, 1, 0.3, 1]
+                                        duration: 0.4, 
+                                        ease: [0.25, 0.46, 0.45, 0.94]
                                     }
                                 }}
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
                                 onClick={() => scrollToBottom('smooth')}
                                 className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
                             >
