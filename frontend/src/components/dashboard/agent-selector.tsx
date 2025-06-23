@@ -80,7 +80,7 @@ export function AgentSelector({
       return (
         <div className={cn("flex items-center", className)}>
           <span className="tracking-tight text-4xl font-semibold leading-tight text-primary">
-            Suna
+            Operator
           </span>
         </div>
       );
