@@ -26,7 +26,8 @@ from utils.auth_utils import get_account_id_from_thread
 from services.billing import check_billing_status
 from agent.tools.sb_vision_tool import SandboxVisionTool
 from services.langfuse import langfuse
-from langfuse import get_client
+from langfuse.client import StatefulTraceClient
+from services.langfuse import langfuse
 from agent.gemini_prompt import get_gemini_system_prompt
 from agent.tools.mcp_tool_wrapper import MCPToolWrapper
 from agentpress.tool import SchemaType
@@ -40,12 +41,12 @@ async def run_agent(
     thread_manager: Optional[ThreadManager] = None,
     native_max_auto_continues: int = 25,
     max_iterations: int = 100,
-    model_name: str = "anthropic/claude-sonnet-4-20250514",
+    model_name: str = "anthropic/claude-3-7-sonnet-latest",
     enable_thinking: Optional[bool] = False,
     reasoning_effort: Optional[str] = 'low',
     enable_context_manager: bool = True,
     agent_config: Optional[dict] = None,    
-    trace: Optional[object] = None,
+    trace: Optional[StatefulTraceClient] = None,
     is_agent_builder: Optional[bool] = False,
     target_agent_id: Optional[str] = None
 ):
@@ -289,7 +290,9 @@ async def run_agent(
 
     latest_user_message = await client.table('messages').select('*').eq('thread_id', thread_id).eq('type', 'user').order('created_at', desc=True).limit(1).execute()
     if latest_user_message.data and len(latest_user_message.data) > 0:
-        data = json.loads(latest_user_message.data[0]['content'])
+        data = latest_user_message.data[0]['content']
+        if isinstance(data, str):
+            data = json.loads(data)
         trace.update(input=data['content'])
 
     while continue_execution and iteration_count < max_iterations:
@@ -326,39 +329,50 @@ async def run_agent(
         latest_browser_state_msg = await client.table('messages').select('*').eq('thread_id', thread_id).eq('type', 'browser_state').order('created_at', desc=True).limit(1).execute()
         if latest_browser_state_msg.data and len(latest_browser_state_msg.data) > 0:
             try:
-                browser_content = json.loads(latest_browser_state_msg.data[0]["content"])
+                browser_content = latest_browser_state_msg.data[0]["content"]
+                if isinstance(browser_content, str):
+                    browser_content = json.loads(browser_content)
                 screenshot_base64 = browser_content.get("screenshot_base64")
-                screenshot_url = browser_content.get("screenshot_url")
+                screenshot_url = browser_content.get("image_url")
                 
                 # Create a copy of the browser state without screenshot data
                 browser_state_text = browser_content.copy()
                 browser_state_text.pop('screenshot_base64', None)
-                browser_state_text.pop('screenshot_url', None)
+                browser_state_text.pop('image_url', None)
 
                 if browser_state_text:
                     temp_message_content_list.append({
                         "type": "text",
                         "text": f"The following is the current state of the browser:\n{json.dumps(browser_state_text, indent=2)}"
                     })
-                    
-                # Prioritize screenshot_url if available
-                if screenshot_url:
-                    temp_message_content_list.append({
-                        "type": "image_url",
-                        "image_url": {
-                            "url": screenshot_url,
-                        }
-                    })
-                elif screenshot_base64:
-                    # Fallback to base64 if URL not available
-                    temp_message_content_list.append({
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{screenshot_base64}",
-                        }
-                    })
+                
+                # Only add screenshot if model is not Gemini, Anthropic, or OpenAI
+                if 'gemini' in model_name.lower() or 'anthropic' in model_name.lower() or 'openai' in model_name.lower():
+                    # Prioritize screenshot_url if available
+                    if screenshot_url:
+                        temp_message_content_list.append({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": screenshot_url,
+                                "format": "image/jpeg"
+                            }
+                        })
+                        trace.event(name="screenshot_url_added_to_temporary_message", level="DEFAULT", status_message=(f"Screenshot URL added to temporary message."))
+                    elif screenshot_base64:
+                        # Fallback to base64 if URL not available
+                        temp_message_content_list.append({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{screenshot_base64}",
+                            }
+                        })
+                        trace.event(name="screenshot_base64_added_to_temporary_message", level="WARNING", status_message=(f"Screenshot base64 added to temporary message. Prefer screenshot_url if available."))
+                    else:
+                        logger.warning("Browser state found but no screenshot data.")
+                        trace.event(name="browser_state_found_but_no_screenshot_data", level="WARNING", status_message=(f"Browser state found but no screenshot data."))
                 else:
-                    logger.warning("Browser state found but no screenshot data.")
+                    logger.warning("Model is Gemini, Anthropic, or OpenAI, so not adding screenshot to temporary message.")
+                    trace.event(name="model_is_gemini_anthropic_or_openai", level="WARNING", status_message=(f"Model is Gemini, Anthropic, or OpenAI, so not adding screenshot to temporary message."))
 
             except Exception as e:
                 logger.error(f"Error parsing browser state: {e}")
@@ -368,7 +382,7 @@ async def run_agent(
         latest_image_context_msg = await client.table('messages').select('*').eq('thread_id', thread_id).eq('type', 'image_context').order('created_at', desc=True).limit(1).execute()
         if latest_image_context_msg.data and len(latest_image_context_msg.data) > 0:
             try:
-                image_context_content = json.loads(latest_image_context_msg.data[0]["content"])
+                image_context_content = latest_image_context_msg.data[0]["content"] if isinstance(latest_image_context_msg.data[0]["content"], dict) else json.loads(latest_image_context_msg.data[0]["content"])
                 base64_image = image_context_content.get("base64")
                 mime_type = image_context_content.get("mime_type")
                 file_path = image_context_content.get("file_path", "unknown file")
