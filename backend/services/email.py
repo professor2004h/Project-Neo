@@ -20,7 +20,7 @@ class EmailService:
             self.client = resend
     
     def send_welcome_email(self, user_email: str, user_name: Optional[str] = None) -> bool:
-        if not self.client:
+        if not self.api_key:
             logger.error("Cannot send email: RESEND_API_KEY not configured")
             return False
     
@@ -48,7 +48,7 @@ class EmailService:
         text_content: str
     ) -> bool:
         try:
-            params = {
+            params: resend.Emails.SendParams = {
                 "from": f"{self.sender_name} <{self.sender_email}>",
                 "to": [f"{to_name} <{to_email}>"],
                 "subject": subject,
@@ -62,7 +62,7 @@ class EmailService:
                 ]
             }
             
-            response = self.client.emails.send(params)
+            response = resend.Emails.send(params)
             
             logger.info(f"Welcome email sent to {to_email}. Response: {response}")
             return True
