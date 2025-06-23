@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class EmailService:
     def __init__(self):
         self.api_key = os.getenv('RESEND_API_KEY')
-        self.sender_email = os.getenv('RESEND_SENDER_EMAIL', 'noreply@becomeomni.com')
+        self.sender_email = os.getenv('RESEND_SENDER_EMAIL', 'confirm@onboarding.becomeomni.com')
         self.sender_name = os.getenv('RESEND_SENDER_NAME', 'OMNI Team')
         
         if not self.api_key:
