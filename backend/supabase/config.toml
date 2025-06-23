@@ -170,7 +170,7 @@ otp_expiry = 3600
 #port = 465
 #user = "resend"
 #pass = "env(RESEND_API_KEY)"
-#admin_email = "confirm@onboarding.becomeomni.com"
+#admin_email = "confirm@onboarding.becomeomni.ai"
 #sender_name = "OMNI Team"
 
 # Configure signup confirmation template
