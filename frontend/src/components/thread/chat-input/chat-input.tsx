@@ -258,8 +258,8 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                   animate={{ opacity: 1, y: 0 }}
                   className="mb-2 w-full flex items-center justify-center"
                 >
-                  <div className="text-xs text-muted-foreground flex items-center gap-2 bg-muted/50 px-2 py-1 rounded-md border border-border/20">
-                    <ThreeSpinner size={14} color="currentColor" />
+                  <div className="text-xs text-muted-foreground flex items-center gap-3 bg-muted/50 px-3 py-2 rounded-md border border-border/20">
+                    <ThreeSpinner size={32} color="currentColor" />
                     <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
                   </div>
                 </motion.div>
