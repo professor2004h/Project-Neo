@@ -919,20 +919,12 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 </div>
             )}
 
-            {/* Scroll to bottom button - Positioned relative to chat input area */}
+            {/* Scroll to bottom button - Centered in chat window */}
             {(showScrollButton || (!readOnly && (agentStatus === 'running' || agentStatus === 'connecting'))) && (
-                <div className="fixed bottom-28 z-20 left-0 right-0 flex justify-center transition-all duration-200 ease-in-out pointer-events-none"
-                     style={{
-                         marginLeft: isSidePanelOpen 
-                             ? 'max(72px, calc(100vw - 90% - 450px))' 
-                             : '72px',
-                         marginRight: isSidePanelOpen 
-                             ? 'clamp(90%, 450px, 650px)' 
-                             : '0px'
-                     }}>
+                <div className="fixed bottom-28 left-1/2 transform -translate-x-1/2 z-20">
                     <button
                         onClick={() => scrollToBottom('smooth')}
-                        className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 animate-in slide-in-from-bottom-5 pointer-events-auto"
+                        className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 animate-in slide-in-from-bottom-5"
                     >
                         <ArrowDown className="h-4 w-4" />
                         <span>Scroll to latest</span>

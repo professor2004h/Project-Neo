@@ -40,8 +40,8 @@ export function ThreeSpinner({
     // Create wireframe geometry - icosphere for clean look
     const geometry = new THREE.IcosahedronGeometry(1, 1);
     
-    // Parse color - handle CSS variables and currentColor
-    let threeColor = new THREE.Color(0x666666); // fallback
+    // Parse color - handle CSS variables and currentColor  
+    let threeColor = new THREE.Color(0x9ca3af); // gray-400 fallback, subtle and muted
     if (color === 'currentColor') {
       // Get computed color from parent element
       const computedStyle = getComputedStyle(mountRef.current.parentElement || document.body);
@@ -49,13 +49,14 @@ export function ThreeSpinner({
       try {
         threeColor = new THREE.Color(currentColor);
       } catch {
-        threeColor = new THREE.Color(0x666666);
+        // Use muted foreground color as fallback
+        threeColor = new THREE.Color(0x9ca3af); // gray-400
       }
     } else {
       try {
         threeColor = new THREE.Color(color);
       } catch {
-        threeColor = new THREE.Color(0x666666);
+        threeColor = new THREE.Color(0x9ca3af);
       }
     }
 
