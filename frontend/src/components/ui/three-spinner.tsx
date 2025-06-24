@@ -10,7 +10,7 @@ interface ThreeSpinnerProps {
 }
 
 export function ThreeSpinner({ 
-  size = 48, 
+  size = 64, 
   color = 'currentColor',
   className = '' 
 }: ThreeSpinnerProps) {
@@ -75,6 +75,17 @@ export function ThreeSpinner({
     const wireframe = new THREE.Mesh(geometry, material);
     scene.add(wireframe);
 
+    // Add middle layer for more spokes - dodecahedron for different angles
+    const middleGeometry = new THREE.DodecahedronGeometry(0.8, 0);
+    const middleMaterial = new THREE.MeshBasicMaterial({
+      color: threeColor,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.6
+    });
+    const middleWireframe = new THREE.Mesh(middleGeometry, middleMaterial);
+    scene.add(middleWireframe);
+
     // Add some inner structure for more interesting visual - simplified
     const innerGeometry = new THREE.TetrahedronGeometry(0.5, 0); // Changed to tetrahedron for cleaner look
     const innerMaterial = new THREE.MeshBasicMaterial({
@@ -136,6 +147,11 @@ export function ThreeSpinner({
       wireframe.rotation.x += currentSpeed * spinDirection.x;
       wireframe.rotation.y += currentSpeed * spinDirection.y;
       wireframe.rotation.z += currentSpeed * spinDirection.z;
+      
+      // Rotate middle layer at different speed for visual depth
+      middleWireframe.rotation.x -= currentSpeed * 0.8;
+      middleWireframe.rotation.y += currentSpeed * 0.9;
+      middleWireframe.rotation.z += currentSpeed * 0.5;
       
       // Counter-rotate inner structure with different physics for visual depth
       const innerSpeed = currentSpeed * 0.6; // Slower than outer
