@@ -18,6 +18,7 @@ from agentpress.response_processor import ProcessorConfig
 from agent.tools.sb_shell_tool import SandboxShellTool
 from agent.tools.sb_files_tool import SandboxFilesTool
 from agent.tools.sb_browser_tool import SandboxBrowserTool
+from agent.tools.sb_excel_tool import SandboxExcelTool
 from agent.tools.data_providers_tool import DataProvidersTool
 from agent.tools.expand_msg_tool import ExpandMessageTool
 from agent.prompt import get_system_prompt
@@ -108,6 +109,7 @@ async def run_agent(
         thread_manager.add_tool(MessageTool)
         thread_manager.add_tool(SandboxWebSearchTool, project_id=project_id, thread_manager=thread_manager)
         thread_manager.add_tool(SandboxVisionTool, project_id=project_id, thread_id=thread_id, thread_manager=thread_manager)
+        thread_manager.add_tool(SandboxExcelTool, project_id=project_id, thread_manager=thread_manager)
         if config.RAPID_API_KEY:
             thread_manager.add_tool(DataProvidersTool)
     else:
@@ -128,6 +130,8 @@ async def run_agent(
             thread_manager.add_tool(SandboxWebSearchTool, project_id=project_id, thread_manager=thread_manager)
         if enabled_tools.get('sb_vision_tool', {}).get('enabled', False):
             thread_manager.add_tool(SandboxVisionTool, project_id=project_id, thread_id=thread_id, thread_manager=thread_manager)
+        if enabled_tools.get('sb_excel_tool', {}).get('enabled', False):
+            thread_manager.add_tool(SandboxExcelTool, project_id=project_id, thread_manager=thread_manager)
         if config.RAPID_API_KEY and enabled_tools.get('data_providers_tool', {}).get('enabled', False):
             thread_manager.add_tool(DataProvidersTool)
 
