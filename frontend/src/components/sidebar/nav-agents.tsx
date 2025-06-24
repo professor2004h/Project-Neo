@@ -352,7 +352,7 @@ export function NavAgents() {
   return (
     <SidebarGroup>
       <div className="flex justify-between items-center">
-        <SidebarGroupLabel>Operators</SidebarGroupLabel>
+        <SidebarGroupLabel>Tasks</SidebarGroupLabel>
         {state !== 'collapsed' ? (
           <div className="flex items-center space-x-1">
             {selectedThreads.size > 0 ? (
@@ -392,11 +392,11 @@ export function NavAgents() {
                       className="text-muted-foreground hover:text-foreground h-7 w-7 flex items-center justify-center rounded-md"
                     >
                       <Plus className="h-4 w-4" />
-                      <span className="sr-only">New Agent</span>
+                      <span className="sr-only">New Task</span>
                     </Link>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>New Agent</TooltipContent>
+                <TooltipContent>New Task</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -587,7 +587,7 @@ export function NavAgents() {
           <SidebarMenuItem>
             <SidebarMenuButton className="text-sidebar-foreground/70">
               <MessagesSquare className="h-4 w-4" />
-              <span>No operators yet</span>
+              <span>No tasks yet</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         )}
