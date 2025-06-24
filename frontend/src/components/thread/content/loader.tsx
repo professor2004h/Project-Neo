@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnimatedShinyText } from '@/components/ui/animated-shiny-text';
+import { ThreeSpinner } from '@/components/ui/three-spinner';
 
 const items = [
     { id: 1, content: "Teaching my pet quantum particles how to fetch..." },
@@ -66,28 +67,24 @@ export const AgentLoader = () => {
 
   return (
     <div className="flex py-2 items-center w-full">
-      <div className="relative flex-shrink-0 mr-3">
-        {/* Main processing indicator */}
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 dark:border-primary/30 flex items-center justify-center backdrop-blur-sm">
-          {/* Inner animated element */}
-          <div className="w-2.5 h-2.5 rounded-full bg-primary/60 animate-pulse" />
-        </div>
-        {/* Subtle orbital animation */}
-        <div className="absolute inset-0 w-7 h-7 rounded-full border border-primary/10 dark:border-primary/20 animate-spin" style={{ animationDuration: '3s' }} />
+      <div className="flex-shrink-0 mr-3">
+        <ThreeSpinner size={28} color="currentColor" className="flex-shrink-0" />
       </div>
-      <AnimatePresence>
-        <motion.div
-          key={items[index].id}
-          initial={{ y: 20, opacity: 0, filter: "blur(8px)" }}
-          animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
-          exit={{ y: -20, opacity: 0, filter: "blur(8px)" }}
-          transition={{ ease: "easeInOut" }}
-          style={{ position: "absolute" }}
-          className='flex-1'
-        >
-          <AnimatedShinyText>{items[index].content}</AnimatedShinyText>
-        </motion.div>
-      </AnimatePresence>
+      <div className="flex-1 relative">
+        <AnimatePresence>
+          <motion.div
+            key={items[index].id}
+            initial={{ y: 20, opacity: 0, filter: "blur(8px)" }}
+            animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+            exit={{ y: -20, opacity: 0, filter: "blur(8px)" }}
+            transition={{ ease: "easeInOut" }}
+            style={{ position: "absolute" }}
+            className='w-full'
+          >
+            <AnimatedShinyText>{items[index].content}</AnimatedShinyText>
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 };
