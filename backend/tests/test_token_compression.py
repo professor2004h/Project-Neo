@@ -6,7 +6,7 @@ json_msg = '[{"role":"system","content":"\\nYou are Operator, an autonomous AI A
 
 
 
-    compressed = tm._compress_messages(json.loads(json_msg), "bedrock/anthropic.claude-sonnet-4-20250514-v1:0")
+compressed = tm._compress_messages(json.loads(json_msg), "anthropic/claude-sonnet-4-20250514")
 # compressed = tm._compress_messages(json.loads(json_msg), "qwen3")
 # compressed = tm._compress_messages(json.loads(json_msg), "gemini")
 # compressed = tm._compress_messages(json.loads(json_msg), "deepseek")

@@ -3,7 +3,7 @@ MODEL_ACCESS_TIERS = {
         # "openrouter/deepseek/deepseek-chat",
         # "openrouter/qwen/qwen3-235b-a22b",
         # "openrouter/google/gemini-2.5-flash-preview-05-20",
-        "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "anthropic/claude-sonnet-4-20250514",
     ],
     "tier_2_20": [
         # "openrouter/deepseek/deepseek-chat",
@@ -18,7 +18,7 @@ MODEL_ACCESS_TIERS = {
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         # "openrouter/qwen/qwen3-235b-a22b",
-        "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "anthropic/claude-sonnet-4-20250514",
     ],
     "tier_6_50": [
         # "openrouter/deepseek/deepseek-chat",
@@ -29,7 +29,7 @@ MODEL_ACCESS_TIERS = {
         # "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
         # "anthropic/claude-3-7-sonnet-latest",
-        "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "anthropic/claude-sonnet-4-20250514",
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         # "openrouter/qwen/qwen3-235b-a22b",
@@ -43,7 +43,7 @@ MODEL_ACCESS_TIERS = {
         # "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
         # "anthropic/claude-3-7-sonnet-latest",
-        "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "anthropic/claude-sonnet-4-20250514",
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         # "openrouter/qwen/qwen3-235b-a22b",
@@ -57,7 +57,7 @@ MODEL_ACCESS_TIERS = {
         # "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
         # "anthropic/claude-3-7-sonnet-latest",
-        "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "anthropic/claude-sonnet-4-20250514",
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         # "openrouter/qwen/qwen3-235b-a22b",
@@ -71,7 +71,7 @@ MODEL_ACCESS_TIERS = {
         # "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
         # "anthropic/claude-3-7-sonnet-latest",
-        "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "anthropic/claude-sonnet-4-20250514",
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         # "openrouter/qwen/qwen3-235b-a22b",
@@ -85,7 +85,7 @@ MODEL_ACCESS_TIERS = {
         # "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
         # "anthropic/claude-3-7-sonnet-latest",
-        "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "anthropic/claude-sonnet-4-20250514",
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         # "openrouter/qwen/qwen3-235b-a22b",
@@ -99,7 +99,7 @@ MODEL_ACCESS_TIERS = {
         # "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
         # "anthropic/claude-3-7-sonnet-latest",
-        "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "anthropic/claude-sonnet-4-20250514",
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         # "openrouter/qwen/qwen3-235b-a22b",
@@ -110,7 +110,7 @@ MODEL_NAME_ALIASES = {
     # "sonnet-3.7": "anthropic/claude-3-7-sonnet-latest",
     # "sonnet-3.5": "anthropic/claude-3-5-sonnet-latest",
     # "haiku-3.5": "anthropic/claude-3-5-haiku-latest",
-    "claude-sonnet-4": "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+    "claude-sonnet-4": "anthropic/claude-sonnet-4-20250514",
     # "gpt-4.1": "openai/gpt-4.1-2025-04-14",  # Commented out in constants.py
     # "gpt-4o": "openai/gpt-4o",
     # "gpt-4.1": "openai/gpt-4.1",
