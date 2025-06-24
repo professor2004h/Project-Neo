@@ -67,10 +67,8 @@ export const AgentLoader = () => {
 
   return (
     <div className="flex py-2 items-center w-full">
-      <div className="flex-shrink-0 mr-3">
-        <ThreeSpinner size={28} color="currentColor" className="flex-shrink-0" />
-      </div>
-      <div className="flex-1 relative">
+      <ThreeSpinner size={28} color="currentColor" className="flex-shrink-0 mr-3" />
+      <div className="flex-1 relative min-h-[28px] flex items-center">
         <AnimatePresence>
           <motion.div
             key={items[index].id}
