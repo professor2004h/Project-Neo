@@ -51,8 +51,8 @@ export const extractExcelData = (
   let operation: ExcelData['operation'];
   let data: ExcelData = {};
   let actualIsSuccess = isSuccess ?? true;
-  let actualToolTimestamp = toolTimestamp;
-  let actualAssistantTimestamp = assistantTimestamp;
+  const actualToolTimestamp = toolTimestamp;
+  const actualAssistantTimestamp = assistantTimestamp;
 
   // Parse assistant content to determine operation
   if (assistantContent) {

@@ -406,7 +406,7 @@ export function ExcelToolView({
           <div className="flex items-center gap-2">
             {!isStreaming && (
               <Badge
-                variant={data.actualIsSuccess ? "success" : "destructive"}
+                variant={data.actualIsSuccess ? "secondary" : "destructive"}
                 className="text-xs"
               >
                 {data.actualIsSuccess ? (
