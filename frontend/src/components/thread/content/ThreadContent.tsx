@@ -843,16 +843,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 !readOnly &&
                                 (messages.length === 0 || messages[messages.length - 1].type === 'user')) && (
                                     <div ref={latestMessageRef} className='w-full h-22 rounded'>
-                                        <div className="flex items-start gap-3">
-                                            <div className="flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center bg-primary/10">
-                                                <OmniLogo />
-                                            </div>
-                                            <div className="flex-1 space-y-2 w-full h-12">
-                                                {/* Show only the funny loading messages during generation phase */}
-                                                <div className="space-y-2 w-full h-12">
-                                                    <AgentLoader />
-                                                </div>
-                                            </div>
+                                        {/* Show only the funny loading messages during generation phase - no extra logo */}
+                                        <div className="space-y-2 w-full h-12">
+                                            <AgentLoader />
                                         </div>
                                     </div>
                                 )}
