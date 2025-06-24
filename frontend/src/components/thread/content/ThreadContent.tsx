@@ -281,6 +281,7 @@ export interface ThreadContentProps {
     agentAvatar?: React.ReactNode;
     emptyStateComponent?: React.ReactNode; // Add custom empty state component prop
     isSidePanelOpen?: boolean; // Add side panel state prop
+    isLeftSidebarOpen?: boolean; // Add left sidebar state prop
 }
 
 export const ThreadContent: React.FC<ThreadContentProps> = ({
@@ -304,6 +305,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     agentAvatar = <OmniLogo />,
     emptyStateComponent,
     isSidePanelOpen = false,
+    isLeftSidebarOpen = false,
 }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -907,9 +909,21 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
             {/* Unified floating pill - shows either "Working" or "Scroll to latest" */}
             {((!readOnly && (agentStatus === 'running' || agentStatus === 'connecting')) || showScrollButton) && (
                 <div className={`fixed bottom-48 z-20 transform -translate-x-1/2 transition-all duration-200 ease-in-out ${
-                    isSidePanelOpen 
-                        ? 'left-[5%] sm:left-[calc(50%-225px)] md:left-[calc(50%-250px)] lg:left-[calc(50%-275px)] xl:left-[calc(50%-325px)]'
-                        : 'left-1/2'
+                    (() => {
+                        if (isSidePanelOpen && isLeftSidebarOpen) {
+                            // Both sidebars open - center between them
+                            return 'left-[calc(50%-100px)] sm:left-[calc(50%-200px)] md:left-[calc(50%-225px)] lg:left-[calc(50%-250px)] xl:left-[calc(50%-275px)]';
+                        } else if (isSidePanelOpen) {
+                            // Only right side panel open
+                            return 'left-[5%] sm:left-[calc(50%-225px)] md:left-[calc(50%-250px)] lg:left-[calc(50%-275px)] xl:left-[calc(50%-325px)]';
+                        } else if (isLeftSidebarOpen) {
+                            // Only left sidebar open - shift right to account for sidebar width
+                            return 'left-[calc(50%+120px)] sm:left-[calc(50%+130px)] md:left-[calc(50%+140px)] lg:left-[calc(50%+150px)]';
+                        } else {
+                            // No sidebars open - center normally
+                            return 'left-1/2';
+                        }
+                    })()
                 }`}>
                     <AnimatePresence mode="wait">
                         {!readOnly && (agentStatus === 'running' || agentStatus === 'connecting') ? (

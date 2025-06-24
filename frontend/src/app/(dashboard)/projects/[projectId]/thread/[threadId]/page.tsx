@@ -598,6 +598,7 @@ export default function ThreadPage({
           agentName={agent?.name || 'Operator'}
           agentAvatar={agent?.avatar}
           isSidePanelOpen={isSidePanelOpen}
+          isLeftSidebarOpen={leftSidebarState !== 'collapsed'}
         />
 
         <div
