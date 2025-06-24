@@ -58,20 +58,39 @@ export const extractExcelData = (
   if (assistantContent) {
     const assistantParsed = parseContent(assistantContent);
     
+    // Convert to string for checking operation type
+    const contentStr = typeof assistantContent === 'string' 
+      ? assistantContent 
+      : JSON.stringify(assistantContent);
+    
     // Determine operation from tool name or content
-    if (assistantContent.includes('create_workbook') || assistantContent.includes('create-workbook')) {
+    if (contentStr.includes('create_workbook') || contentStr.includes('create-workbook')) {
       operation = 'create-workbook';
-    } else if (assistantContent.includes('write_data') || assistantContent.includes('write-data')) {
+    } else if (contentStr.includes('write_data') || contentStr.includes('write-data')) {
       operation = 'write-data';
-    } else if (assistantContent.includes('read_data') || assistantContent.includes('read-data')) {
+    } else if (contentStr.includes('read_data') || contentStr.includes('read-data')) {
       operation = 'read-data';
-    } else if (assistantContent.includes('list_sheets') || assistantContent.includes('list-sheets')) {
+    } else if (contentStr.includes('list_sheets') || contentStr.includes('list-sheets')) {
       operation = 'list-sheets';
     }
 
     // Extract parameters from assistant content
     if (typeof assistantParsed === 'object' && assistantParsed.parameters) {
       data = { ...assistantParsed.parameters };
+    }
+    
+    // Also check for tool_name in parsed content
+    if (typeof assistantParsed === 'object' && assistantParsed.tool_name) {
+      const toolName = assistantParsed.tool_name;
+      if (toolName === 'create_workbook' || toolName === 'create-workbook') {
+        operation = 'create-workbook';
+      } else if (toolName === 'write_data' || toolName === 'write-data') {
+        operation = 'write-data';
+      } else if (toolName === 'read_data' || toolName === 'read-data') {
+        operation = 'read-data';
+      } else if (toolName === 'list_sheets' || toolName === 'list-sheets') {
+        operation = 'list-sheets';
+      }
     }
   }
 
