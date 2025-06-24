@@ -10,7 +10,7 @@ interface ThreeSpinnerProps {
 }
 
 export function ThreeSpinner({ 
-  size = 32, 
+  size = 48, 
   color = 'currentColor',
   className = '' 
 }: ThreeSpinnerProps) {
@@ -37,8 +37,8 @@ export function ThreeSpinner({
     
     mountRef.current.appendChild(renderer.domElement);
 
-    // Create wireframe geometry - icosphere for clean look
-    const geometry = new THREE.IcosahedronGeometry(1, 1);
+    // Create wireframe geometry - icosphere with fewer subdivisions for more pronounced spokes
+    const geometry = new THREE.IcosahedronGeometry(1, 0); // Reduced subdivision from 1 to 0
     
     // Parse color - black in light mode, muted in dark mode
     let threeColor = new THREE.Color(0x000000); // black fallback for light mode
@@ -75,13 +75,13 @@ export function ThreeSpinner({
     const wireframe = new THREE.Mesh(geometry, material);
     scene.add(wireframe);
 
-    // Add some inner structure for more interesting visual
-    const innerGeometry = new THREE.OctahedronGeometry(0.6, 0);
+    // Add some inner structure for more interesting visual - simplified
+    const innerGeometry = new THREE.TetrahedronGeometry(0.5, 0); // Changed to tetrahedron for cleaner look
     const innerMaterial = new THREE.MeshBasicMaterial({
       color: threeColor,
       wireframe: true,
       transparent: true,
-      opacity: 0.6
+      opacity: 0.4 // Reduced opacity for more subtle inner structure
     });
     const innerWireframe = new THREE.Mesh(innerGeometry, innerMaterial);
     scene.add(innerWireframe);

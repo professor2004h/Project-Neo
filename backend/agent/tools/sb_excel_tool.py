@@ -35,7 +35,8 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.chart import BarChart, LineChart, PieChart, Reference
 from openpyxl.utils import get_column_letter, column_index_from_string
-from openpyxl.pivot.table import PivotTable, PivotField
+# Pivot table support - openpyxl only supports reading existing pivot tables
+# from openpyxl.pivot.table import TableDefinition, PivotField
 from openpyxl.utils.dataframe import dataframe_to_rows
 import pandas as pd
 import os
