@@ -352,7 +352,7 @@ export function NavAgents() {
   return (
     <SidebarGroup>
       <div className="flex justify-between items-center">
-        <SidebarGroupLabel>Tasks</SidebarGroupLabel>
+        <SidebarGroupLabel>Operators</SidebarGroupLabel>
         {state !== 'collapsed' ? (
           <div className="flex items-center space-x-1">
             {selectedThreads.size > 0 ? (
@@ -587,7 +587,7 @@ export function NavAgents() {
           <SidebarMenuItem>
             <SidebarMenuButton className="text-sidebar-foreground/70">
               <MessagesSquare className="h-4 w-4" />
-              <span>No tasks yet</span>
+              <span>No operators yet</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         )}
