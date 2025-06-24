@@ -1192,7 +1192,7 @@ class SetupWizard:
             print(f"{Colors.CYAN}   cd frontend && npm run dev{Colors.ENDC}")
 
             print(f"\n{Colors.BOLD}3. Start Backend (in a new terminal):{Colors.ENDC}")
-            print(f"{Colors.CYAN}   cd backend && python run api.py{Colors.ENDC}")
+            print(f"{Colors.CYAN}   cd backend && uv run api.py{Colors.ENDC}")
 
             print(
                 f"\n{Colors.BOLD}4. Start Background Worker (in a new terminal):{Colors.ENDC}"
