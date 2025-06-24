@@ -66,20 +66,28 @@ export const AgentLoader = () => {
 
   return (
     <div className="flex py-2 items-center w-full">
-      <div>✨</div>
-            <AnimatePresence>
-            <motion.div
-                key={items[index].id}
-                initial={{ y: 20, opacity: 0, filter: "blur(8px)" }}
-                animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
-                exit={{ y: -20, opacity: 0, filter: "blur(8px)" }}
-                transition={{ ease: "easeInOut" }}
-                style={{ position: "absolute" }}
-                className='ml-7'
-            >
-                <AnimatedShinyText>{items[index].content}</AnimatedShinyText>
-            </motion.div>
-            </AnimatePresence>
+      <div className="relative flex-shrink-0 mr-3">
+        {/* Main processing indicator */}
+        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 dark:border-primary/30 flex items-center justify-center backdrop-blur-sm">
+          {/* Inner animated element */}
+          <div className="w-2.5 h-2.5 rounded-full bg-primary/60 animate-pulse" />
         </div>
+        {/* Subtle orbital animation */}
+        <div className="absolute inset-0 w-7 h-7 rounded-full border border-primary/10 dark:border-primary/20 animate-spin" style={{ animationDuration: '3s' }} />
+      </div>
+      <AnimatePresence>
+        <motion.div
+          key={items[index].id}
+          initial={{ y: 20, opacity: 0, filter: "blur(8px)" }}
+          animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+          exit={{ y: -20, opacity: 0, filter: "blur(8px)" }}
+          transition={{ ease: "easeInOut" }}
+          style={{ position: "absolute" }}
+          className='flex-1'
+        >
+          <AnimatedShinyText>{items[index].content}</AnimatedShinyText>
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 };
