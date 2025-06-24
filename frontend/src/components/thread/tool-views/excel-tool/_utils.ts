@@ -8,6 +8,7 @@ import {
   Grid3x3,
   type LucideIcon
 } from 'lucide-react';
+import { extractToolData } from '../utils';
 
 export interface ExcelData {
   operation?: 'create-workbook' | 'write-data' | 'read-data' | 'list-sheets';
@@ -54,8 +55,35 @@ export const extractExcelData = (
   const actualToolTimestamp = toolTimestamp;
   const actualAssistantTimestamp = assistantTimestamp;
 
-  // Parse assistant content to determine operation
-  if (assistantContent) {
+  // Use the standard tool data extraction
+  const assistantToolData = extractToolData(assistantContent);
+  const toolToolData = extractToolData(toolContent);
+
+  // Determine operation from assistant content
+  if (assistantToolData.toolResult) {
+    const toolName = assistantToolData.toolResult.toolName;
+    if (toolName === 'create-workbook' || toolName === 'create_workbook') {
+      operation = 'create-workbook';
+    } else if (toolName === 'write-data' || toolName === 'write_data') {
+      operation = 'write-data';
+    } else if (toolName === 'read-data' || toolName === 'read_data') {
+      operation = 'read-data';
+    } else if (toolName === 'list-sheets' || toolName === 'list_sheets') {
+      operation = 'list-sheets';
+    }
+    
+    // Extract parameters from arguments
+    if (assistantToolData.arguments) {
+      data = { 
+        filePath: assistantToolData.arguments.file_path,
+        sheetName: assistantToolData.arguments.sheet_name,
+        sheets: assistantToolData.arguments.sheet_names,
+        cellRange: assistantToolData.arguments.cell_range,
+        data: assistantToolData.arguments.data,
+      };
+    }
+  } else if (assistantContent) {
+    // Fallback to old parsing logic
     const assistantParsed = parseContent(assistantContent);
     
     // Convert to string for checking operation type
@@ -76,26 +104,47 @@ export const extractExcelData = (
 
     // Extract parameters from assistant content
     if (typeof assistantParsed === 'object' && assistantParsed.parameters) {
-      data = { ...assistantParsed.parameters };
-    }
-    
-    // Also check for tool_name in parsed content
-    if (typeof assistantParsed === 'object' && assistantParsed.tool_name) {
-      const toolName = assistantParsed.tool_name;
-      if (toolName === 'create_workbook' || toolName === 'create-workbook') {
-        operation = 'create-workbook';
-      } else if (toolName === 'write_data' || toolName === 'write-data') {
-        operation = 'write-data';
-      } else if (toolName === 'read_data' || toolName === 'read-data') {
-        operation = 'read-data';
-      } else if (toolName === 'list_sheets' || toolName === 'list-sheets') {
-        operation = 'list-sheets';
-      }
+      data = { 
+        filePath: assistantParsed.parameters.file_path,
+        sheetName: assistantParsed.parameters.sheet_name,
+        sheets: assistantParsed.parameters.sheet_names,
+        cellRange: assistantParsed.parameters.cell_range,
+        data: assistantParsed.parameters.data,
+      };
     }
   }
 
-  // Parse tool response
-  if (toolContent) {
+  // Parse tool response - this contains the actual results
+  if (toolToolData.toolResult) {
+    // The tool response is already parsed, extract the output
+    const output = toolToolData.toolResult.toolOutput;
+    if (output) {
+      try {
+        // Try to parse the output as JSON
+        const parsedOutput = typeof output === 'string' ? JSON.parse(output) : output;
+        
+        // Extract all the result data
+        actualIsSuccess = parsedOutput.success ?? toolToolData.toolResult.isSuccess ?? true;
+        
+        // Merge the response data with what we already have
+        data = {
+          ...data,
+          ...parsedOutput,
+          filePath: parsedOutput.file_path || data.filePath,
+          sheetName: parsedOutput.sheet || parsedOutput.sheet_name || data.sheetName,
+          cellRange: parsedOutput.range || parsedOutput.cell_range || data.cellRange,
+        };
+      } catch (e) {
+        // If parsing fails, use raw output
+        if (output && typeof output === 'object') {
+          const outputObj = output as Record<string, any>;
+          data = { ...data, ...outputObj };
+          actualIsSuccess = outputObj.success ?? true;
+        }
+      }
+    }
+  } else if (toolContent) {
+    // Fallback to old parsing logic
     const toolParsed = parseContent(toolContent);
     
     if (typeof toolParsed === 'object') {
