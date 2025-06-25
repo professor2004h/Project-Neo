@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 
 interface ThreeSpinnerProps {
@@ -18,6 +18,42 @@ export function ThreeSpinner({
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const frameRef = useRef<number>();
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Function to detect current theme
+  const detectTheme = useCallback(() => {
+    const darkMode = document.documentElement.classList.contains('dark') || 
+                    window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setIsDarkMode(darkMode);
+    return darkMode;
+  }, []);
+
+  // Set up theme change detection
+  useEffect(() => {
+    // Initial theme detection
+    detectTheme();
+
+    // Create a MutationObserver to watch for theme changes
+    const observer = new MutationObserver(() => {
+      detectTheme();
+    });
+
+    // Watch for class changes on document.documentElement
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    // Also listen for system theme changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleMediaChange = () => detectTheme();
+    mediaQuery.addEventListener('change', handleMediaChange);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', handleMediaChange);
+    };
+  }, [detectTheme]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -47,60 +83,59 @@ export function ThreeSpinner({
     const simpleOuter = new THREE.SphereGeometry(1, 8, 6);
     const simpleMiddle = new THREE.SphereGeometry(0.7, 6, 4);
 
-    // Parse color - black in light mode, muted in dark mode
-    let threeColor = new THREE.Color(0x000000); // black fallback for light mode
-    if (color === 'currentColor') {
-      // Detect dark mode
-      const isDarkMode = document.documentElement.classList.contains('dark') || 
-                        window.matchMedia('(prefers-color-scheme: dark)').matches;
-      
-      if (isDarkMode) {
-        // Use muted foreground color in dark mode
-        threeColor = new THREE.Color(0x9ca3af); // gray-400
+    // Function to get current theme color
+    const getThemeColor = () => {
+      let threeColor = new THREE.Color(0x000000); // black fallback for light mode
+      if (color === 'currentColor') {
+        if (isDarkMode) {
+          // Use muted foreground color in dark mode
+          threeColor = new THREE.Color(0x9ca3af); // gray-400
+        } else {
+          // Use black in light mode for better visibility and energy
+          threeColor = new THREE.Color(0x000000);
+        }
       } else {
-        // Use black in light mode for better visibility and energy
-        threeColor = new THREE.Color(0x000000);
+        try {
+          threeColor = new THREE.Color(color);
+        } catch {
+          // Fallback to theme-appropriate color
+          threeColor = new THREE.Color(isDarkMode ? 0x9ca3af : 0x000000);
+        }
       }
-    } else {
-      try {
-        threeColor = new THREE.Color(color);
-      } catch {
-        // Fallback to black for light mode
-        threeColor = new THREE.Color(0x000000);
-      }
-    }
+      return threeColor;
+    };
 
     // Create materials that will have dynamic opacity based on speed
     const complexOuterMaterial = new THREE.MeshBasicMaterial({
-      color: threeColor,
+      color: getThemeColor(),
       wireframe: true,
       transparent: true,
       opacity: 0.8
     });
     
     const complexMiddleMaterial = new THREE.MeshBasicMaterial({
-      color: threeColor,
+      color: getThemeColor(),
       wireframe: true,
       transparent: true,
       opacity: 0.6
     });
     
     const complexInnerMaterial = new THREE.MeshBasicMaterial({
-      color: threeColor,
+      color: getThemeColor(),
       wireframe: true,
       transparent: true,
       opacity: 0.4
     });
     
     const simpleOuterMaterial = new THREE.MeshBasicMaterial({
-      color: threeColor,
+      color: getThemeColor(),
       wireframe: true,
       transparent: true,
       opacity: 0.0 // Start invisible
     });
     
     const simpleMiddleMaterial = new THREE.MeshBasicMaterial({
-      color: threeColor,
+      color: getThemeColor(),
       wireframe: true,
       transparent: true,
       opacity: 0.0 // Start invisible
@@ -127,6 +162,16 @@ export function ThreeSpinner({
     sceneRef.current = scene;
     rendererRef.current = renderer;
 
+    // Function to update material colors when theme changes
+    const updateMaterialColors = () => {
+      const newColor = getThemeColor();
+      complexOuterMaterial.color.copy(newColor);
+      complexMiddleMaterial.color.copy(newColor);
+      complexInnerMaterial.color.copy(newColor);
+      simpleOuterMaterial.color.copy(newColor);
+      simpleMiddleMaterial.color.copy(newColor);
+    };
+
     // Physics-based spinning animation
     let currentSpeed = 0;
     let targetSpeed = 0.12; // Initial high speed
@@ -138,6 +183,9 @@ export function ThreeSpinner({
     
     const animate = () => {
       cycleTime += 0.016; // ~60fps
+      
+      // Update material colors based on current theme
+      updateMaterialColors();
       
       // Physics-based speed control - energetic spin that slows down then speeds up again
       if (isAccelerating) {
@@ -258,7 +306,7 @@ export function ThreeSpinner({
         mountRef.current.removeChild(renderer.domElement);
       }
     };
-  }, [size, color]);
+  }, [size, color, isDarkMode]); // Added isDarkMode to dependencies
 
   return (
     <div 

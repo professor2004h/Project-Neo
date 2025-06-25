@@ -949,7 +949,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 onClick={() => scrollToBottom('smooth')}
                                 className="animate-shimmer flex items-center gap-2 backdrop-blur-sm border border-primary/20 shadow-lg rounded-full px-3 py-2 text-sm font-medium text-primary transition-all duration-200"
                             >
-                                <ThreeSpinner size={36} color="currentColor" />
+                                <ThreeSpinner size={48} color="currentColor" />
                                 <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
                             </motion.button>
                         ) : showScrollButton ? (
