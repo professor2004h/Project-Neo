@@ -409,23 +409,23 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
         smartScrollToBottom(behavior, force);
     }, [smartScrollToBottom]);
 
-    // Auto-scroll when new messages arrive (only if user is at bottom)
+    // Auto-scroll when new messages arrive (only if user is at bottom and agent is still working)
     React.useEffect(() => {
-        if (displayMessages.length > 0) {
+        if (displayMessages.length > 0 && !userHasScrolled && (agentStatus === 'running' || agentStatus === 'connecting')) {
             autoScrollToBottomIfNeeded();
         }
-    }, [displayMessages.length, autoScrollToBottomIfNeeded]);
+    }, [displayMessages.length, autoScrollToBottomIfNeeded, userHasScrolled, agentStatus]);
 
-    // Auto-scroll when streaming content arrives - but only if user hasn't manually scrolled up
+    // Auto-scroll when streaming content arrives - but only if user hasn't manually scrolled up AND agent is actively working
     React.useEffect(() => {
-        if (streamingTextContent && !userHasScrolled) {
+        if (streamingTextContent && !userHasScrolled && (agentStatus === 'running' || agentStatus === 'connecting')) {
             // Use a timeout to reduce frequency of auto-scroll during streaming
             const timeoutId = setTimeout(() => {
                 autoScrollToBottomIfNeeded();
             }, 100);
             return () => clearTimeout(timeoutId);
         }
-    }, [streamingTextContent, userHasScrolled, autoScrollToBottomIfNeeded]);
+    }, [streamingTextContent, userHasScrolled, autoScrollToBottomIfNeeded, agentStatus]);
 
     // Clean up timeout on unmount
     React.useEffect(() => {
