@@ -947,7 +947,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 whileHover={{ scale: 1.01 }}
                                 whileTap={{ scale: 0.99 }}
                                 onClick={() => scrollToBottom('smooth')}
-                                className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-full px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+                                className="animate-shimmer flex items-center gap-2 backdrop-blur-sm border border-primary/20 shadow-lg rounded-full px-3 py-2 text-sm font-medium text-primary transition-all duration-200"
                             >
                                 <ThreeSpinner size={36} color="currentColor" />
                                 <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
