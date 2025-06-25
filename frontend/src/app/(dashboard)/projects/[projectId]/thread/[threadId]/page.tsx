@@ -186,19 +186,8 @@ export default function ThreadPage({
         setAgentRunId(null);
         setAutoOpenedPanel(false);
 
-        // Only auto-scroll on completion if user hasn't manually scrolled away
-        // The ThreadContent component now handles this more intelligently
-        if (
-          [
-            'completed',
-            'stopped',
-            'agent_not_running',
-            'error',
-            'failed',
-          ].includes(hookStatus) && !userHasScrolled
-        ) {
-          scrollToBottom('smooth');
-        }
+        // Remove auto-scroll on completion - let ThreadContent handle all scroll behavior
+        // The ThreadContent component now intelligently manages scroll state
         break;
       case 'connecting':
         setAgentStatus('connecting');
