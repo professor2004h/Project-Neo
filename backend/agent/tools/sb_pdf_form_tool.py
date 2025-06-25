@@ -189,6 +189,9 @@ from PyPDFForm import PdfWrapper
             
             # Create Python script to execute in sandbox
             script_content = f"""
+import json
+from PyPDFForm import PdfWrapper
+
 try:
     # Load PDF form
     wrapper = PdfWrapper('{full_path}')
@@ -196,55 +199,35 @@ try:
     # Get form schema
     schema = wrapper.schema
     
-    # Get field names and widgets for more details
-    field_names = wrapper.get_form_field_names()
-    widgets = wrapper.get_widgets()
+    # Get field names from schema
+    field_names = list(schema.get('properties', {{}}).keys()) if schema else []
     
-    # Build detailed field information
+    # Build detailed field information from schema
     field_details = {{}}
+    properties = schema.get('properties', {{}}) if schema else {{}}
     for field_name in field_names:
-        try:
-            widget = widgets.get(field_name, {{}})
-            field_type = 'string'  # default
-            
-            # Try to determine field type from widget info
-            if widget:
-                widget_type = widget.get('/FT', '').replace('/', '')
-                if widget_type == 'Btn':
-                    # Could be checkbox or radio
-                    if widget.get('/Ff', 0) & 65536:  # Radio button flag
-                        field_type = 'integer'  # Radio buttons use integer indices
-                    else:
-                        field_type = 'boolean'  # Checkbox
-                elif widget_type == 'Ch':
-                    # Choice field (dropdown or list)
-                    field_type = 'integer'  # Dropdowns use integer indices
-                elif widget_type == 'Tx':
-                    # Text field
-                    field_type = 'string'
-                    
-            field_details[field_name] = {{
-                'type': field_type,
-                'widget_type': widget.get('/FT', 'Unknown').replace('/', '') if widget else 'Unknown'
-            }}
-        except:
-            field_details[field_name] = {{'type': 'string', 'widget_type': 'Unknown'}}
+        field_info = properties.get(field_name, {{}})
+        field_type = field_info.get('type', 'string')
+        field_details[field_name] = {{'type': field_type}}
     
-    print(json.dumps({{
+    result = {{
         "success": True,
-        "message": "Successfully read form fields from '{file_path}'",
+        "message": "Successfully read form fields from {file_path}",
         "file_path": "{file_path}",
         "field_count": len(field_names),
         "field_names": field_names,
         "field_details": field_details,
         "schema": schema
-    }}))
+    }}
+    
+    print(json.dumps(result))
     
 except Exception as e:
-    print(json.dumps({{
+    error_result = {{
         "success": False,
         "error": f"Error reading form fields: {{str(e)}}"
-    }}))
+    }}
+    print(json.dumps(error_result))
 """
             
             script = self._create_pdf_script(script_content)
@@ -642,8 +625,9 @@ def has_fillable_fields(pdf_path):
     '''Check if PDF has fillable form fields'''
     try:
         wrapper = PdfWrapper(pdf_path)
-        fields = wrapper.get_form_field_names()
-        return len(fields) > 0, fields
+        schema = wrapper.schema
+        field_names = list(schema.get('properties', {{}}).keys()) if schema else []
+        return len(field_names) > 0, field_names
     except Exception as e:
         return False, []
 
@@ -709,9 +693,9 @@ def fill_with_coordinates(pdf_path, form_data, field_positions, output_path):
                             )
                             filled_count += 1
                     except Exception as e:
-                        skipped_fields.append(f"{{field_name}}: {{str(e)}}")
+                        skipped_fields.append(f"{field_name}: {str(e)}")
                 else:
-                    skipped_fields.append(f"{{field_name}}: no position found")
+                    skipped_fields.append(f"{field_name}: no position found")
         
         # Save the filled PDF
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
