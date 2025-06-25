@@ -631,25 +631,24 @@ except Exception as e:
             default_positions = self._get_default_field_positions()
             field_positions = {**default_positions, **template_coords}
             
-                        # Create smart filling script using safer string formatting
-            script_template = '''
+            # Create smart filling script
+            script_content = f"""
 import pymupdf
 import json
 import os
 from PyPDFForm import PdfWrapper
 
 def has_fillable_fields(pdf_path):
-    """Check if PDF has fillable form fields"""
+    '''Check if PDF has fillable form fields'''
     try:
         wrapper = PdfWrapper(pdf_path)
-        schema = wrapper.schema
-        fields = list(schema.get('properties', {{}}).keys()) if schema else []
+        fields = wrapper.get_form_field_names()
         return len(fields) > 0, fields
     except Exception as e:
         return False, []
 
 def fill_with_coordinates(pdf_path, form_data, field_positions, output_path):
-    """Fill PDF using coordinate-based text overlay"""
+    '''Fill PDF using coordinate-based text overlay'''
     try:
         doc = pymupdf.open(pdf_path)
         filled_count = 0
@@ -710,9 +709,9 @@ def fill_with_coordinates(pdf_path, form_data, field_positions, output_path):
                             )
                             filled_count += 1
                     except Exception as e:
-                        skipped_fields.append(field_name + ": " + str(e))
+                        skipped_fields.append(f"{{field_name}}: {{str(e)}}")
                 else:
-                    skipped_fields.append(field_name + ": no position found")
+                    skipped_fields.append(f"{{field_name}}: no position found")
         
         # Save the filled PDF
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -722,13 +721,13 @@ def fill_with_coordinates(pdf_path, form_data, field_positions, output_path):
         return filled_count, skipped_fields
         
     except Exception as e:
-        raise Exception("Error in coordinate filling: " + str(e))
+        raise Exception(f"Error in coordinate filling: {{str(e)}}")
 
 # Main execution
-input_path = '{input_path}'
-form_data = {form_data_json}
-field_positions = {field_positions_json}
-output_path = '{output_path}'
+input_path = '{full_path}'
+form_data = {json.dumps(form_data)}
+field_positions = {json.dumps(field_positions)}
+output_path = '{filled_path}'
 
 try:
     # First, try to detect if PDF has fillable fields
@@ -748,7 +747,7 @@ try:
                 "success": True,
                 "method": "fillable_form",
                 "message": "Successfully filled using form fields",
-                "output_path": "{rel_output_path}",
+                "output_path": "{output_path}",
                 "fields_available": field_names,
                 "fields_filled": len([k for k, v in form_data.items() if v is not None and v != ""])
             }}))
@@ -757,44 +756,34 @@ try:
             # Fallback to coordinate method if fillable form filling fails
             filled_count, skipped = fill_with_coordinates(input_path, form_data, field_positions, output_path)
             
-            result = {{
+            print(json.dumps({{
                 "success": True,
                 "method": "coordinate_fallback",
-                "message": "Fillable form failed, used coordinate overlay. Filled " + str(filled_count) + " fields.",
-                "output_path": "{rel_output_path}",
+                "message": f"Fillable form failed, used coordinate overlay. Filled {{filled_count}} fields.",
+                "output_path": "{output_path}",
                 "fields_filled": filled_count,
                 "skipped_fields": skipped,
-                "note": "Original error: " + str(e)
-            }}
-            print(json.dumps(result))
+                "note": f"Original error: {{str(e)}}"
+            }}))
     else:
         # Use coordinate-based filling for scanned PDFs
         filled_count, skipped = fill_with_coordinates(input_path, form_data, field_positions, output_path)
         
-        result = {{
+        print(json.dumps({{
             "success": True,
             "method": "coordinate_overlay",
-            "message": "No form fields detected. Used coordinate-based filling. Filled " + str(filled_count) + " fields.",
-            "output_path": "{rel_output_path}",
+            "message": f"No form fields detected. Used coordinate-based filling. Filled {{filled_count}} fields.",
+            "output_path": "{output_path}",
             "fields_filled": filled_count,
             "skipped_fields": skipped
-        }}
-        print(json.dumps(result))
+        }}))
         
 except Exception as e:
     print(json.dumps({{
         "success": False,
-        "error": "Error processing PDF: " + str(e)
+        "error": f"Error processing PDF: {{str(e)}}"
     }}))
-'''
-            
-            script_content = script_template.format(
-                input_path=full_path,
-                form_data_json=json.dumps(form_data),
-                field_positions_json=json.dumps(field_positions),
-                output_path=filled_path,
-                rel_output_path=output_path
-            )
+"""
             
             script = self._create_pdf_script(script_content)
             return await self._execute_pdf_script(script, timeout=60)
@@ -860,7 +849,7 @@ try:
     if len(doc) <= {page_number}:
         print(json.dumps({{
             "success": False,
-            "error": f"Page {page_number} does not exist. Document has {{len(doc)}} pages."
+            "error": f"Page {{page_number}} does not exist. Document has {{len(doc)}} pages."
         }}))
     else:
         page = doc[{page_number}]
