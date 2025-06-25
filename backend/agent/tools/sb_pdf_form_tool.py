@@ -313,7 +313,7 @@ try:
     
     # Fill the form with provided fields
     fields_to_fill = {json.dumps(fields)}
-    filled_pdf_stream = wrapper.fill(fields_to_fill)
+            filled_pdf_stream = wrapper.fill(fields_to_fill, flatten=False)
     
     # Ensure parent directory exists
     os.makedirs(os.path.dirname('{filled_path}'), exist_ok=True)
@@ -397,14 +397,15 @@ try:
     # Load PDF form
     wrapper = PdfWrapper('{full_path}')
     
-    # Get all field values
+    # Get schema and sample data
+    schema = wrapper.schema
     field_values = wrapper.sample_data
     
     # Get specific field value
     field_value = field_values.get('{field_name}', None)
     
     # Check if field exists
-    field_names = wrapper.get_form_field_names()
+    field_names = list(schema.get('properties', {{}}).keys()) if schema else []
     if '{field_name}' not in field_names:
         print(json.dumps({{
             "success": False,
@@ -496,7 +497,20 @@ try:
     wrapper = PdfWrapper('{full_path}')
     
     # Flatten the form
-    flattened_stream = wrapper.flatten()
+    # First check if the PDF has any fillable fields
+    schema = wrapper.schema
+    
+    if not schema or not schema.get('properties'):
+        print(json.dumps({{
+            "success": False,
+            "error": "No form fields found to flatten. This appears to be a non-form PDF."
+        }}))
+    else:
+        # Create a flattened version by filling with current values and setting flatten=True
+        current_values = wrapper.sample_data
+        
+        # Fill the form with current values and flatten it
+        flattened_stream = wrapper.fill(current_values, flatten=True)
     
     # Ensure parent directory exists
     os.makedirs(os.path.dirname('{flattened_path}'), exist_ok=True)
@@ -693,9 +707,9 @@ def fill_with_coordinates(pdf_path, form_data, field_positions, output_path):
                             )
                             filled_count += 1
                     except Exception as e:
-                        skipped_fields.append(f"{field_name}: {str(e)}")
+                        skipped_fields.append(field_name + ": " + str(e))
                 else:
-                    skipped_fields.append(f"{field_name}: no position found")
+                    skipped_fields.append(field_name + ": no position found")
         
         # Save the filled PDF
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -721,7 +735,7 @@ try:
         # Use PyPDFForm for fillable PDFs
         try:
             wrapper = PdfWrapper(input_path)
-            filled_stream = wrapper.fill(form_data)
+            filled_stream = wrapper.fill(form_data, flatten=False)
             
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             with open(output_path, 'wb') as f:
@@ -1020,13 +1034,15 @@ os.makedirs(os.path.dirname('{template_path}'), exist_ok=True)
 with open('{template_path}', 'w') as f:
     json.dump(template_data, f, indent=2)
 
-print(json.dumps({{
+result = {{
     "success": True,
-    "message": f"Template '{{template_name}}' created successfully",
+    "message": "Template '{template_name}' created successfully",
     "template_path": '{template_path}'.replace('{self.workspace_path}/', ''),
     "field_count": len(normalized_coords),
     "fields": list(normalized_coords.keys())
-}}))
+}}
+
+print(json.dumps(result))
 """
             
             script = self._create_pdf_script(script_content)
