@@ -22,7 +22,6 @@ export function OmniLogo() {
         size={24} 
         color="currentColor"
         className="flex-shrink-0"
-        variant="simple"
       />
     </div>
   );
