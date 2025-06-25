@@ -1080,17 +1080,17 @@ print(json.dumps(result))
                     "fine_grid": {
                         "type": "boolean",
                         "description": "Add fine grid lines between major lines for extra precision",
-                        "default": true
+                        "default": True
                     },
                     "coordinate_labels": {
                         "type": "boolean", 
                         "description": "Show coordinate numbers at grid intersections",
-                        "default": true
+                        "default": True
                     },
                     "crosshairs": {
                         "type": "boolean",
                         "description": "Add crosshair markers for precise targeting",
-                        "default": false
+                        "default": False
                     },
                     "output_path": {
                         "type": "string",
