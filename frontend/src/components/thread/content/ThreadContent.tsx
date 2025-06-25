@@ -409,9 +409,13 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
         smartScrollToBottom(behavior, force);
     }, [smartScrollToBottom]);
 
-    // Auto-scroll when new messages arrive (only if user is at bottom and agent is still working)
+    // Auto-scroll when new messages arrive (only during active streaming, not on completion refetch)
+    const previousMessageCount = React.useRef(displayMessages.length);
     React.useEffect(() => {
-        if (displayMessages.length > 0 && !userHasScrolled && (agentStatus === 'running' || agentStatus === 'connecting')) {
+        const messageCountIncreased = displayMessages.length > previousMessageCount.current;
+        previousMessageCount.current = displayMessages.length;
+        
+        if (messageCountIncreased && !userHasScrolled && (agentStatus === 'running' || agentStatus === 'connecting')) {
             autoScrollToBottomIfNeeded();
         }
     }, [displayMessages.length, autoScrollToBottomIfNeeded, userHasScrolled, agentStatus]);
