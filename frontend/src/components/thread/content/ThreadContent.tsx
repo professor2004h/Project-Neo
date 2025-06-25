@@ -315,7 +315,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     const [showScrollButton, setShowScrollButton] = useState(false);
     const [userHasScrolled, setUserHasScrolled] = useState(false);
     const [isAtBottom, setIsAtBottom] = useState(true);
-    const scrollTimeoutRef = useRef<number>();
+    const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
     const lastScrollTopRef = useRef(0);
     const autoScrollingRef = useRef(false);
     const { session } = useAuth();
@@ -1026,7 +1026,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 }`}>
                     <AnimatePresence>
                         {!readOnly && (agentStatus === 'running' || agentStatus === 'connecting') && (
-                            <motion.button
+                            <motion.div
                                 key="working"
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ 
@@ -1045,14 +1045,23 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                         ease: [0.25, 0.46, 0.45, 0.94]
                                     } 
                                 }}
-                                whileHover={{ scale: 1.01 }}
-                                whileTap={{ scale: 0.99 }}
-                                onClick={() => scrollToBottom('smooth')}
-                                className="animate-shimmer flex items-center gap-2 backdrop-blur-sm border border-primary/20 shadow-lg rounded-full px-3 py-2 text-sm font-medium text-primary transition-all duration-200"
+                                className="relative"
                             >
-                                <ThreeSpinner size={48} color="currentColor" />
-                                <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
-                            </motion.button>
+                                {/* Floating spinner positioned above the text container */}
+                                <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-3/4 z-10">
+                                    <ThreeSpinner size={48} color="currentColor" />
+                                </div>
+                                
+                                {/* Text container */}
+                                <motion.button
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
+                                    onClick={() => scrollToBottom('smooth')}
+                                    className="animate-shimmer backdrop-blur-sm border border-primary/20 shadow-lg rounded-full px-4 py-2 pt-6 text-sm font-medium text-primary transition-all duration-200"
+                                >
+                                    <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
+                                </motion.button>
+                            </motion.div>
                         )}
                         {showScrollButton && !(agentStatus === 'running' || agentStatus === 'connecting') && (
                             <motion.button
