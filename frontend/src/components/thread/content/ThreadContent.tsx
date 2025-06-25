@@ -1046,8 +1046,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 className="relative"
                             >
                                 {/* Floating spinner positioned above the text container */}
-                                <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-3/4 z-10">
-                                    <ThreeSpinner size={48} color="currentColor" />
+                                <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 z-10">
+                                    <ThreeSpinner size={64} color="currentColor" />
                                 </div>
                                 
                                 {/* Text container */}
@@ -1055,7 +1055,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                     whileHover={{ scale: 1.01 }}
                                     whileTap={{ scale: 0.99 }}
                                     onClick={() => scrollToBottom('smooth')}
-                                    className="animate-shimmer backdrop-blur-sm border border-primary/20 shadow-lg rounded-full px-4 py-2 pt-6 text-sm font-medium text-primary transition-all duration-200"
+                                    className="animate-shimmer backdrop-blur-sm border border-primary/20 shadow-lg rounded-full px-4 py-2 text-sm font-medium text-primary transition-all duration-200"
                                 >
                                     <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
                                 </motion.button>
