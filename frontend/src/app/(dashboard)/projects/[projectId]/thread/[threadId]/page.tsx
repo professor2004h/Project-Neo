@@ -58,6 +58,7 @@ export default function ThreadPage({
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [userHasScrolled, setUserHasScrolled] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const hasInitiallyScrolled = useRef<boolean>(false);
   const initialLayoutAppliedRef = useRef(false);
 
@@ -185,6 +186,8 @@ export default function ThreadPage({
         setAgentRunId(null);
         setAutoOpenedPanel(false);
 
+        // Only auto-scroll on completion if user hasn't manually scrolled away
+        // The ThreadContent component now handles this more intelligently
         if (
           [
             'completed',
@@ -192,7 +195,7 @@ export default function ThreadPage({
             'agent_not_running',
             'error',
             'failed',
-          ].includes(hookStatus)
+          ].includes(hookStatus) && !userHasScrolled
         ) {
           scrollToBottom('smooth');
         }
@@ -204,7 +207,7 @@ export default function ThreadPage({
         setAgentStatus('running');
         break;
     }
-  }, [setAgentStatus, setAgentRunId, setAutoOpenedPanel]);
+  }, [setAgentStatus, setAgentRunId, setAutoOpenedPanel, userHasScrolled]);
 
   const handleStreamError = useCallback((errorMessage: string) => {
     console.error(`[PAGE] Stream hook error: ${errorMessage}`);
@@ -348,6 +351,11 @@ export default function ThreadPage({
     }
     setFilePathList(filePathList);
     setFileViewerOpen(true);
+  }, []);
+
+  const handleScrollStateChange = useCallback((userScrolled: boolean, atBottom: boolean) => {
+    setUserHasScrolled(userScrolled);
+    setIsAtBottom(atBottom);
   }, []);
 
   const toolViewAssistant = useCallback(
@@ -599,6 +607,7 @@ export default function ThreadPage({
           agentAvatar={agent?.avatar}
           isSidePanelOpen={isSidePanelOpen}
           isLeftSidebarOpen={leftSidebarState !== 'collapsed'}
+          onScrollStateChange={handleScrollStateChange}
         />
 
         <div

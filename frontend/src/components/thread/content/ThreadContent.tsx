@@ -282,6 +282,7 @@ export interface ThreadContentProps {
     emptyStateComponent?: React.ReactNode; // Add custom empty state component prop
     isSidePanelOpen?: boolean; // Add side panel state prop
     isLeftSidebarOpen?: boolean; // Add left sidebar state prop
+    onScrollStateChange?: (userHasScrolled: boolean, isAtBottom: boolean) => void; // Add scroll state callback
 }
 
 export const ThreadContent: React.FC<ThreadContentProps> = ({
@@ -306,12 +307,17 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     emptyStateComponent,
     isSidePanelOpen = false,
     isLeftSidebarOpen = false,
+    onScrollStateChange,
 }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const latestMessageRef = useRef<HTMLDivElement>(null);
     const [showScrollButton, setShowScrollButton] = useState(false);
     const [userHasScrolled, setUserHasScrolled] = useState(false);
+    const [isAtBottom, setIsAtBottom] = useState(true);
+    const scrollTimeoutRef = useRef<number>();
+    const lastScrollTopRef = useRef(0);
+    const autoScrollingRef = useRef(false);
     const { session } = useAuth();
 
     // React Query file preloader
@@ -324,17 +330,110 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     // In playback mode, we use visibleMessages instead of messages
     const displayMessages = readOnly && visibleMessages ? visibleMessages : messages;
 
-    const handleScroll = () => {
+    const checkScrollPosition = useCallback(() => {
         if (!messagesContainerRef.current) return;
+        
         const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-        const isScrolledUp = scrollHeight - scrollTop - clientHeight > 100;
-        setShowScrollButton(isScrolledUp);
-        setUserHasScrolled(isScrolledUp);
-    };
+        const isNearBottom = scrollHeight - scrollTop - clientHeight <= 150; // Increased threshold
+        const hasScrolledUp = scrollHeight - scrollTop - clientHeight > 100;
+        
+        setIsAtBottom(isNearBottom);
+        setShowScrollButton(hasScrolledUp);
+        
+        // Only set userHasScrolled if this wasn't an auto-scroll
+        if (!autoScrollingRef.current) {
+            setUserHasScrolled(hasScrolledUp);
+            // Notify parent of scroll state changes
+            onScrollStateChange?.(hasScrolledUp, isNearBottom);
+        }
+    }, [onScrollStateChange]);
 
-    const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-        messagesEndRef.current?.scrollIntoView({ behavior });
-    };
+    const handleScroll = useCallback(() => {
+        if (!messagesContainerRef.current) return;
+        
+        const currentScrollTop = messagesContainerRef.current.scrollTop;
+        
+        // Clear any existing timeout
+        if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current);
+        }
+
+        // Check if scroll direction indicates user interaction
+        const scrollDelta = currentScrollTop - lastScrollTopRef.current;
+        lastScrollTopRef.current = currentScrollTop;
+
+        // If scrolling up (negative delta) and not auto-scrolling, definitely user action
+        if (scrollDelta < 0 && !autoScrollingRef.current) {
+            setUserHasScrolled(true);
+        }
+
+        checkScrollPosition();
+
+        // Reset auto-scroll flag after a delay
+        scrollTimeoutRef.current = setTimeout(() => {
+            autoScrollingRef.current = false;
+        }, 300);
+    }, [checkScrollPosition]);
+
+    const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+        if (messagesEndRef.current) {
+            autoScrollingRef.current = true;
+            messagesEndRef.current.scrollIntoView({ behavior });
+            
+            // Reset user scroll state when manually scrolling to bottom
+            if (behavior === 'smooth') {
+                setTimeout(() => {
+                    setUserHasScrolled(false);
+                    setIsAtBottom(true);
+                    autoScrollingRef.current = false;
+                }, 500);
+            }
+        }
+    }, []);
+
+    // Auto-scroll for new content when user is at bottom
+    const autoScrollToBottomIfNeeded = useCallback(() => {
+        if (isAtBottom && !userHasScrolled) {
+            scrollToBottom('smooth');
+        }
+    }, [isAtBottom, userHasScrolled, scrollToBottom]);
+
+    // Expose scroll function for parent components but with user position awareness
+    const smartScrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth', force: boolean = false) => {
+        if (force || isAtBottom || !userHasScrolled) {
+            scrollToBottom(behavior);
+        }
+    }, [isAtBottom, userHasScrolled, scrollToBottom]);
+
+    // Use smart scroll for parent component access
+    React.useImperativeHandle(messagesEndRef, () => ({
+        scrollIntoView: (options?: ScrollIntoViewOptions) => {
+            smartScrollToBottom(options?.behavior as ScrollBehavior);
+        }
+    }), [smartScrollToBottom]);
+
+    // Auto-scroll when new messages arrive (only if user is at bottom)
+    React.useEffect(() => {
+        if (displayMessages.length > 0) {
+            autoScrollToBottomIfNeeded();
+        }
+    }, [displayMessages.length, autoScrollToBottomIfNeeded]);
+
+    // Auto-scroll when streaming content arrives (only if user is at bottom)
+    React.useEffect(() => {
+        if (streamingTextContent && isAtBottom && !userHasScrolled) {
+            scrollToBottom('smooth');
+        }
+    }, [streamingTextContent, isAtBottom, userHasScrolled, scrollToBottom]);
+
+    // Clean up timeout on unmount
+    React.useEffect(() => {
+        return () => {
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+        };
+    }, []);
 
     // Preload all message attachments when messages change or sandboxId is provided
     React.useEffect(() => {
@@ -925,22 +1024,24 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         }
                     })()
                 }`}>
-                    <AnimatePresence mode="wait">
-                        {!readOnly && (agentStatus === 'running' || agentStatus === 'connecting') ? (
+                    <AnimatePresence>
+                        {!readOnly && (agentStatus === 'running' || agentStatus === 'connecting') && (
                             <motion.button
                                 key="working"
-                                initial={{ opacity: 0 }}
+                                initial={{ opacity: 0, y: 10 }}
                                 animate={{ 
                                     opacity: 1,
+                                    y: 0,
                                     transition: { 
-                                        duration: 0.6, 
+                                        duration: 0.3, 
                                         ease: [0.25, 0.46, 0.45, 0.94]
                                     }
                                 }}
                                 exit={{ 
                                     opacity: 0,
+                                    y: 10,
                                     transition: { 
-                                        duration: 0.4, 
+                                        duration: 0.2, 
                                         ease: [0.25, 0.46, 0.45, 0.94]
                                     } 
                                 }}
@@ -952,23 +1053,27 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 <ThreeSpinner size={48} color="currentColor" />
                                 <span>{agentName ? `${agentName} is working...` : 'Operator is working...'}</span>
                             </motion.button>
-                        ) : showScrollButton ? (
+                        )}
+                        {showScrollButton && !(agentStatus === 'running' || agentStatus === 'connecting') && (
                             <motion.button
                                 key="scroll"
                                 initial={{ 
-                                    opacity: 0
+                                    opacity: 0,
+                                    y: 10
                                 }}
                                 animate={{ 
                                     opacity: 1,
+                                    y: 0,
                                     transition: { 
-                                        duration: 0.6, 
+                                        duration: 0.3, 
                                         ease: [0.25, 0.46, 0.45, 0.94]
                                     }
                                 }}
                                 exit={{ 
                                     opacity: 0,
+                                    y: 10,
                                     transition: { 
-                                        duration: 0.4, 
+                                        duration: 0.2, 
                                         ease: [0.25, 0.46, 0.45, 0.94]
                                     }
                                 }}
@@ -980,7 +1085,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 <ArrowDown className="h-4 w-4" />
                                 <span>Scroll to latest</span>
                             </motion.button>
-                        ) : null}
+                        )}
                     </AnimatePresence>
                 </div>
             )}
