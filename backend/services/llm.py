@@ -288,6 +288,9 @@ async def make_llm_api_call(
     # debug <timestamp>.json messages
     logger.info(f"Making LLM API call to model: {model_name} (Thinking: {enable_thinking}, Effort: {reasoning_effort})")
     logger.info(f"📡 API Call: Using model {model_name}")
+    for msg in messages:
+        if "tool_calls" in msg and msg["tool_calls"] is None:
+            msg["tool_calls"] = []
     params = prepare_params(
         messages=messages,
         model_name=model_name,

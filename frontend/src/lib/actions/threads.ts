@@ -15,15 +15,21 @@ export const generateThreadName = async (message: string): Promise<string> => {
       console.error('OpenAI API key not found');
       return defaultName;
     }
+const baseUrl = process.env.OPENROUTER_API_BASE || '';
+    const path = '/chat/completions';
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const fullUrl = baseUrl.endsWith('/')
+      ? baseUrl.slice(0, -1) + path
+      : baseUrl + path;
+
+    const response = await fetch(fullUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: process.env.MODEL_TO_USE,
         messages: [
           {
             role: 'system',
