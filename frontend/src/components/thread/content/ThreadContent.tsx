@@ -405,12 +405,10 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
         }
     }, [isAtBottom, userHasScrolled, scrollToBottom]);
 
-    // Use smart scroll for parent component access
-    React.useImperativeHandle(messagesEndRef, () => ({
-        scrollIntoView: (options?: ScrollIntoViewOptions) => {
-            smartScrollToBottom(options?.behavior as ScrollBehavior);
-        }
-    }), [smartScrollToBottom]);
+    // Expose smart scroll function for parent components
+    const exposedScrollToBottom = React.useCallback((behavior: ScrollBehavior = 'smooth', force: boolean = false) => {
+        smartScrollToBottom(behavior, force);
+    }, [smartScrollToBottom]);
 
     // Auto-scroll when new messages arrive (only if user is at bottom)
     React.useEffect(() => {
