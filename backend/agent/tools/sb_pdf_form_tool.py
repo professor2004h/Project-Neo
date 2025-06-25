@@ -147,7 +147,7 @@ from PyPDFForm import PdfWrapper
         "type": "function",
         "function": {
             "name": "read_form_fields",
-            "description": "Reads the fillable form fields and their types from a PDF file. Returns a JSON schema describing the form fields.",
+            "description": "Reads fillable form fields from interactive PDF forms only. Use this to discover what fields are available in PDFs with form controls. IMPORTANT: This only works with PDFs that have actual form fields - will return empty results for scanned documents or image-based PDFs.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -240,7 +240,7 @@ except Exception as e:
         "type": "function",
         "function": {
             "name": "fill_form",
-            "description": "Fills a PDF form with the provided field values and saves it as a new file.",
+            "description": "Fills interactive PDF forms with fillable fields only. IMPORTANT: Use this ONLY for PDFs with actual form controls. For scanned documents, image-based PDFs, or non-fillable forms, use fill_form_coordinates instead. This will fail if the PDF doesn't have interactive form fields.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -542,8 +542,8 @@ except Exception as e:
     @openapi_schema({
         "type": "function",
         "function": {
-            "name": "smart_fill_form",
-            "description": "Intelligently fill any PDF form - automatically detects if it has fillable fields or needs coordinate-based filling for scanned documents.",
+            "name": "fill_form_coordinates",
+            "description": "Fill scanned PDFs or non-fillable documents using coordinate-based text overlay. Use this for: scanned documents, image-based PDFs, or any PDF without interactive form fields. Places text at specific X,Y positions on the page. IMPORTANT: For interactive PDFs with form fields, use fill_form instead.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -553,7 +553,7 @@ except Exception as e:
                     },
                     "form_data": {
                         "type": "object",
-                        "description": "Data to fill in the form. For text fields use strings, for checkboxes use booleans, for radio buttons/dropdowns use integers."
+                        "description": "Data to fill in the form. Field names should match coordinate template keys."
                     },
                     "output_path": {
                         "type": "string",
@@ -561,7 +561,11 @@ except Exception as e:
                     },
                     "template_name": {
                         "type": "string",
-                        "description": "Optional template name for coordinate-based filling if you have predefined positions."
+                        "description": "Optional template name with predefined coordinates. If not provided, uses default field positions."
+                    },
+                    "custom_coordinates": {
+                        "type": "object",
+                        "description": "Optional custom field coordinates {field_name: {x: int, y: int, fontsize: int, type: 'text'|'checkbox'}}. Overrides template."
                     }
                 },
                 "required": ["file_path", "form_data"]
@@ -569,32 +573,35 @@ except Exception as e:
         }
     })
     @xml_schema(
-        tag_name="smart-fill-form",
+        tag_name="fill-form-coordinates",
         mappings=[
             {"param_name": "file_path", "node_type": "attribute", "path": "."},
             {"param_name": "form_data", "node_type": "element", "path": "form_data"},
             {"param_name": "output_path", "node_type": "attribute", "path": "output_path", "required": False},
-            {"param_name": "template_name", "node_type": "attribute", "path": "template_name", "required": False}
+            {"param_name": "template_name", "node_type": "attribute", "path": "template_name", "required": False},
+            {"param_name": "custom_coordinates", "node_type": "element", "path": "custom_coordinates", "required": False}
         ],
         example='''
         <function_calls>
-        <invoke name="smart_fill_form">
-        <parameter name="file_path">forms/application.pdf</parameter>
+        <invoke name="fill_form_coordinates">
+        <parameter name="file_path">forms/scanned_form.pdf</parameter>
         <parameter name="form_data">{
             "name": "John Doe",
             "date": "01/15/2024",
-            "email": "john@example.com",
-            "agree": true
+            "email": "john@example.com"
+        }</parameter>
+        <parameter name="custom_coordinates">{
+            "name": {"x": 150, "y": 200, "fontsize": 12, "type": "text"},
+            "date": {"x": 400, "y": 200, "fontsize": 10, "type": "text"}
         }</parameter>
         </invoke>
         </function_calls>
         '''
     )
-    async def smart_fill_form(self, file_path: str, form_data: Dict[str, Any], output_path: Optional[str] = None, template_name: Optional[str] = None) -> ToolResult:
-        """Intelligently fill any PDF form - handles both fillable and scanned PDFs automatically."""
+    async def fill_form_coordinates(self, file_path: str, form_data: Dict[str, Any], output_path: Optional[str] = None, template_name: Optional[str] = None, custom_coordinates: Optional[Dict[str, Dict[str, Any]]] = None) -> ToolResult:
+        """Fill a PDF using coordinate-based text overlay (for scanned/non-fillable PDFs)."""
         try:
             await self._ensure_sandbox()
-            await self._ensure_pypdfform_installed()
             await self._ensure_pymupdf_installed()
             
             file_path = self.clean_path(file_path)
@@ -609,11 +616,17 @@ except Exception as e:
                 filled_path = f"{self.workspace_path}/{output_path}"
             else:
                 base_name = os.path.splitext(file_path)[0]
-                filled_path = f"{self.workspace_path}/{base_name}_filled_{uuid.uuid4().hex[:8]}.pdf"
+                filled_path = f"{self.workspace_path}/{base_name}_coordinates_filled_{uuid.uuid4().hex[:8]}.pdf"
                 output_path = filled_path.replace(f"{self.workspace_path}/", "")
             
-            # Load template coordinates if provided
-            template_coords = {}
+            # Build coordinate mapping
+            field_positions = {}
+            
+            # Start with defaults
+            default_positions = self._get_default_field_positions()
+            field_positions.update(default_positions)
+            
+            # Add template coordinates if provided
             if template_name:
                 template_path = f"{self.workspace_path}/form_templates/{template_name}.json"
                 if self._file_exists(template_path):
@@ -621,102 +634,126 @@ except Exception as e:
                         template_content = self.sandbox.fs.get_file_info(template_path)
                         template_data = json.loads(template_content.get('content', '{}'))
                         template_coords = template_data.get('fields', {})
-                    except:
-                        logger.warning(f"Could not load template '{template_name}', using defaults")
+                        field_positions.update(template_coords)
+                    except Exception as e:
+                        logger.warning(f"Could not load template '{template_name}': {e}")
             
-            # Combine default positions with template coords
-            default_positions = self._get_default_field_positions()
-            field_positions = {**default_positions, **template_coords}
+            # Custom coordinates override everything
+            if custom_coordinates:
+                field_positions.update(custom_coordinates)
             
-            # Create smart filling script
+            # Create coordinate filling script
             script_content = f"""
 import pymupdf
 import json
 import os
-from PyPDFForm import PdfWrapper
 
-def has_fillable_fields(pdf_path):
-    '''Check if PDF has fillable form fields'''
-    try:
-        wrapper = PdfWrapper(pdf_path)
-        schema = wrapper.schema
-        field_names = list(schema.get('properties', {{}}).keys()) if schema else []
-        return len(field_names) > 0, field_names
-    except Exception as e:
-        return False, []
-
-def fill_with_coordinates(pdf_path, form_data, field_positions, output_path):
+def fill_pdf_coordinates(pdf_path, form_data, field_positions, output_path):
     '''Fill PDF using coordinate-based text overlay'''
     try:
         doc = pymupdf.open(pdf_path)
         filled_count = 0
         skipped_fields = []
+        placed_positions = []
         
-        # Process first page (extend for multi-page as needed)
-        if len(doc) > 0:
-            page = doc[0]
+        if len(doc) == 0:
+            raise Exception("PDF has no pages")
+        
+        # Process first page (can be extended for multi-page)
+        page = doc[0]
+        page_width = page.rect.width
+        page_height = page.rect.height
+        
+        for field_name, value in form_data.items():
+            if value is None or value == "":
+                continue
+                
+            # Find position for this field
+            position = None
+            field_key = field_name.lower()
             
-            for field_name, value in form_data.items():
-                if value is None or value == "":
-                    continue
+            # Direct match first
+            if field_key in field_positions:
+                position = field_positions[field_key]
+            else:
+                # Fuzzy match - check if any position key is contained in field name or vice versa
+                for pos_key, pos_data in field_positions.items():
+                    if pos_key in field_key or field_key in pos_key:
+                        position = pos_data
+                        break
+            
+            if position:
+                field_type = position.get('type', 'text')
+                x = position.get('x', 100)
+                y = position.get('y', 100)
+                fontsize = position.get('fontsize', 10)
                 
-                # Find matching position
-                position = None
-                field_key = field_name.lower()
-                
-                # Direct match first
-                if field_key in field_positions:
-                    position = field_positions[field_key]
-                else:
-                    # Fuzzy match - check if any position key is contained in field name
-                    for pos_key, pos_data in field_positions.items():
-                        if pos_key in field_key or field_key in pos_key:
-                            position = pos_data
-                            break
-                
-                if position:
-                    field_type = position.get('type', 'text')
-                    x = position.get('x', 100)
-                    y = position.get('y', 100)
-                    fontsize = position.get('fontsize', 10)
+                # Validate and adjust coordinates
+                if x < 0:
+                    x = 10
+                elif x > page_width - 50:
+                    x = page_width - 50
                     
-                    # Ensure coordinates are within page bounds
-                    if x > page.rect.width:
-                        x = page.rect.width - 100
-                    if y > page.rect.height:
-                        y = page.rect.height - 50
-                    
-                    try:
-                        if field_type == 'checkbox' and isinstance(value, bool):
-                            if value:
-                                page.insert_text(
-                                    (x, y),
-                                    "✓",
-                                    fontsize=fontsize,
-                                    color=(0, 0, 0)
-                                )
-                                filled_count += 1
-                        else:
-                            # Text field - limit length to prevent overflow
-                            text_value = str(value)[:50]  # Truncate long values
+                if y < 0:
+                    y = 20
+                elif y > page_height - 20:
+                    y = page_height - 20
+                
+                # Validate font size
+                if fontsize < 6:
+                    fontsize = 6
+                elif fontsize > 24:
+                    fontsize = 24
+                
+                try:
+                    if field_type == 'checkbox' and isinstance(value, bool):
+                        if value:
                             page.insert_text(
                                 (x, y),
-                                text_value,
+                                "✓",
                                 fontsize=fontsize,
                                 color=(0, 0, 0)
                             )
                             filled_count += 1
-                    except Exception as e:
-                        skipped_fields.append(field_name + ": " + str(e))
-                else:
-                    skipped_fields.append(field_name + ": no position found")
+                            placed_positions.append({{
+                                "field": field_name,
+                                "x": x,
+                                "y": y,
+                                "value": "✓",
+                                "type": "checkbox"
+                            }})
+                    else:
+                        # Text field - limit length and handle line breaks
+                        text_value = str(value)
+                        if len(text_value) > 60:  # Truncate very long text
+                            text_value = text_value[:57] + "..."
+                        
+                        page.insert_text(
+                            (x, y),
+                            text_value,
+                            fontsize=fontsize,
+                            color=(0, 0, 0)
+                        )
+                        filled_count += 1
+                        placed_positions.append({{
+                            "field": field_name,
+                            "x": x,
+                            "y": y,
+                            "value": text_value,
+                            "type": "text"
+                        }})
+                        
+                except Exception as e:
+                    skipped_fields.append(f"{{field_name}}: {{str(e)}}")
+            else:
+                skipped_fields.append(f"{{field_name}}: no position found")
         
         # Save the filled PDF
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         doc.save(output_path)
         doc.close()
         
-        return filled_count, skipped_fields
+        return filled_count, skipped_fields, placed_positions
         
     except Exception as e:
         raise Exception(f"Error in coordinate filling: {{str(e)}}")
@@ -728,72 +765,44 @@ field_positions = {json.dumps(field_positions)}
 output_path = '{filled_path}'
 
 try:
-    # First, try to detect if PDF has fillable fields
-    has_fields, field_names = has_fillable_fields(input_path)
+    filled_count, skipped_fields, placed_positions = fill_pdf_coordinates(
+        input_path, form_data, field_positions, output_path
+    )
     
-    if has_fields and len(field_names) > 0:
-        # Use PyPDFForm for fillable PDFs
-        try:
-            wrapper = PdfWrapper(input_path)
-            filled_stream = wrapper.fill(form_data, flatten=False)
-            
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            with open(output_path, 'wb') as f:
-                f.write(filled_stream.read())
-            
-            print(json.dumps({{
-                "success": True,
-                "method": "fillable_form",
-                "message": "Successfully filled using form fields",
-                "output_path": "{output_path}",
-                "fields_available": field_names,
-                "fields_filled": len([k for k, v in form_data.items() if v is not None and v != ""])
-            }}))
-            
-        except Exception as e:
-            # Fallback to coordinate method if fillable form filling fails
-            filled_count, skipped = fill_with_coordinates(input_path, form_data, field_positions, output_path)
-            
-            print(json.dumps({{
-                "success": True,
-                "method": "coordinate_fallback",
-                "message": f"Fillable form failed, used coordinate overlay. Filled {{filled_count}} fields.",
-                "output_path": "{output_path}",
-                "fields_filled": filled_count,
-                "skipped_fields": skipped,
-                "note": f"Original error: {{str(e)}}"
-            }}))
-    else:
-        # Use coordinate-based filling for scanned PDFs
-        filled_count, skipped = fill_with_coordinates(input_path, form_data, field_positions, output_path)
-        
-        print(json.dumps({{
-            "success": True,
-            "method": "coordinate_overlay",
-            "message": f"No form fields detected. Used coordinate-based filling. Filled {{filled_count}} fields.",
-            "output_path": "{output_path}",
-            "fields_filled": filled_count,
-            "skipped_fields": skipped
-        }}))
-        
+    result = {{
+        "success": True,
+        "method": "coordinate_overlay",
+        "message": f"Filled {{filled_count}} fields using coordinate-based overlay",
+        "output_path": "{output_path}",
+        "input_file": "{file_path}",
+        "fields_filled": filled_count,
+        "fields_skipped": len(skipped_fields),
+        "skipped_fields": skipped_fields,
+        "placed_positions": placed_positions,
+        "total_fields_attempted": len(form_data)
+    }}
+    
+    print(json.dumps(result))
+    
 except Exception as e:
-    print(json.dumps({{
+    error_result = {{
         "success": False,
-        "error": f"Error processing PDF: {{str(e)}}"
-    }}))
+        "error": f"Error filling form with coordinates: {{str(e)}}"
+    }}
+    print(json.dumps(error_result))
 """
             
             script = self._create_pdf_script(script_content)
             return await self._execute_pdf_script(script, timeout=60)
             
         except Exception as e:
-            return self.fail_response(f"Error in smart form filling: {str(e)}")
+            return self.fail_response(f"Error in coordinate-based form filling: {str(e)}")
 
     @openapi_schema({
         "type": "function",
         "function": {
             "name": "analyze_form_layout",
-            "description": "Analyze a PDF to extract text with coordinates, helping identify where form fields should be placed.",
+            "description": "Analyze scanned PDFs or non-fillable documents to find field positions for coordinate-based filling. Use this FIRST when working with scanned documents to identify where form fields should be placed. Returns suggested X,Y coordinates for text placement. Essential for fill_form_coordinates workflow.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -1055,7 +1064,7 @@ print(json.dumps(result))
         "type": "function",
         "function": {
             "name": "generate_coordinate_grid",
-            "description": "Generate a PDF with coordinate grid overlay to help identify field positions visually.",
+            "description": "Generate visual coordinate grid overlay on PDFs to help identify exact X,Y positions for field placement. Use this as a visual aid when working with scanned documents to determine precise coordinates for fill_form_coordinates. Helpful for creating custom coordinates.",
             "parameters": {
                 "type": "object",
                 "properties": {
