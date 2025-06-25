@@ -271,8 +271,7 @@ except Exception as e:
                     },
                     "output_path": {
                         "type": "string",
-                        "description": "Optional output path for the filled form. If not provided, will create a file with '_filled' suffix.",
-                        "default": null
+                        "description": "Optional output path for the filled form. If not provided, will create a file with '_filled' suffix."
                     }
                 },
                 "required": ["file_path", "fields"]
@@ -463,8 +462,7 @@ except Exception as e:
                     },
                     "output_path": {
                         "type": "string",
-                        "description": "Optional output path for the flattened PDF. If not provided, will create a file with '_flattened' suffix.",
-                        "default": null
+                        "description": "Optional output path for the flattened PDF. If not provided, will create a file with '_flattened' suffix."
                     }
                 },
                 "required": ["file_path"]
@@ -562,13 +560,11 @@ except Exception as e:
                     },
                     "output_path": {
                         "type": "string",
-                        "description": "Optional output path for the filled form. If not provided, will create a file with '_filled' suffix.",
-                        "default": null
+                        "description": "Optional output path for the filled form. If not provided, will create a file with '_filled' suffix."
                     },
                     "template_name": {
                         "type": "string",
-                        "description": "Optional template name for coordinate-based filling if you have predefined positions.",
-                        "default": null
+                        "description": "Optional template name for coordinate-based filling if you have predefined positions."
                     }
                 },
                 "required": ["file_path", "form_data"]
@@ -1074,8 +1070,7 @@ print(json.dumps({{
                     },
                     "output_path": {
                         "type": "string",
-                        "description": "Optional output path. If not provided, will add '_grid' suffix.",
-                        "default": null
+                        "description": "Optional output path. If not provided, will add '_grid' suffix."
                     }
                 },
                 "required": ["file_path"]
