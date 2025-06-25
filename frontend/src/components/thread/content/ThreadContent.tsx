@@ -335,17 +335,15 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
         
         const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
         const isNearBottom = scrollHeight - scrollTop - clientHeight <= 150; // Increased threshold
-        const hasScrolledUp = scrollHeight - scrollTop - clientHeight > 100;
+        const hasScrolledUp = scrollHeight - scrollTop - clientHeight > 50; // More sensitive threshold
         
         setIsAtBottom(isNearBottom);
         setShowScrollButton(hasScrolledUp);
         
-        // Only set userHasScrolled if this wasn't an auto-scroll
-        if (!autoScrollingRef.current) {
-            setUserHasScrolled(hasScrolledUp);
-            // Notify parent of scroll state changes
-            onScrollStateChange?.(hasScrolledUp, isNearBottom);
-        }
+        // Always respect user scroll actions, even during auto-scroll
+        setUserHasScrolled(hasScrolledUp);
+        // Notify parent of scroll state changes
+        onScrollStateChange?.(hasScrolledUp, isNearBottom);
     }, [onScrollStateChange]);
 
     const handleScroll = useCallback(() => {
@@ -362,17 +360,18 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
         const scrollDelta = currentScrollTop - lastScrollTopRef.current;
         lastScrollTopRef.current = currentScrollTop;
 
-        // If scrolling up (negative delta) and not auto-scrolling, definitely user action
-        if (scrollDelta < 0 && !autoScrollingRef.current) {
+        // If scrolling up (negative delta), immediately mark as user action
+        if (scrollDelta < 0) {
             setUserHasScrolled(true);
+            autoScrollingRef.current = false; // Stop any pending auto-scroll
         }
 
         checkScrollPosition();
 
-        // Reset auto-scroll flag after a delay
+        // Reset auto-scroll flag after a shorter delay
         scrollTimeoutRef.current = setTimeout(() => {
             autoScrollingRef.current = false;
-        }, 300);
+        }, 150);
     }, [checkScrollPosition]);
 
     const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
@@ -417,12 +416,16 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
         }
     }, [displayMessages.length, autoScrollToBottomIfNeeded]);
 
-    // Auto-scroll when streaming content arrives - let autoScrollToBottomIfNeeded handle this
+    // Auto-scroll when streaming content arrives - but only if user hasn't manually scrolled up
     React.useEffect(() => {
-        if (streamingTextContent) {
-            autoScrollToBottomIfNeeded();
+        if (streamingTextContent && !userHasScrolled) {
+            // Use a timeout to reduce frequency of auto-scroll during streaming
+            const timeoutId = setTimeout(() => {
+                autoScrollToBottomIfNeeded();
+            }, 100);
+            return () => clearTimeout(timeoutId);
         }
-    }, [streamingTextContent, autoScrollToBottomIfNeeded]);
+    }, [streamingTextContent, userHasScrolled, autoScrollToBottomIfNeeded]);
 
     // Clean up timeout on unmount
     React.useEffect(() => {
