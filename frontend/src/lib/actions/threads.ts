@@ -15,7 +15,7 @@ export const generateThreadName = async (message: string): Promise<string> => {
       console.error('OpenAI API key not found');
       return defaultName;
     }
-const baseUrl = process.env.OPENROUTER_API_BASE || '';
+    const baseUrl = process.env.OPENROUTER_API_BASE || '';
     const path = '/chat/completions';
 
     const fullUrl = baseUrl.endsWith('/')
