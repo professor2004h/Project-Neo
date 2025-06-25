@@ -1022,7 +1022,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         }
                     })()
                 }`}>
-                    <AnimatePresence>
+                    <AnimatePresence mode="wait">
                         {!readOnly && (agentStatus === 'running' || agentStatus === 'connecting') && (
                             <motion.div
                                 key="working"
@@ -1046,7 +1046,10 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 className="relative"
                             >
                                 {/* Floating spinner positioned above the text container */}
-                                <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-3/5 z-10">
+                                <div 
+                                    className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-3/5 z-10 cursor-pointer"
+                                    onClick={() => scrollToBottom('smooth')}
+                                >
                                     <ThreeSpinner size={64} color="currentColor" />
                                 </div>
                                 
