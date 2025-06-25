@@ -313,7 +313,7 @@ try:
     
     # Fill the form with provided fields
     fields_to_fill = {json.dumps(fields)}
-            filled_pdf_stream = wrapper.fill(fields_to_fill, flatten=False)
+    filled_pdf_stream = wrapper.fill(fields_to_fill, flatten=False)
     
     # Ensure parent directory exists
     os.makedirs(os.path.dirname('{filled_path}'), exist_ok=True)
