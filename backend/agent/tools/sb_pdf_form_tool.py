@@ -511,20 +511,20 @@ try:
         
         # Fill the form with current values and flatten it
         flattened_stream = wrapper.fill(current_values, flatten=True)
-    
-    # Ensure parent directory exists
-    os.makedirs(os.path.dirname('{flattened_path}'), exist_ok=True)
-    
-    # Save the flattened form
-    with open('{flattened_path}', 'wb') as output_file:
-        output_file.write(flattened_stream.read())
-    
-    print(json.dumps({{
-        "success": True,
-        "message": "Successfully flattened PDF form and saved to '{output_path}'",
-        "input_file": "{file_path}",
-        "output_file": "{output_path}"
-    }}))
+        
+        # Ensure parent directory exists
+        os.makedirs(os.path.dirname('{flattened_path}'), exist_ok=True)
+        
+        # Save the flattened form
+        with open('{flattened_path}', 'wb') as output_file:
+            output_file.write(flattened_stream.read())
+        
+        print(json.dumps({{
+            "success": True,
+            "message": "Successfully flattened PDF form and saved to '{output_path}'",
+            "input_file": "{file_path}",
+            "output_file": "{output_path}"
+        }}))
     
 except Exception as e:
     print(json.dumps({{

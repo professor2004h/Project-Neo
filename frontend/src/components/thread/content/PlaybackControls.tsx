@@ -428,6 +428,7 @@ export const PlaybackControls = ({
                     size={16} 
                     color="currentColor"
                     className="flex-shrink-0"
+                    variant="simple"
                   />
                 </Link>
               </div>

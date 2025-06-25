@@ -7,12 +7,14 @@ interface ThreeSpinnerProps {
   size?: number;
   color?: string;
   className?: string;
+  variant?: 'default' | 'simple';
 }
 
 export function ThreeSpinner({ 
   size = 64, 
   color = 'currentColor',
-  className = '' 
+  className = '',
+  variant = 'default'
 }: ThreeSpinnerProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -37,9 +39,21 @@ export function ThreeSpinner({
     
     mountRef.current.appendChild(renderer.domElement);
 
-    // Create wireframe geometry - icosphere with fewer subdivisions for more pronounced spokes
-    const geometry = new THREE.IcosahedronGeometry(1, 0); // Reduced subdivision from 1 to 0
+    // Create wireframe geometry based on variant
+    let geometry, middleGeometry, innerGeometry;
     
+    if (variant === 'simple') {
+      // Simple, more rounded variant with fewer spokes
+      geometry = new THREE.SphereGeometry(1, 8, 6); // Sphere with minimal subdivisions for clean spokes
+      middleGeometry = new THREE.SphereGeometry(0.7, 6, 4); // Smaller inner sphere
+      innerGeometry = null; // No inner geometry for cleaner look
+    } else {
+      // Complex variant (default)
+      geometry = new THREE.IcosahedronGeometry(1, 0);
+      middleGeometry = new THREE.DodecahedronGeometry(0.8, 0);
+      innerGeometry = new THREE.TetrahedronGeometry(0.5, 0);
+    }
+
     // Parse color - black in light mode, muted in dark mode
     let threeColor = new THREE.Color(0x000000); // black fallback for light mode
     if (color === 'currentColor') {
@@ -76,26 +90,27 @@ export function ThreeSpinner({
     scene.add(wireframe);
 
     // Add middle layer for more spokes - dodecahedron for different angles
-    const middleGeometry = new THREE.DodecahedronGeometry(0.8, 0);
     const middleMaterial = new THREE.MeshBasicMaterial({
       color: threeColor,
       wireframe: true,
       transparent: true,
-      opacity: 0.6
+      opacity: variant === 'simple' ? 0.4 : 0.6 // Lower opacity for simple variant
     });
     const middleWireframe = new THREE.Mesh(middleGeometry, middleMaterial);
     scene.add(middleWireframe);
 
-    // Add some inner structure for more interesting visual - simplified
-    const innerGeometry = new THREE.TetrahedronGeometry(0.5, 0); // Changed to tetrahedron for cleaner look
-    const innerMaterial = new THREE.MeshBasicMaterial({
-      color: threeColor,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.4 // Reduced opacity for more subtle inner structure
-    });
-    const innerWireframe = new THREE.Mesh(innerGeometry, innerMaterial);
-    scene.add(innerWireframe);
+    // Add inner structure only for default variant
+    let innerWireframe = null;
+    if (innerGeometry) {
+      const innerMaterial = new THREE.MeshBasicMaterial({
+        color: threeColor,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.4
+      });
+      innerWireframe = new THREE.Mesh(innerGeometry, innerMaterial);
+      scene.add(innerWireframe);
+    }
 
     // Position camera
     camera.position.z = 2.5;
@@ -153,11 +168,13 @@ export function ThreeSpinner({
       middleWireframe.rotation.y += currentSpeed * 0.9;
       middleWireframe.rotation.z += currentSpeed * 0.5;
       
-      // Counter-rotate inner structure with different physics for visual depth
-      const innerSpeed = currentSpeed * 0.6; // Slower than outer
-      innerWireframe.rotation.x -= innerSpeed * 0.7;
-      innerWireframe.rotation.y += innerSpeed * 1.2;
-      innerWireframe.rotation.z -= innerSpeed * 0.4;
+      // Counter-rotate inner structure with different physics for visual depth (only if exists)
+      if (innerWireframe) {
+        const innerSpeed = currentSpeed * 0.6; // Slower than outer
+        innerWireframe.rotation.x -= innerSpeed * 0.7;
+        innerWireframe.rotation.y += innerSpeed * 1.2;
+        innerWireframe.rotation.z -= innerSpeed * 0.4;
+      }
 
       renderer.render(scene, camera);
       frameRef.current = requestAnimationFrame(animate);
@@ -193,7 +210,7 @@ export function ThreeSpinner({
         mountRef.current.removeChild(renderer.domElement);
       }
     };
-  }, [size, color]);
+  }, [size, color, variant]);
 
   return (
     <div 
