@@ -8,3 +8,5 @@ pypandoc==1.14
 pandoc==2.4
 openpyxl==3.1.5
 pandas==2.2.3
+PyPDFForm==1.4.36
+PyMuPDF==1.24.4
