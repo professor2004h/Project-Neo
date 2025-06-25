@@ -380,12 +380,12 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
             autoScrollingRef.current = true;
             messagesEndRef.current.scrollIntoView({ behavior });
             
-            // Reset user scroll state when manually scrolling to bottom
+            // Only reset position state, but let user scroll state be handled by scroll detection
             if (behavior === 'smooth') {
                 setTimeout(() => {
-                    setUserHasScrolled(false);
                     setIsAtBottom(true);
                     autoScrollingRef.current = false;
+                    // Don't automatically reset userHasScrolled - let natural scroll detection handle it
                 }, 500);
             }
         }
@@ -417,12 +417,12 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
         }
     }, [displayMessages.length, autoScrollToBottomIfNeeded]);
 
-    // Auto-scroll when streaming content arrives (only if user is at bottom)
+    // Auto-scroll when streaming content arrives - let autoScrollToBottomIfNeeded handle this
     React.useEffect(() => {
-        if (streamingTextContent && isAtBottom && !userHasScrolled) {
-            scrollToBottom('smooth');
+        if (streamingTextContent) {
+            autoScrollToBottomIfNeeded();
         }
-    }, [streamingTextContent, isAtBottom, userHasScrolled, scrollToBottom]);
+    }, [streamingTextContent, autoScrollToBottomIfNeeded]);
 
     // Clean up timeout on unmount
     React.useEffect(() => {
