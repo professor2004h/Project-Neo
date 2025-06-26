@@ -52,9 +52,12 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
   const isEditMode = !!existingConfig;
   
   // Debug logging for troubleshooting
-  if (isEditMode) {
-    console.log('Edit mode - existingConfig:', existingConfig);
-  }
+  console.log('CustomMCPDialog - Props received:', {
+    open,
+    isEditMode,
+    existingConfig: existingConfig ? 'Has data' : 'undefined',
+    existingConfigDetails: existingConfig
+  });
   const [step, setStep] = useState<'setup' | 'tools'>('setup');
   const [serverType, setServerType] = useState<'http' | 'sse'>('sse');
   const [configText, setConfigText] = useState('');
@@ -69,8 +72,16 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
 
   // Effect to populate all form fields when existingConfig changes
   useEffect(() => {
-    if (isEditMode && existingConfig) {
-      console.log('Populating edit form with:', {
+    console.log('useEffect triggered - conditions:', {
+      open,
+      isEditMode,
+      hasExistingConfig: !!existingConfig,
+      existingConfigName: existingConfig?.name,
+      existingConfigUrl: existingConfig?.config?.url
+    });
+    
+    if (open && isEditMode && existingConfig) {
+      console.log('✅ Populating edit form with:', {
         name: existingConfig.name,
         url: existingConfig.config?.url,
         headers: existingConfig.config?.headers,
@@ -85,6 +96,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
       // Handle config URL
       if (existingConfig.config) {
         const url = existingConfig.config.url || existingConfig.config.command || existingConfig.config.endpoint || '';
+        console.log('Setting URL field to:', url);
         setConfigText(url);
       }
       
@@ -94,6 +106,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
           key, 
           value: String(value) 
         }));
+        console.log('Setting headers to:', headerPairs);
         setHeaders(headerPairs);
       } else {
         setHeaders([{ key: '', value: '' }]);
@@ -109,8 +122,9 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
         setDiscoveredTools(mockTools);
         setSelectedTools(new Set(existingConfig.enabledTools));
       }
-    } else {
-      // Reset form when not in edit mode
+    } else if (!open || !isEditMode) {
+      // Reset form when dialog closes or not in edit mode
+      console.log('🔄 Resetting form fields');
       setServerType('sse');
       setConfigText('');
       setServerName('');
@@ -119,7 +133,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
       setDiscoveredTools([]);
       setSelectedTools(new Set());
     }
-  }, [isEditMode, existingConfig, open]);
+  }, [open, isEditMode, existingConfig]);
 
   const addHeader = () => {
     setHeaders([...headers, { key: '', value: '' }]);
