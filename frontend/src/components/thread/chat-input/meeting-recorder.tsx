@@ -10,12 +10,16 @@ import {
 } from '@/components/ui/tooltip';
 import { UploadedFile } from './chat-input';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
-import { handleLocalFiles } from './file-upload-handler';
+import { handleFiles } from './file-upload-handler';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface MeetingRecorderProps {
   onFileAttached: (file: UploadedFile) => void;
   setPendingFiles: React.Dispatch<React.SetStateAction<File[]>>;
   setUploadedFiles: React.Dispatch<React.SetStateAction<UploadedFile[]>>;
+  setIsUploading: React.Dispatch<React.SetStateAction<boolean>>;
+  sandboxId?: string;
+  messages?: any[];
   disabled?: boolean;
 }
 
@@ -25,8 +29,12 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   onFileAttached,
   setPendingFiles,
   setUploadedFiles,
+  setIsUploading,
+  sandboxId,
+  messages = [],
   disabled = false,
 }) => {
+  const queryClient = useQueryClient();
   const [state, setState] = useState<'idle' | 'recording' | 'paused' | 'stopped'>('idle');
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -216,14 +224,22 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     }
   };
 
-  const acceptRecording = () => {
+  const acceptRecording = async () => {
     if (audioBlob) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const filename = normalizeFilenameToNFC(`meeting-recording-${timestamp}.webm`);
       const file = new File([audioBlob], filename, { type: 'audio/webm' });
       
-      // Use the same pattern as regular file uploads to ensure consistency
-      handleLocalFiles([file], setPendingFiles, setUploadedFiles);
+      // Use the same upload logic as normal file attachments
+      await handleFiles(
+        [file],
+        sandboxId,
+        setPendingFiles,
+        setUploadedFiles,
+        setIsUploading,
+        messages,
+        queryClient,
+      );
       
       resetRecording();
     }

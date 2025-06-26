@@ -149,10 +149,10 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
           message = message ? `${message}\n\n${transcriptionRequest}\n${fileInfo}` : `${transcriptionRequest}\n${fileInfo}`;
         } else {
           // Normal file attachment
-          const fileInfo = uploadedFiles
-            .map((file) => `[Uploaded File: ${file.path}]`)
-            .join('\n');
-          message = message ? `${message}\n\n${fileInfo}` : fileInfo;
+        const fileInfo = uploadedFiles
+          .map((file) => `[Uploaded File: ${file.path}]`)
+          .join('\n');
+        message = message ? `${message}\n\n${fileInfo}` : fileInfo;
         }
       }
 
