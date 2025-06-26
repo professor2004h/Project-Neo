@@ -37,8 +37,8 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   const recordingStartTimeRef = useRef<number | null>(null);
   const pausedDurationRef = useRef<number>(0);
   const pauseStartTimeRef = useRef<number | null>(null);
-  const timerIntervalRef = useRef<number | null>(null);
-  const maxTimeoutRef = useRef<number | null>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const maxTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Update recording time
   useEffect(() => {
