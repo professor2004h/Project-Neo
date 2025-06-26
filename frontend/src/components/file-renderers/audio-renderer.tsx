@@ -71,6 +71,7 @@ export function AudioRenderer({
           <source src={url} type={`audio/${fileExtension === 'webm' ? 'webm' : fileExtension}`} />
           <source src={url} type="audio/mpeg" />
           <source src={url} type="audio/wav" />
+          <source src={url} type="audio/ogg" />
           Your browser does not support the audio element.
         </audio>
       </div>
