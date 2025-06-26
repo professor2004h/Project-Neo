@@ -28,9 +28,14 @@ export const MCPConfigurationNew: React.FC<MCPConfigurationProps> = ({
     const mcp = configuredMCPs[index];
     // Check if it's a custom MCP
     if (mcp.isCustom) {
+      console.log('Setting up edit for custom MCP:', mcp);
       setEditingCustomMCP(mcp);
       setEditingIndex(index);
-      setShowCustomDialog(true);
+      // Use setTimeout to ensure state updates have completed before opening dialog
+      setTimeout(() => {
+        console.log('Opening custom dialog with edited MCP:', mcp);
+        setShowCustomDialog(true);
+      }, 0);
       return;
     }
     setConfiguringServer({
@@ -187,12 +192,15 @@ export const MCPConfigurationNew: React.FC<MCPConfigurationProps> = ({
           }
         }}
         onSave={handleSaveCustomMCP}
-        existingConfig={editingCustomMCP ? {
-          name: editingCustomMCP.name,
-          customType: editingCustomMCP.customType || (editingCustomMCP.qualifiedName?.includes('_sse_') ? 'sse' : 'http'),
-          config: editingCustomMCP.config,
-          enabledTools: editingCustomMCP.enabledTools || []
-        } : undefined}
+        existingConfig={editingCustomMCP ? (() => {
+          console.log('Passing existingConfig to dialog:', editingCustomMCP);
+          return {
+            name: editingCustomMCP.name,
+            customType: editingCustomMCP.customType || (editingCustomMCP.qualifiedName?.includes('_sse_') ? 'sse' : 'http'),
+            config: editingCustomMCP.config,
+            enabledTools: editingCustomMCP.enabledTools || []
+          };
+        })() : undefined}
       />
       {configuringServer && (
         <Dialog open={!!configuringServer} onOpenChange={() => setConfiguringServer(null)}>
