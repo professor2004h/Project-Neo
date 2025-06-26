@@ -10,10 +10,12 @@ import {
 } from '@/components/ui/tooltip';
 import { UploadedFile } from './chat-input';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
+import { handleLocalFiles } from './file-upload-handler';
 
 interface MeetingRecorderProps {
   onFileAttached: (file: UploadedFile) => void;
   setPendingFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  setUploadedFiles: React.Dispatch<React.SetStateAction<UploadedFile[]>>;
   disabled?: boolean;
 }
 
@@ -22,6 +24,7 @@ const MAX_RECORDING_TIME = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   onFileAttached,
   setPendingFiles,
+  setUploadedFiles,
   disabled = false,
 }) => {
   const [state, setState] = useState<'idle' | 'recording' | 'paused' | 'stopped'>('idle');
@@ -219,23 +222,9 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       const filename = normalizeFilenameToNFC(`meeting-recording-${timestamp}.webm`);
       const file = new File([audioBlob], filename, { type: 'audio/webm' });
       
-      // Add to pending files
-      setPendingFiles(prev => [...prev, file]);
+      // Use the same pattern as regular file uploads to ensure consistency
+      handleLocalFiles([file], setPendingFiles, setUploadedFiles);
       
-      // Create uploaded file object with metadata
-      const uploadedFile: UploadedFile = {
-        name: filename,
-        path: `/workspace/${filename}`,
-        size: file.size,
-        type: file.type,
-        localUrl: URL.createObjectURL(file),
-        metadata: {
-          isMeetingRecording: true,
-          duration: formatTime(recordingTime)
-        }
-      };
-      
-      onFileAttached(uploadedFile);
       resetRecording();
     }
   };

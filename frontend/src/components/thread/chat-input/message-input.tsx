@@ -155,6 +155,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
             <MeetingRecorder
               onFileAttached={(file) => setUploadedFiles(prev => [...prev, file])}
               setPendingFiles={setPendingFiles}
+              setUploadedFiles={setUploadedFiles}
               disabled={loading || (disabled && !isAgentRunning)}
             />
           </div>
