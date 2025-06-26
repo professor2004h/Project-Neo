@@ -124,7 +124,7 @@ export function HeroSection() {
     try {
       const formData = new FormData();
       formData.append('prompt', inputValue.trim());
-      formData.append('model_name', 'Omni Agent 03'); 
+      formData.append('model_name', 'Omni 03'); 
       formData.append('enable_thinking', 'false');
       formData.append('reasoning_effort', 'low');
       formData.append('stream', 'true');
