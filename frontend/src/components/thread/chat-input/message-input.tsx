@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { UploadedFile } from './chat-input';
 import { FileUploadHandler } from './file-upload-handler';
 import { VoiceRecorder } from './voice-recorder';
+import { MeetingRecorder } from './meeting-recorder';
 import { ModelSelector } from './model-selector';
 import { SubscriptionStatus } from './_use-model-selection';
 import { isLocalMode } from '@/lib/config';
@@ -149,6 +150,11 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
             )}
             <VoiceRecorder
               onTranscription={onTranscription}
+              disabled={loading || (disabled && !isAgentRunning)}
+            />
+            <MeetingRecorder
+              onFileAttached={(file) => setUploadedFiles(prev => [...prev, file])}
+              setPendingFiles={setPendingFiles}
               disabled={loading || (disabled && !isAgentRunning)}
             />
           </div>
