@@ -116,7 +116,21 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       const combinedStream = await getCombinedAudioStream();
       streamRef.current = combinedStream;
 
-      const options = { mimeType: 'audio/webm' };
+      // Try different MIME types for better seeking support
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=vorbis')) {
+        mimeType = 'audio/webm;codecs=vorbis';
+      }
+
+      const options = { 
+        mimeType,
+        audioBitsPerSecond: 48000, // Sufficient quality for speech transcription
+      };
+      
+      console.log(`[MEETING RECORDER] Using MIME type: ${mimeType}`);
+      
       const mediaRecorder = new MediaRecorder(combinedStream, options);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
@@ -129,13 +143,19 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
       mediaRecorder.onstop = () => {
         if (chunksRef.current.length > 0) {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+          // Create blob with explicit MIME type for better compatibility
+          const blob = new Blob(chunksRef.current, { 
+            type: mimeType 
+          });
+          console.log(`[MEETING RECORDER] Created blob: ${blob.size} bytes, type: ${blob.type}`);
           setAudioBlob(blob);
         }
         cleanupStream();
       };
 
-      mediaRecorder.start(1000); // Collect data every second
+      // Use larger time slices for better file structure - collect data every 5 seconds
+      // This creates fewer fragments and better seeking information
+      mediaRecorder.start(5000);
       recordingStartTimeRef.current = Date.now();
       pausedDurationRef.current = 0;
       setState('recording');

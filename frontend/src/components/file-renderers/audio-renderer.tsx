@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { FileAudio, Download, Loader } from 'lucide-react';
+import { FileAudio, Download, Loader, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface AudioRendererProps {
@@ -21,6 +21,81 @@ export function AudioRenderer({
   isDownloading = false,
 }: AudioRendererProps) {
   const fileExtension = fileName.split('.').pop()?.toLowerCase() || '';
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const [audioLoaded, setAudioLoaded] = useState(false);
+  
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleLoadedMetadata = () => {
+      setAudioLoaded(true);
+      setAudioError(null);
+      console.log(`[AUDIO RENDERER] Metadata loaded for ${fileName}`);
+    };
+
+    const handleError = (e: Event) => {
+      const error = (e.target as HTMLAudioElement).error;
+      let errorMessage = 'Audio playback error';
+      
+      if (error) {
+        switch (error.code) {
+          case error.MEDIA_ERR_ABORTED:
+            errorMessage = 'Audio loading was aborted';
+            break;
+          case error.MEDIA_ERR_NETWORK:
+            errorMessage = 'Network error occurred';
+            break;
+          case error.MEDIA_ERR_DECODE:
+            errorMessage = 'Audio decoding error - file may be corrupted';
+            break;
+          case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            errorMessage = 'Audio format not supported';
+            break;
+          default:
+            errorMessage = 'Unknown audio error';
+        }
+      }
+      
+      setAudioError(errorMessage);
+      setAudioLoaded(false);
+      console.error(`[AUDIO RENDERER] Error loading audio: ${errorMessage}`, error);
+    };
+
+    const handleLoadStart = () => {
+      console.log(`[AUDIO RENDERER] Starting to load audio: ${fileName}`);
+    };
+
+    const handleCanPlay = () => {
+      console.log(`[AUDIO RENDERER] Audio can start playing: ${fileName}`);
+    };
+
+    const handleDurationChange = () => {
+      const duration = audio.duration;
+      if (isFinite(duration)) {
+        console.log(`[AUDIO RENDERER] Duration available: ${duration}s for ${fileName}`);
+      } else {
+        console.warn(`[AUDIO RENDERER] Duration not available for ${fileName} - timeline may not work`);
+      }
+    };
+
+    // Add event listeners
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('error', handleError);
+    audio.addEventListener('loadstart', handleLoadStart);
+    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('durationchange', handleDurationChange);
+
+    // Cleanup
+    return () => {
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('error', handleError);
+      audio.removeEventListener('loadstart', handleLoadStart);
+      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('durationchange', handleDurationChange);
+    };
+  }, [fileName, url]);
   
   // Handle download - use external handler if provided, fallback to direct URL
   const handleDownload = () => {
@@ -61,8 +136,9 @@ export function AudioRenderer({
       </div>
 
       {/* Audio player */}
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-3">
         <audio
+          ref={audioRef}
           controls
           className="w-full"
           preload="metadata"
@@ -74,6 +150,21 @@ export function AudioRenderer({
           <source src={url} type="audio/ogg" />
           Your browser does not support the audio element.
         </audio>
+        
+        {/* Error message or info about WebM limitations */}
+        {audioError && (
+          <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{audioError}</span>
+          </div>
+        )}
+        
+        {fileExtension === 'webm' && audioLoaded && (
+          <div className="text-xs text-muted-foreground text-center">
+            <p>Note: WebM recordings may have limited timeline functionality due to how they're created.</p>
+            <p>Audio playback should work normally.</p>
+          </div>
+        )}
       </div>
 
       {/* Download button */}
