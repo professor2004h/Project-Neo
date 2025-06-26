@@ -28,6 +28,8 @@ export const MCPConfigurationNew: React.FC<MCPConfigurationProps> = ({
     const mcp = configuredMCPs[index];
     // Check if it's a custom MCP
     if (mcp.isCustom) {
+      console.log('Editing custom MCP:', mcp);
+      console.log('MCP config structure:', mcp.config);
       setEditingCustomMCP(mcp);
       setEditingIndex(index);
       setShowCustomDialog(true);

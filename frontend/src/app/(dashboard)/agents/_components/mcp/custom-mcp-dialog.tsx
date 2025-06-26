@@ -52,10 +52,19 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
   const isEditMode = !!existingConfig;
   const [step, setStep] = useState<'setup' | 'tools'>('setup');
   const [serverType, setServerType] = useState<'http' | 'sse'>(existingConfig?.customType || 'sse');
-  const [configText, setConfigText] = useState(existingConfig?.config?.url || '');
+  const [configText, setConfigText] = useState(() => {
+    console.log('Initializing configText with existingConfig:', existingConfig);
+    // Handle different possible config structures
+    if (existingConfig?.config) {
+      console.log('Config object:', existingConfig.config);
+      return existingConfig.config.url || existingConfig.config.command || existingConfig.config.endpoint || '';
+    }
+    return '';
+  });
   const [serverName, setServerName] = useState(existingConfig?.name || '');
   const [manualServerName, setManualServerName] = useState(existingConfig?.name || '');
   const [headers, setHeaders] = useState<HeaderPair[]>(() => {
+    console.log('Initializing headers with existingConfig:', existingConfig?.config?.headers);
     if (existingConfig?.config?.headers && Object.keys(existingConfig.config.headers).length > 0) {
       return Object.entries(existingConfig.config.headers).map(([key, value]) => ({ key, value: String(value) }));
     }
