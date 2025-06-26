@@ -83,7 +83,7 @@ class AudioTranscriptionTool(SandboxToolsBase):
         """
         try:
             # Get sandbox and ensure file exists
-            sandbox = await self.get_sandbox()
+            sandbox = await self._ensure_sandbox()
             full_path = os.path.join(self.workspace_path, file_path.lstrip('/'))
             
             # Check if file exists

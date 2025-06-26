@@ -405,7 +405,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={stopRecording}
-                  className="h-8 w-8 p-0 text-red-500 hover:text-red-600 animate-bounce"
+                  className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:scale-110 transition-transform"
                 >
                   <Square className="h-4 w-4 fill-current" />
                 </Button>
