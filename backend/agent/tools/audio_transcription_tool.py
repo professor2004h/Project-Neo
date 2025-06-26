@@ -24,6 +24,14 @@ class AudioTranscriptionTool(SandboxToolsBase):
         self.max_file_size = 20 * 1024 * 1024  # 20MB to be safe (OpenAI limit is 25MB)
         self.chunk_duration = 10 * 60 * 1000  # 10 minutes in milliseconds
 
+    def _file_exists(self, path: str) -> bool:
+        """Check if a file exists in the sandbox"""
+        try:
+            self.sandbox.fs.get_file_info(path)
+            return True
+        except Exception:
+            return False
+
     @openapi_schema({
         "type": "function",
         "function": {
@@ -82,14 +90,15 @@ class AudioTranscriptionTool(SandboxToolsBase):
             ToolResult with the transcribed text or error
         """
         try:
-            # Get sandbox and ensure file exists
-            sandbox = await self._ensure_sandbox()
-            full_path = os.path.join(self.workspace_path, file_path.lstrip('/'))
+            # Ensure sandbox is initialized
+            await self._ensure_sandbox()
             
-            # Check if file exists
-            try:
-                await sandbox.read_file(full_path)
-            except Exception:
+            # Clean and validate the file path
+            file_path = self.clean_path(file_path)
+            full_path = f"{self.workspace_path}/{file_path}"
+            
+            # Check if file exists using the sandbox filesystem
+            if not self._file_exists(full_path):
                 return self.fail_response(f"File not found: {file_path}")
             
             # Download the file to a temporary location
@@ -97,8 +106,8 @@ class AudioTranscriptionTool(SandboxToolsBase):
                 temp_path = temp_file.name
                 
             try:
-                # Read file content from sandbox
-                content = await sandbox.read_file(full_path, encoding=None)  # Read as bytes
+                # Read file content from sandbox using proper method
+                content = self.sandbox.fs.download_file(full_path)
                 with open(temp_path, 'wb') as f:
                     f.write(content)
                 
@@ -116,8 +125,8 @@ class AudioTranscriptionTool(SandboxToolsBase):
                 
                 # Save transcript to a text file
                 transcript_path = file_path.rsplit('.', 1)[0] + '_transcript.txt'
-                full_transcript_path = os.path.join(self.workspace_path, transcript_path.lstrip('/'))
-                await sandbox.write_file(full_transcript_path, transcript)
+                full_transcript_path = f"{self.workspace_path}/{transcript_path}"
+                self.sandbox.fs.upload_file(transcript.encode(), full_transcript_path)
                 
                 return self.success_response({
                     "transcript": transcript,
