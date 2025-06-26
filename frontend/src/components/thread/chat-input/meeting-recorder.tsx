@@ -117,7 +117,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       };
 
       mediaRecorder.onstop = () => {
-        if (chunksRef.current.length > 0 && state === 'stopped') {
+        if (chunksRef.current.length > 0) {
           const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
           setAudioBlob(blob);
         }
@@ -300,7 +300,12 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   const getMainButtonIcon = () => {
     switch (state) {
       case 'idle':
-        return <Circle className="h-4 w-4 fill-current" />;
+        return (
+          <div className="relative h-4 w-4 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full border-2 border-current" />
+            <div className="h-2 w-2 rounded-full bg-red-500" />
+          </div>
+        );
       case 'recording':
         return <Pause className="h-4 w-4" />;
       case 'paused':
@@ -313,11 +318,11 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   const getMainButtonClass = () => {
     switch (state) {
       case 'recording':
-        return 'text-red-500 hover:text-red-600 animate-pulse';
+        return 'text-yellow-500 hover:text-yellow-600 animate-pulse';
       case 'paused':
         return 'text-orange-500 hover:text-orange-600';
       default:
-        return 'text-muted-foreground hover:text-foreground';
+        return 'text-neutral-700 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100';
     }
   };
 
@@ -400,9 +405,9 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={stopRecording}
-                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                  className="h-8 w-8 p-0 text-red-500 hover:text-red-600 animate-bounce"
                 >
-                  <Square className="h-4 w-4" />
+                  <Square className="h-4 w-4 fill-current" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Stop recording</TooltipContent>
