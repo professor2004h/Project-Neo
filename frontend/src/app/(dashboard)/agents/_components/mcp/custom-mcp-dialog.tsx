@@ -50,44 +50,76 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
   existingConfig
 }) => {
   const isEditMode = !!existingConfig;
+  
+  // Debug logging for troubleshooting
+  if (isEditMode) {
+    console.log('Edit mode - existingConfig:', existingConfig);
+  }
   const [step, setStep] = useState<'setup' | 'tools'>('setup');
-  const [serverType, setServerType] = useState<'http' | 'sse'>(existingConfig?.customType || 'sse');
-  const [configText, setConfigText] = useState(() => {
-    console.log('Initializing configText with existingConfig:', existingConfig);
-    // Handle different possible config structures
-    if (existingConfig?.config) {
-      console.log('Config object:', existingConfig.config);
-      return existingConfig.config.url || existingConfig.config.command || existingConfig.config.endpoint || '';
-    }
-    return '';
-  });
-  const [serverName, setServerName] = useState(existingConfig?.name || '');
-  const [manualServerName, setManualServerName] = useState(existingConfig?.name || '');
-  const [headers, setHeaders] = useState<HeaderPair[]>(() => {
-    console.log('Initializing headers with existingConfig:', existingConfig?.config?.headers);
-    if (existingConfig?.config?.headers && Object.keys(existingConfig.config.headers).length > 0) {
-      return Object.entries(existingConfig.config.headers).map(([key, value]) => ({ key, value: String(value) }));
-    }
-    return [{ key: '', value: '' }];
-  });
+  const [serverType, setServerType] = useState<'http' | 'sse'>('sse');
+  const [configText, setConfigText] = useState('');
+  const [serverName, setServerName] = useState('');
+  const [manualServerName, setManualServerName] = useState('');
+  const [headers, setHeaders] = useState<HeaderPair[]>([{ key: '', value: '' }]);
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [discoveredTools, setDiscoveredTools] = useState<MCPTool[]>([]);
-  const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set(existingConfig?.enabledTools || []));
+  const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
   const [processedConfig, setProcessedConfig] = useState<any>(null);
 
-  // Effect to populate discovered tools when in edit mode
+  // Effect to populate all form fields when existingConfig changes
   useEffect(() => {
-    if (isEditMode && existingConfig?.enabledTools) {
-      // Create mock tool objects from the enabled tools for editing
-      const mockTools: MCPTool[] = existingConfig.enabledTools.map(toolName => ({
-        name: toolName,
-        description: `Custom tool: ${toolName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`
-      }));
-      setDiscoveredTools(mockTools);
+    if (isEditMode && existingConfig) {
+      console.log('Populating edit form with:', {
+        name: existingConfig.name,
+        url: existingConfig.config?.url,
+        headers: existingConfig.config?.headers,
+        tools: existingConfig.enabledTools?.length
+      });
+      
+      // Update all form fields
+      setServerType(existingConfig.customType || 'sse');
       setServerName(existingConfig.name);
+      setManualServerName(existingConfig.name);
+      
+      // Handle config URL
+      if (existingConfig.config) {
+        const url = existingConfig.config.url || existingConfig.config.command || existingConfig.config.endpoint || '';
+        setConfigText(url);
+      }
+      
+      // Handle headers
+      if (existingConfig.config?.headers && Object.keys(existingConfig.config.headers).length > 0) {
+        const headerPairs = Object.entries(existingConfig.config.headers).map(([key, value]) => ({ 
+          key, 
+          value: String(value) 
+        }));
+        setHeaders(headerPairs);
+      } else {
+        setHeaders([{ key: '', value: '' }]);
+      }
+      
+      // Handle tools
+      if (existingConfig.enabledTools) {
+        // Create mock tool objects from the enabled tools for editing
+        const mockTools: MCPTool[] = existingConfig.enabledTools.map(toolName => ({
+          name: toolName,
+          description: `Custom tool: ${toolName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`
+        }));
+        setDiscoveredTools(mockTools);
+        setSelectedTools(new Set(existingConfig.enabledTools));
+      }
+    } else {
+      // Reset form when not in edit mode
+      setServerType('sse');
+      setConfigText('');
+      setServerName('');
+      setManualServerName('');
+      setHeaders([{ key: '', value: '' }]);
+      setDiscoveredTools([]);
+      setSelectedTools(new Set());
     }
-  }, [isEditMode, existingConfig]);
+  }, [isEditMode, existingConfig, open]);
 
   const addHeader = () => {
     setHeaders([...headers, { key: '', value: '' }]);

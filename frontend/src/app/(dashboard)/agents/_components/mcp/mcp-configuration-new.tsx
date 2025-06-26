@@ -28,8 +28,6 @@ export const MCPConfigurationNew: React.FC<MCPConfigurationProps> = ({
     const mcp = configuredMCPs[index];
     // Check if it's a custom MCP
     if (mcp.isCustom) {
-      console.log('Editing custom MCP:', mcp);
-      console.log('MCP config structure:', mcp.config);
       setEditingCustomMCP(mcp);
       setEditingIndex(index);
       setShowCustomDialog(true);
@@ -191,7 +189,7 @@ export const MCPConfigurationNew: React.FC<MCPConfigurationProps> = ({
         onSave={handleSaveCustomMCP}
         existingConfig={editingCustomMCP ? {
           name: editingCustomMCP.name,
-          customType: editingCustomMCP.customType || 'sse',
+          customType: editingCustomMCP.customType || (editingCustomMCP.qualifiedName?.includes('_sse_') ? 'sse' : 'http'),
           config: editingCustomMCP.config,
           enabledTools: editingCustomMCP.enabledTools || []
         } : undefined}
