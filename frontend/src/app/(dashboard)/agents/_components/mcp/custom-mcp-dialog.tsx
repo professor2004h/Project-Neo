@@ -50,13 +50,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
   existingConfig
 }) => {
   const isEditMode = !!existingConfig;
-  const [step, setStep] = useState<'setup' | 'tools'>(() => {
-    // If we're in edit mode and have existing tools, skip directly to tools step
-    if (isEditMode && existingConfig?.enabledTools && existingConfig.enabledTools.length > 0) {
-      return 'tools';
-    }
-    return 'setup';
-  });
+  const [step, setStep] = useState<'setup' | 'tools'>('setup');
   const [serverType, setServerType] = useState<'http' | 'sse'>(existingConfig?.customType || 'sse');
   const [configText, setConfigText] = useState(existingConfig?.config?.url || '');
   const [serverName, setServerName] = useState(existingConfig?.name || '');
@@ -79,9 +73,10 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
       // Create mock tool objects from the enabled tools for editing
       const mockTools: MCPTool[] = existingConfig.enabledTools.map(toolName => ({
         name: toolName,
-        description: `Custom tool: ${toolName.replace(/_/g, ' ')}`
+        description: `Custom tool: ${toolName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`
       }));
       setDiscoveredTools(mockTools);
+      setServerName(existingConfig.name);
     }
   }, [isEditMode, existingConfig]);
 
@@ -186,13 +181,22 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
   };
 
   const handleSave = () => {
-    if (discoveredTools.length === 0 || selectedTools.size === 0) {
+    if (!serverName.trim()) {
+      setValidationError('Please provide a name for this connection.');
+      return;
+    }
+
+    // In edit mode, allow saving even if no tools are discovered (user might just want to update config)
+    if (!isEditMode && (discoveredTools.length === 0 || selectedTools.size === 0)) {
       setValidationError('Please select at least one tool to continue.');
       return;
     }
 
-    if (!serverName.trim()) {
-      setValidationError('Please provide a name for this connection.');
+    // In edit mode with no discovered tools, use existing tools if user hasn't selected any new ones
+    const toolsToSave = selectedTools.size > 0 ? Array.from(selectedTools) : (existingConfig?.enabledTools || []);
+
+    if (toolsToSave.length === 0) {
+      setValidationError('Please select at least one tool to continue.');
       return;
     }
 
@@ -206,7 +210,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
         name: serverName,
         type: serverType,
         config: configToSave,
-        enabledTools: Array.from(selectedTools)
+        enabledTools: toolsToSave
       });
       
       setConfigText('');
@@ -559,6 +563,18 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
+              {isEditMode && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // In edit mode, allow skipping directly to tools without re-validation
+                    setStep('tools');
+                  }}
+                  disabled={!manualServerName.trim()}
+                >
+                  Skip to Tools
+                </Button>
+              )}
               <Button
                 onClick={validateAndDiscoverTools}
                 disabled={!configText.trim() || !manualServerName.trim() || isValidating}
@@ -571,7 +587,7 @@ export const CustomMCPDialog: React.FC<CustomMCPDialogProps> = ({
                 ) : (
                   <>
                     <Sparkles className="h-5 w-5" />
-                    Connect
+                    {isEditMode ? 'Re-validate Connection' : 'Connect'}
                   </>
                 )}
               </Button>
