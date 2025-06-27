@@ -20,7 +20,7 @@ export function CreateTeamDialog({
 }: CreateTeamDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] border dark:border-border bg-background dark:bg-card rounded-2xl shadow-lg">
+      <DialogContent className="sm:max-w-[425px] border bg-background rounded-2xl shadow-lg">
         <DialogHeader>
           <DialogTitle className="text-gray-900 dark:text-white">
             Create a new team
