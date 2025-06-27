@@ -16,6 +16,7 @@ import { useInitiateAgentMutation } from '@/hooks/react-query/dashboard/use-init
 import { useThreadQuery } from '@/hooks/react-query/threads/use-threads';
 import { generateThreadName } from '@/lib/actions/threads';
 import GoogleSignIn from '@/components/GoogleSignIn';
+import MicrosoftSignIn from '@/components/MicrosoftSignIn';
 import { Input } from '@/components/ui/input';
 import { SubmitButton } from '@/components/ui/submit-button';
 import {
@@ -369,9 +370,10 @@ export function HeroSection() {
             </div>
           )}
 
-          {/* Google Sign In */}
-          <div className="w-full">
+          {/* Social Sign In Options */}
+          <div className="w-full space-y-3">
             <GoogleSignIn returnUrl="/dashboard" />
+            <MicrosoftSignIn returnUrl="/dashboard" />
           </div>
 
           {/* Divider */}
