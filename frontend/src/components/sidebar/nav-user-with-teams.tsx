@@ -312,7 +312,7 @@ export function NavUserWithTeams({
         </SidebarMenuItem>
       </SidebarMenu>
 
-      <DialogContent className="sm:max-w-[425px] border-subtle dark:border-white/10 bg-card-bg dark:bg-background-secondary rounded-2xl shadow-custom">
+      <DialogContent className="sm:max-w-[425px] border dark:border-border bg-background dark:bg-card rounded-2xl shadow-lg">
         <DialogHeader>
           <DialogTitle className="text-foreground">
             Create a new team
