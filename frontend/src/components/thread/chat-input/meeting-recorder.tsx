@@ -167,9 +167,9 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       
       console.log('[MEETING RECORDER] Starting online recording (screen share + microphone)...');
       
-      // Request screen sharing FIRST to preserve user gesture context
-      try {
-        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+      // Request both permissions simultaneously to prevent browsers from stopping streams
+      const mediaPromises = Promise.allSettled([
+        navigator.mediaDevices.getDisplayMedia({
           video: {
             width: 1920,
             height: 1080,
@@ -180,8 +180,31 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
             noiseSuppression: false,
             autoGainControl: false,
           }
-        });
-        
+        }),
+        navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          }
+        })
+      ]);
+      
+      const [displayResult, microphoneResult] = await mediaPromises;
+      
+      // Handle microphone stream (required)
+      let microphoneStream: MediaStream;
+      if (microphoneResult.status === 'fulfilled') {
+        microphoneStream = microphoneResult.value;
+        console.log('[MEETING RECORDER] Microphone access granted');
+      } else {
+        console.error('[MEETING RECORDER] Microphone access failed:', microphoneResult.reason);
+        throw new Error('Microphone access required for recording');
+      }
+      
+      // Handle display stream (optional)
+      if (displayResult.status === 'fulfilled') {
+        const displayStream = displayResult.value;
         console.log('[MEETING RECORDER] Screen sharing access granted');
         
         // Extract what the user shared for display purposes
@@ -198,17 +221,6 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
             setSharedSource('display');
           }
         }
-        
-        // Now get microphone stream
-        const microphoneStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          }
-        });
-        
-        console.log('[MEETING RECORDER] Microphone access granted');
         
         // Stop video track immediately since we only need audio
         displayStream.getVideoTracks().forEach(track => {
@@ -231,36 +243,22 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
           setRecordingMode('screen-and-microphone');
           await startRecordingWithStream(mixedStream, 'screen-and-microphone');
         } else {
-          console.log('[MEETING RECORDER] No display audio, using microphone only');
+          console.log('[MEETING RECORDER] Screen shared but no audio available, using microphone only');
           // User shared screen/window but no audio available
           setSharedSource('');
           streamsRef.current.microphone = microphoneStream;
           setRecordingMode('microphone-only');
           await startRecordingWithStream(microphoneStream, 'microphone-only');
         }
-      } catch (displayError) {
-        console.log('[MEETING RECORDER] Screen sharing declined or failed:', displayError);
-        console.log('[MEETING RECORDER] Falling back to microphone only');
+      } else {
+        console.log('[MEETING RECORDER] Screen sharing declined or failed:', displayResult.reason);
+        console.log('[MEETING RECORDER] Using microphone only');
         
-        // User declined screen sharing or it failed, just get microphone
-        try {
-          const microphoneStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-            }
-          });
-          
-          console.log('[MEETING RECORDER] Microphone access granted (fallback)');
-          setSharedSource('');
-          streamsRef.current.microphone = microphoneStream;
-          setRecordingMode('microphone-only');
-          await startRecordingWithStream(microphoneStream, 'microphone-only');
-        } catch (micError) {
-          console.error('[MEETING RECORDER] Microphone access also failed:', micError);
-          throw micError;
-        }
+        // User declined screen sharing, just use microphone
+        setSharedSource('');
+        streamsRef.current.microphone = microphoneStream;
+        setRecordingMode('microphone-only');
+        await startRecordingWithStream(microphoneStream, 'microphone-only');
       }
       
     } catch (error) {
