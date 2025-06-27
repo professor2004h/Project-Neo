@@ -25,7 +25,7 @@ interface MeetingRecorderProps {
 
 const MAX_RECORDING_TIME = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
-type AudioCaptureMode = 'microphone-only' | 'system-and-microphone' | 'failed';
+type RecordingMode = 'screen-and-microphone' | 'microphone-only' | 'failed';
 
 export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   onFileAttached,
@@ -40,14 +40,15 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   const [state, setState] = useState<'idle' | 'recording' | 'paused' | 'stopped'>('idle');
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [audioCaptureMode, setAudioCaptureMode] = useState<AudioCaptureMode>('microphone-only');
+  const [recordingMode, setRecordingMode] = useState<RecordingMode>('microphone-only');
+  const [sharedSource, setSharedSource] = useState<string>('');
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamsRef = useRef<{
-    combined?: MediaStream;
+    mixed?: MediaStream;
     microphone?: MediaStream;
-    system?: MediaStream;
+    display?: MediaStream;
   }>({});
   const audioContextRef = useRef<AudioContext | null>(null);
   const recordingStartTimeRef = useRef<number | null>(null);
@@ -115,70 +116,97 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const attemptSystemAudioCapture = async (): Promise<MediaStream | null> => {
+  const getDisplayAndMicrophoneStreams = async () => {
+    console.log('[MEETING RECORDER] Starting unified recording setup...');
+    
+    // Get microphone stream first (this is always required)
+    const microphoneStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      }
+    });
+    
+    console.log('[MEETING RECORDER] Microphone access granted');
+    
+    // Now request screen/window sharing with audio
     try {
-      console.log('[MEETING RECORDER] Attempting system audio capture...');
-      
-      // Request display media with audio for system audio capture
-      // This only works reliably on Chrome/Edge and has platform limitations
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: 1920,
+          height: 1080,
+          frameRate: 1, // Minimal video since we only want audio
+        },
         audio: {
-          echoCancellation: false,
+          echoCancellation: false, // Keep original audio quality
           noiseSuppression: false,
           autoGainControl: false,
-        },
-        video: {
-          width: 1,
-          height: 1,
-          frameRate: 1
         }
       });
       
-      // Extract audio tracks and discard video immediately
-      const audioTracks = displayStream.getAudioTracks();
-      const videoTracks = displayStream.getVideoTracks();
+      console.log('[MEETING RECORDER] Screen sharing access granted');
       
-      // Stop and remove video tracks immediately to save resources
-      videoTracks.forEach(track => {
+      // Extract what the user shared for display purposes
+      const videoTrack = displayStream.getVideoTracks()[0];
+      if (videoTrack) {
+        const settings = videoTrack.getSettings();
+        if (settings.displaySurface === 'browser') {
+          setSharedSource('Browser Tab');
+        } else if (settings.displaySurface === 'window') {
+          setSharedSource('Application Window');
+        } else if (settings.displaySurface === 'monitor') {
+          setSharedSource('Screen');
+        } else {
+          setSharedSource('Display Surface');
+        }
+      }
+      
+      // Stop video track immediately since we only need audio
+      displayStream.getVideoTracks().forEach(track => {
         track.stop();
         displayStream.removeTrack(track);
       });
       
-      if (audioTracks.length > 0) {
-        const systemAudioStream = new MediaStream(audioTracks);
-        console.log('[MEETING RECORDER] System audio captured successfully');
-        return systemAudioStream;
+      const displayAudioTracks = displayStream.getAudioTracks();
+      
+      if (displayAudioTracks.length > 0) {
+        console.log('[MEETING RECORDER] Display audio available, mixing with microphone');
+        // We have both microphone and display audio
+        const mixedStream = mixAudioStreams(microphoneStream, displayStream);
+        return {
+          recordingStream: mixedStream,
+          microphoneStream,
+          displayStream,
+          mode: 'screen-and-microphone' as RecordingMode
+        };
       } else {
-        console.log('[MEETING RECORDER] No audio tracks in display stream');
-        return null;
+        console.log('[MEETING RECORDER] No display audio, using microphone only');
+        // User shared screen/window but no audio available
+        setSharedSource('');
+        return {
+          recordingStream: microphoneStream,
+          microphoneStream,
+          displayStream: null,
+          mode: 'microphone-only' as RecordingMode
+        };
       }
-    } catch (error) {
-      console.log('[MEETING RECORDER] System audio capture failed:', error);
-      return null;
+    } catch (displayError) {
+      console.log('[MEETING RECORDER] Screen sharing declined or failed, using microphone only');
+      // User declined screen sharing or it failed, just use microphone
+      setSharedSource('');
+      return {
+        recordingStream: microphoneStream,
+        microphoneStream,
+        displayStream: null,
+        mode: 'microphone-only' as RecordingMode
+      };
     }
   };
 
-  const getMicrophoneStream = async (): Promise<MediaStream> => {
+  const mixAudioStreams = (micStream: MediaStream, displayStream: MediaStream): MediaStream => {
     try {
-      console.log('[MEETING RECORDER] Getting microphone stream...');
-      const micStream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        }
-      });
-      console.log('[MEETING RECORDER] Microphone captured successfully');
-      return micStream;
-    } catch (error) {
-      console.error('[MEETING RECORDER] Microphone access failed:', error);
-      throw error;
-    }
-  };
-
-  const mixAudioStreams = (micStream: MediaStream, systemStream: MediaStream): MediaStream => {
-    try {
-      console.log('[MEETING RECORDER] Mixing audio streams...');
+      console.log('[MEETING RECORDER] Mixing microphone and display audio...');
       
       // Create audio context for mixing
       const audioContext = new AudioContext();
@@ -186,20 +214,20 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
       // Create sources from streams
       const micSource = audioContext.createMediaStreamSource(micStream);
-      const systemSource = audioContext.createMediaStreamSource(systemStream);
+      const displaySource = audioContext.createMediaStreamSource(displayStream);
       const destination = audioContext.createMediaStreamDestination();
 
       // Create gain nodes for volume control
       const micGain = audioContext.createGain();
-      const systemGain = audioContext.createGain();
+      const displayGain = audioContext.createGain();
       
-      // Set reasonable gain levels (can be adjusted)
-      micGain.gain.value = 0.8; // Slightly lower microphone to avoid overpowering
-      systemGain.gain.value = 0.7; // Lower system audio to balance
+      // Balance levels - microphone prominent but display audible
+      micGain.gain.value = 0.8;
+      displayGain.gain.value = 0.6;
 
       // Connect the audio graph
       micSource.connect(micGain).connect(destination);
-      systemSource.connect(systemGain).connect(destination);
+      displaySource.connect(displayGain).connect(destination);
 
       console.log('[MEETING RECORDER] Audio streams mixed successfully');
       return destination.stream;
@@ -212,38 +240,20 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   const startRecording = async () => {
     try {
       setState('recording'); // Set state early for UI feedback
-      setAudioCaptureMode('microphone-only'); // Default fallback
+      setRecordingMode('microphone-only'); // Default fallback
+      setSharedSource('');
       
       console.log('[MEETING RECORDER] Starting recording...');
       
-      // Always get microphone first (required)
-      const microphoneStream = await getMicrophoneStream();
+      // Get streams using unified approach
+      const { recordingStream, microphoneStream, displayStream, mode } = await getDisplayAndMicrophoneStreams();
+      
+      // Store streams for cleanup
       streamsRef.current.microphone = microphoneStream;
+      streamsRef.current.display = displayStream;
+      streamsRef.current.mixed = recordingStream;
       
-      // Attempt to get system audio (optional)
-      const systemStream = await attemptSystemAudioCapture();
-      streamsRef.current.system = systemStream;
-      
-      // Determine recording stream and capture mode
-      let recordingStream: MediaStream;
-      
-      if (systemStream) {
-        try {
-          // Mix both streams
-          recordingStream = mixAudioStreams(microphoneStream, systemStream);
-          streamsRef.current.combined = recordingStream;
-          setAudioCaptureMode('system-and-microphone');
-          console.log('[MEETING RECORDER] Recording with system audio + microphone');
-        } catch (mixError) {
-          console.warn('[MEETING RECORDER] Failed to mix streams, using microphone only:', mixError);
-          recordingStream = microphoneStream;
-          setAudioCaptureMode('microphone-only');
-        }
-      } else {
-        recordingStream = microphoneStream;
-        setAudioCaptureMode('microphone-only');
-        console.log('[MEETING RECORDER] Recording with microphone only');
-      }
+      setRecordingMode(mode);
 
       // Create MediaRecorder with optimal settings
       let options: MediaRecorderOptions = {};
@@ -261,6 +271,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       options.audioBitsPerSecond = 64000; // 64kbps is good for voice
       
       console.log(`[MEETING RECORDER] Using MIME type: ${options.mimeType || 'default'}`);
+      console.log(`[MEETING RECORDER] Recording mode: ${mode}`);
       
       const mediaRecorder = new MediaRecorder(recordingStream, options);
       mediaRecorderRef.current = mediaRecorder;
@@ -298,7 +309,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     } catch (error) {
       console.error('[MEETING RECORDER] Error starting recording:', error);
       setState('idle');
-      setAudioCaptureMode('failed');
+      setRecordingMode('failed');
       cleanupStreams();
     }
   };
@@ -363,7 +374,8 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     setAudioBlob(null);
     setState('idle');
     setRecordingTime(0);
-    setAudioCaptureMode('microphone-only');
+    setRecordingMode('microphone-only');
+    setSharedSource('');
     recordingStartTimeRef.current = null;
     pausedDurationRef.current = 0;
     pauseStartTimeRef.current = null;
@@ -374,9 +386,9 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     console.log('[MEETING RECORDER] Cleaning up streams...');
     
     // Stop all tracks in all streams
-    const { combined, microphone, system } = streamsRef.current;
+    const { mixed, microphone, display } = streamsRef.current;
     
-    [combined, microphone, system].forEach(stream => {
+    [mixed, microphone, display].forEach(stream => {
       if (stream) {
         stream.getTracks().forEach(track => {
           track.stop();
@@ -440,12 +452,14 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
   const getTooltipText = () => {
     if (state === 'idle') {
-      return 'Start meeting recording - attempts to capture system audio + microphone (up to 2 hours)';
+      return 'Start meeting recording - choose what to share (screen, window, or tab) + microphone (up to 2 hours)';
     } else if (state === 'recording') {
-      const modeText = audioCaptureMode === 'system-and-microphone' 
-        ? 'Recording system audio + microphone'
-        : 'Recording microphone only';
-      return `${modeText} - Click to pause`;
+      if (recordingMode === 'screen-and-microphone') {
+        const sourceText = sharedSource ? ` from ${sharedSource}` : '';
+        return `Recording audio${sourceText} + microphone - Click to pause`;
+      } else {
+        return 'Recording microphone only - Click to pause';
+      }
     } else if (state === 'paused') {
       return 'Resume recording';
     }
@@ -453,8 +467,8 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   };
 
   if (state === 'stopped') {
-    const modeIndicator = audioCaptureMode === 'system-and-microphone' 
-      ? ' (system + mic)' 
+    const modeIndicator = recordingMode === 'screen-and-microphone' 
+      ? ` (${sharedSource} + mic)` 
       : ' (microphone)';
       
     return (
@@ -523,10 +537,12 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
           <span className="text-sm tabular-nums text-muted-foreground">
             {formatTime(recordingTime)}
           </span>
-          {audioCaptureMode === 'system-and-microphone' && state === 'recording' && (
-            <span className="text-xs text-green-600 font-medium">SYS+MIC</span>
+          {recordingMode === 'screen-and-microphone' && state === 'recording' && (
+            <span className="text-xs text-green-600 font-medium">
+              {sharedSource ? sharedSource.toUpperCase().replace(' ', '+') : 'SHARED'}+MIC
+            </span>
           )}
-          {audioCaptureMode === 'microphone-only' && state === 'recording' && (
+          {recordingMode === 'microphone-only' && state === 'recording' && (
             <span className="text-xs text-blue-600 font-medium">MIC</span>
           )}
           <TooltipProvider>
