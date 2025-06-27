@@ -472,12 +472,12 @@ async def meeting_bot_webhook(request: Request):
             return JSONResponse({"error": "Unauthorized"}, status_code=401)
         
         data = await request.json()
-        event_type = data.get('type')
+        event_type = data.get('event')  # MeetingBaaS uses 'event', not 'type'
         event_data = data.get('data', {})
-        bot_id = event_data.get('botId')
+        bot_id = event_data.get('bot_id')  # MeetingBaaS uses 'bot_id', not 'botId'
         
         if not bot_id:
-            return JSONResponse({"error": "Missing botId in webhook"}, status_code=400)
+            return JSONResponse({"error": "Missing bot_id in webhook"}, status_code=400)
         
         # Handle idempotency to prevent duplicate processing
         event_id = data.get('event_id') or f"{bot_id}_{event_type}_{int(time.time())}"
@@ -505,42 +505,56 @@ async def meeting_bot_webhook(request: Request):
             with open(session_file, 'r') as f:
                 session = json.load(f)
             
-            # Update session based on event type (comprehensive event handling)
-            if event_type == 'meeting.started':
-                session['status'] = 'recording'
-                session['joined_at'] = event_data.get('startTime', time.time())
-                logger.info(f"[WEBHOOK] Bot {bot_id} successfully joined meeting")
+            # Update session based on MeetingBaaS event type
+            if event_type == 'bot.status_change':
+                # Handle live status changes during meeting
+                status_info = event_data.get('status', {})
+                status_code = status_info.get('code')
+                created_at = status_info.get('created_at')
                 
-            elif event_type == 'meeting.completed':
+                # Map MeetingBaaS status codes to our internal statuses
+                if status_code == 'joining_call':
+                    session['status'] = 'joining'
+                elif status_code == 'in_waiting_room':
+                    session['status'] = 'waiting'
+                elif status_code == 'in_call_not_recording':
+                    session['status'] = 'in_call'
+                elif status_code == 'in_call_recording':
+                    session['status'] = 'recording'
+                    session['recording_started_at'] = created_at or time.time()
+                elif status_code == 'call_ended':
+                    session['status'] = 'ended'
+                    session['ended_at'] = created_at or time.time()
+                elif status_code in ['bot_rejected', 'bot_removed', 'waiting_room_timeout']:
+                    session['status'] = 'failed'
+                    session['error'] = status_code
+                    session['failed_at'] = created_at or time.time()
+                else:
+                    session['status'] = status_code  # Use raw status as fallback
+                
+                session['last_status_code'] = status_code
+                logger.info(f"[WEBHOOK] Bot {bot_id} status: {status_code} -> {session['status']}")
+                
+            elif event_type == 'complete':
+                # Handle meeting completion with final data
                 session['status'] = 'completed'
                 session['transcript_ready'] = True
                 session['completed_at'] = time.time()
-                # Store comprehensive meeting data
-                session['transcript'] = event_data.get('transcripts', [])
-                session['duration'] = event_data.get('duration', 0)
-                session['recording_url'] = event_data.get('mp4Url')
-                session['participants'] = event_data.get('participants', [])
-                logger.info(f"[WEBHOOK] Meeting {bot_id} completed - transcript ready")
                 
-            elif event_type == 'meeting.failed':
+                # Store meeting data using MeetingBaaS format
+                session['recording_url'] = event_data.get('mp4')  # Note: 'mp4', not 'mp4Url'
+                session['speakers'] = event_data.get('speakers', [])
+                session['transcript'] = event_data.get('transcript', [])
+                
+                logger.info(f"[WEBHOOK] Meeting {bot_id} completed - transcript ready")
+                logger.info(f"[WEBHOOK] Speakers: {session['speakers']}")
+                
+            elif event_type == 'failed':
+                # Handle bot failure
                 session['status'] = 'failed'
                 session['error'] = event_data.get('error', 'Unknown error')
                 session['failed_at'] = time.time()
                 logger.error(f"[WEBHOOK] Bot {bot_id} failed: {session['error']}")
-                
-            elif event_type == 'transcription.available':
-                session['transcript'] = event_data.get('transcripts', [])
-                logger.info(f"[WEBHOOK] Transcription available for bot {bot_id}")
-                
-            elif event_type == 'transcription.updated':
-                session['transcript'] = event_data.get('transcripts', [])
-                logger.info(f"[WEBHOOK] Transcription updated for bot {bot_id}")
-                
-            elif event_type == 'bot.status_change':
-                # Handle generic status changes
-                new_status = event_data.get('status', session.get('status'))
-                session['status'] = new_status
-                logger.info(f"[WEBHOOK] Bot {bot_id} status changed to: {new_status}")
                 
             else:
                 logger.warning(f"[WEBHOOK] Unknown event type '{event_type}' for bot {bot_id}")
@@ -592,7 +606,7 @@ async def configure_account_webhook(request: Request):
             return JSONResponse({"error": "MEETINGBAAS_API_KEY not configured"}, status_code=500)
         
         headers = {
-            'Authorization': f'Bearer {api_key}',
+            'x-meeting-baas-api-key': api_key,  # Correct header format
             'Content-Type': 'application/json'
         }
         

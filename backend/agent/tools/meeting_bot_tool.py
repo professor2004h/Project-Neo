@@ -31,7 +31,7 @@ class MeetingBotTool(SandboxToolsBase):
     def __init__(self):
         super().__init__()
         self.api_key = os.getenv('MEETINGBAAS_API_KEY')
-        self.base_url = 'https://api.meetingbaas.com/v1'
+        self.base_url = 'https://api.meetingbaas.com'  # Remove /v1 suffix
         
     async def start_meeting_bot(self, meeting_url: str, bot_name: str = "Transcription Bot", webhook_url: str = None) -> Dict[str, Any]:
         """
@@ -50,46 +50,77 @@ class MeetingBotTool(SandboxToolsBase):
             raise ValueError("MEETINGBAAS_API_KEY environment variable not set")
             
         headers = {
-            'Authorization': f'Bearer {self.api_key}',
+            'x-meeting-baas-api-key': self.api_key,  # Correct header format
             'Content-Type': 'application/json'
         }
         
         payload = {
             'meeting_url': meeting_url,
             'bot_name': bot_name,
-            'transcription': True,
-            'real_time_transcription': True,
-            'speaker_detection': True,
-            'language': 'en',  # Auto-detect available
+            'recording_mode': 'speaker_view',  # Required field
+            'reserved': False,  # Join immediately
+            'speech_to_text': {
+                'provider': 'Default'  # Required speech-to-text config
+            },
+            'automatic_leave': {
+                'waiting_room_timeout': 600  # 10 minutes timeout
+            }
         }
         
         # Add webhook URL for real-time updates (replaces polling!)
         if webhook_url:
             payload['webhook_url'] = webhook_url
         
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f'{self.base_url}/bots',
-                headers=headers,
-                json=payload
-            ) as response:
-                
-                if response.status == 201:
-                    result = await response.json()
-                    return {
-                        'success': True,
-                        'bot_id': result.get('bot_id'),
-                        'status': 'joining',
-                        'meeting_url': meeting_url,
-                        'message': f'Bot "{bot_name}" is joining the meeting...'
-                    }
-                else:
-                    error_text = await response.text()
-                    return {
-                        'success': False,
-                        'error': f'Failed to start bot: {error_text}',
-                        'status_code': response.status
-                    }
+        print(f"[MEETING BOT TOOL] Making request to: {self.base_url}/bots")
+        print(f"[MEETING BOT TOOL] Headers: {headers}")
+        print(f"[MEETING BOT TOOL] Payload: {payload}")
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f'{self.base_url}/bots',
+                    headers=headers,
+                    json=payload
+                ) as response:
+                    
+                    print(f"[MEETING BOT TOOL] Response status: {response.status}")
+                    response_text = await response.text()
+                    print(f"[MEETING BOT TOOL] Response body: {response_text}")
+                    
+                    if response.status in [200, 201]:  # Accept both 200 and 201
+                        try:
+                            result = await response.json()
+                            print(f"[MEETING BOT TOOL] Parsed JSON: {result}")
+                            
+                            # Try different possible field names for bot ID
+                            bot_id = result.get('bot_id') or result.get('id') or result.get('botId')
+                            
+                            return {
+                                'success': True,
+                                'bot_id': bot_id,
+                                'status': 'joining',
+                                'meeting_url': meeting_url,
+                                'message': f'Bot "{bot_name}" is joining the meeting...'
+                            }
+                        except Exception as json_error:
+                            print(f"[MEETING BOT TOOL] JSON parsing error: {json_error}")
+                            return {
+                                'success': False,
+                                'error': f'Failed to parse response: {str(json_error)}',
+                                'status_code': response.status
+                            }
+                    else:
+                        return {
+                            'success': False,
+                            'error': f'API returned {response.status}: {response_text}',
+                            'status_code': response.status
+                        }
+        except Exception as request_error:
+            print(f"[MEETING BOT TOOL] Request error: {request_error}")
+            return {
+                'success': False,
+                'error': f'Request failed: {str(request_error)}'
+            }
     
     async def get_bot_status(self, bot_id: str) -> Dict[str, Any]:
         """
@@ -103,7 +134,7 @@ class MeetingBotTool(SandboxToolsBase):
         """
         
         headers = {
-            'Authorization': f'Bearer {self.api_key}',
+            'x-meeting-baas-api-key': self.api_key,  # Correct header format
             'Content-Type': 'application/json'
         }
         
@@ -141,7 +172,7 @@ class MeetingBotTool(SandboxToolsBase):
         """
         
         headers = {
-            'Authorization': f'Bearer {self.api_key}',
+            'x-meeting-baas-api-key': self.api_key,  # Correct header format
             'Content-Type': 'application/json'
         }
         
@@ -153,15 +184,20 @@ class MeetingBotTool(SandboxToolsBase):
                 
                 if response.status == 200:
                     result = await response.json()
-                    return {
-                        'success': True,
-                        'transcript': result.get('transcript', ''),
-                        'summary': result.get('summary', ''),
-                        'action_items': result.get('action_items', []),
-                        'participants': result.get('participants', []),
-                        'duration': result.get('duration_seconds', 0),
-                        'recording_url': result.get('recording_url')
-                    }
+                    # MeetingBaaS returns {"ok": true} for DELETE requests
+                    if result.get('ok'):
+                        return {
+                            'success': True,
+                            'message': 'Bot successfully removed from meeting',
+                            'transcript': '',  # Will be provided via webhook
+                            'participants': [],
+                            'duration': 0
+                        }
+                    else:
+                        return {
+                            'success': False,
+                            'error': 'Bot removal not confirmed'
+                        }
                 else:
                     return {
                         'success': False,

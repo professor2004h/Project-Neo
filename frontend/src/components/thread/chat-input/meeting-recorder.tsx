@@ -242,7 +242,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
             timestamp: Date.now()
           }));
           
-          // Handle meeting completion
+          // Handle meeting completion (MeetingBaaS sends 'completed' status)
           if (data.status === 'completed' && !localStorage.getItem(`meeting_bot_completed_${botId}`)) {
             localStorage.setItem(`meeting_bot_completed_${botId}`, 'true');
             stopRealTimeUpdates();
@@ -334,8 +334,8 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
           setUIState('recording');
           setBotStatus(session.status);
           
-          // Resume real-time updates if still active
-          if (session.status === 'joining' || session.status === 'recording') {
+          // Resume real-time updates if still active (not completed or failed)
+          if (['joining', 'waiting', 'in_call', 'recording'].includes(session.status)) {
             startRealTimeUpdates(session.bot_id);
           }
           
@@ -493,16 +493,20 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
         return 'Starting bot...';
       case 'joining':
         return 'Joining meeting...';
+      case 'waiting':
+        return 'In waiting room...';
+      case 'in_call':
+        return 'In meeting...';
       case 'recording':
         return 'Bot recording ●';
-      case 'processing':
-        return 'Processing...';
+      case 'ended':
+        return 'Call ended';
       case 'completed':
         return 'Complete!';
       case 'failed':
         return 'Failed';
       default:
-        return 'Bot active...';
+        return botStatus || 'Bot active...';
     }
   };
 
