@@ -544,11 +544,18 @@ async def stop_meeting_bot(bot_id: str, request: Request):
             except Exception as api_error:
                 logger.error(f"[STOP] API call failed for {bot_id}: {str(api_error)}")
         
-        if transcript_content:
+        # Check if meeting completed successfully (even if transcript is empty)
+        meeting_completed = session_data.get('status') == 'completed' or session_data.get('status') == 'ended'
+        
+        if meeting_completed or transcript_content:
             # Create transcript file
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"meeting_transcript_{timestamp}.txt"
+            
+            # Handle empty transcript
+            if not transcript_content:
+                transcript_content = "[No speech detected during meeting]"
             
             # Format the transcript nicely
             content = f"Meeting Transcript\n"
@@ -567,7 +574,10 @@ async def stop_meeting_bot(bot_id: str, request: Request):
                     duration = session_data['completed_at'] - session_data.get('started_at', session_data['completed_at'])
                     content += f"Duration: {int(duration // 60)}m {int(duration % 60)}s\n"
             
-            content += f"Participants: {', '.join(session_data.get('speakers', ['Unknown']))}\n\n"
+            speakers = session_data.get('speakers', [])
+            if not speakers:
+                speakers = ['No speakers detected']
+            content += f"Participants: {', '.join(speakers)}\n\n"
             content += f"Full Transcript:\n{transcript_content}"
             
             # Clean up session
@@ -580,14 +590,14 @@ async def stop_meeting_bot(bot_id: str, request: Request):
                 "transcript": transcript_content,
                 "summary": "",  # MeetingBaaS doesn't provide summary in webhook
                 "action_items": [],  # MeetingBaaS doesn't provide action items in webhook
-                "participants": session_data.get('speakers', []),
+                "participants": speakers,
                 "duration": int(session_data.get('completed_at', 0) - session_data.get('started_at', 0)) if session_data.get('completed_at') and session_data.get('started_at') else 0,
                 "filename": filename,
                 "content": content
             })
         else:
-            logger.error(f"[STOP] No transcript available for {bot_id}")
-            return JSONResponse({"error": "No transcript available - meeting may not be completed yet"}, status_code=400)
+            logger.error(f"[STOP] Meeting not completed yet for {bot_id}")
+            return JSONResponse({"error": "Meeting is still in progress or failed - please wait for completion"}, status_code=400)
             
     except Exception as e:
         logger.error(f"[STOP] Error stopping bot {bot_id}: {str(e)}")
