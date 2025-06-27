@@ -665,8 +665,8 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
               <TooltipContent>Online</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <PopoverContent className="w-72 p-3" side="top" align="end">
-            <div className="space-y-2">
+          <PopoverContent className="w-64 p-2" side="top" align="center" sideOffset={8}>
+            <div className="flex items-center gap-2">
               <input
                 type="text"
                 placeholder="Meeting URL"
@@ -680,32 +680,30 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
                     setMeetingUrl('');
                   }
                 }}
-                className="w-full px-2 py-1.5 text-sm bg-transparent border border-neutral-200 dark:border-neutral-700 rounded focus:outline-none focus:border-green-500 dark:focus:border-green-400"
+                className="flex-1 px-2 py-1.5 text-sm bg-transparent border border-neutral-200 dark:border-neutral-700 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 dark:focus:ring-green-400 dark:focus:border-green-400 transition-colors"
                 autoFocus
               />
-              <div className="flex gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setIsUrlPopoverOpen(false);
-                    setMeetingUrl('');
-                  }}
-                  className="h-6 flex-1 text-xs"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => handleMeetingUrlSubmit(meetingUrl)}
-                  disabled={!meetingUrl.trim()}
-                  className="h-6 flex-1 text-xs bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
-                >
-                  Start
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsUrlPopoverOpen(false);
+                  setMeetingUrl('');
+                }}
+                className="h-7 w-7 p-0 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-neutral-200 dark:hover:bg-neutral-800 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleMeetingUrlSubmit(meetingUrl)}
+                disabled={!meetingUrl.trim()}
+                className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 disabled:bg-neutral-200 disabled:hover:bg-neutral-200 dark:disabled:bg-neutral-700 dark:disabled:hover:bg-neutral-700 text-white disabled:text-neutral-400 transition-colors"
+              >
+                <Check className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </PopoverContent>
         </Popover>
