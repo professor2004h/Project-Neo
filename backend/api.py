@@ -275,31 +275,24 @@ async def start_meeting_bot(request: Request):
         
         logger.info(f"[MEETING BOT] API key configured (first 10 chars): {api_key[:10]}...")
             
-        # Import the tool
+        # Import the service
         try:
-            from agent.tools.meeting_bot_tool import MeetingBotTool
-            logger.info("[MEETING BOT] Successfully imported MeetingBotTool")
+            from services.meeting_baas import meeting_baas_service
+            logger.info("[MEETING BOT] Successfully imported MeetingBaaS service")
         except Exception as import_error:
-            logger.error(f"[MEETING BOT] Failed to import MeetingBotTool: {str(import_error)}")
-            return JSONResponse({"error": f"Failed to import tool: {str(import_error)}"}, status_code=500)
-        
-        try:
-            tool = MeetingBotTool()
-            logger.info("[MEETING BOT] Successfully initialized MeetingBotTool")
-        except Exception as init_error:
-            logger.error(f"[MEETING BOT] Failed to initialize MeetingBotTool: {str(init_error)}")
-            return JSONResponse({"error": f"Failed to initialize tool: {str(init_error)}"}, status_code=500)
+            logger.error(f"[MEETING BOT] Failed to import MeetingBaaS service: {str(import_error)}")
+            return JSONResponse({"error": f"Failed to import service: {str(import_error)}"}, status_code=500)
         
         # Start the bot with webhook URL for real-time updates
         webhook_url = f"{request.base_url}api/meeting-bot/webhook"
         logger.info(f"[MEETING BOT] Using webhook URL: {webhook_url}")
         
         try:
-            result = await tool.start_meeting_bot(meeting_url, "AI Transcription Bot", webhook_url)
-            logger.info(f"[MEETING BOT] Tool result: {result}")
-        except Exception as tool_error:
-            logger.error(f"[MEETING BOT] Tool execution failed: {str(tool_error)}")
-            return JSONResponse({"error": f"Failed to start bot: {str(tool_error)}"}, status_code=500)
+            result = await meeting_baas_service.start_meeting_bot(meeting_url, "AI Transcription Bot", webhook_url)
+            logger.info(f"[MEETING BOT] Service result: {result}")
+        except Exception as service_error:
+            logger.error(f"[MEETING BOT] Service execution failed: {str(service_error)}")
+            return JSONResponse({"error": f"Failed to start bot: {str(service_error)}"}, status_code=500)
         
         if result.get('success'):
             bot_id = result['bot_id']
@@ -339,11 +332,10 @@ async def start_meeting_bot(request: Request):
 async def get_meeting_bot_status(bot_id: str):
     """Get current status of a meeting bot"""
     try:
-        from agent.tools.meeting_bot_tool import MeetingBotTool
-        tool = MeetingBotTool()
+        from services.meeting_baas import meeting_baas_service
         
         # Get live status from API
-        result = await tool.get_bot_status(bot_id)
+        result = await meeting_baas_service.get_bot_status(bot_id)
         
         if result.get('success'):
             status = result.get('status')
@@ -383,11 +375,10 @@ async def stop_meeting_bot(bot_id: str, request: Request):
         data = await request.json()
         sandbox_id = data.get('sandbox_id')
         
-        from agent.tools.meeting_bot_tool import MeetingBotTool
-        tool = MeetingBotTool()
+        from services.meeting_baas import meeting_baas_service
         
         # Stop the bot and get final transcript
-        result = await tool.stop_meeting_bot(bot_id)
+        result = await meeting_baas_service.stop_meeting_bot(bot_id)
         
         if result.get('success'):
             transcript = result.get('transcript', '')
@@ -591,9 +582,6 @@ async def configure_account_webhook(request: Request):
         if not webhook_url:
             webhook_url = f"{request.base_url}api/meeting-bot/webhook"
         
-        from agent.tools.meeting_bot_tool import MeetingBotTool
-        tool = MeetingBotTool()
-        
         # Set account-level webhook URL
         import aiohttp
         
@@ -647,20 +635,11 @@ async def test_meeting_bot_setup():
         
         # Test import
         try:
-            from agent.tools.meeting_bot_tool import MeetingBotTool
+            from services.meeting_baas import meeting_baas_service
         except Exception as import_error:
             return JSONResponse({
                 "success": False,
-                "error": f"Failed to import MeetingBotTool: {str(import_error)}"
-            }, status_code=500)
-        
-        # Test initialization
-        try:
-            tool = MeetingBotTool()
-        except Exception as init_error:
-            return JSONResponse({
-                "success": False,
-                "error": f"Failed to initialize MeetingBotTool: {str(init_error)}"
+                "error": f"Failed to import MeetingBaaS service: {str(import_error)}"
             }, status_code=500)
         
         # Test aiohttp import
@@ -677,7 +656,7 @@ async def test_meeting_bot_setup():
             "message": "MeetingBaaS setup is working",
             "api_key_configured": True,
             "api_key_preview": f"{api_key[:10]}..." if api_key else None,
-            "tool_imported": True,
+            "service_imported": True,
             "aiohttp_available": True
         })
         
