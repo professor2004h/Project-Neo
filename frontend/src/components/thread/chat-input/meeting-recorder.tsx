@@ -1,3 +1,17 @@
+/**
+ * Meeting Recorder Component
+ * 
+ * Supports two recording modes:
+ * 1. In-Person: Records microphone directly from device
+ * 2. Online: Sends a bot to join meeting via MeetingBaaS API
+ * 
+ * MeetingBaaS Integration:
+ * - $0.69/hour transcription bot service
+ * - Supports Zoom, Teams, Google Meet
+ * - Bot joins meeting, records, and transcribes
+ * - API: POST /api/meeting-bot/start { meetingUrl }
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Circle, Pause, Play, Check, X, Square, User, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,8 +39,8 @@ interface MeetingRecorderProps {
 
 const MAX_RECORDING_TIME = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
-type RecordingMode = 'screen-and-microphone' | 'microphone-only' | 'failed';
-type UIState = 'idle' | 'split' | 'recording' | 'paused' | 'stopped';
+type RecordingMode = 'microphone-only' | 'meeting-bot' | 'failed';
+type UIState = 'idle' | 'split' | 'recording' | 'paused' | 'stopped' | 'url-input';
 
 export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   onFileAttached,
@@ -42,21 +56,22 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [recordingMode, setRecordingMode] = useState<RecordingMode>('microphone-only');
-  const [sharedSource, setSharedSource] = useState<string>('');
+  const [meetingUrl, setMeetingUrl] = useState<string>('');
+  const [botId, setBotId] = useState<string>('');
+  const [botStatus, setBotStatus] = useState<string>('');
+  const [isPolling, setIsPolling] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamsRef = useRef<{
-    mixed?: MediaStream;
     microphone?: MediaStream;
-    display?: MediaStream;
   }>({});
-  const audioContextRef = useRef<AudioContext | null>(null);
   const recordingStartTimeRef = useRef<number | null>(null);
   const pausedDurationRef = useRef<number>(0);
   const pauseStartTimeRef = useRef<number | null>(null);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const maxTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Auto-collapse split after 5 seconds if no selection
   useEffect(() => {
@@ -131,7 +146,6 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     try {
       setUIState('recording');
       setRecordingMode('microphone-only');
-      setSharedSource('');
       
       console.log('[MEETING RECORDER] Starting in-person recording (microphone only)...');
       
@@ -159,148 +173,194 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     }
   };
 
-  const startOnlineRecording = async () => {
+  const startOnlineRecording = () => {
+    // Show URL input modal for meeting bot transcription
+    setUIState('url-input');
+  };
+
+  const handleMeetingUrlSubmit = async (url: string) => {
+    if (!url.trim()) return;
+    
     try {
+      console.log('[MEETING RECORDER] Starting meeting bot transcription for:', url);
+      
+      setMeetingUrl(url.trim());
+      setRecordingMode('meeting-bot');
       setUIState('recording');
-      setRecordingMode('microphone-only'); // Default fallback
-      setSharedSource('');
+      setBotStatus('starting...');
       
-      console.log('[MEETING RECORDER] Starting online recording (screen share + microphone)...');
-      
-      // Request both permissions simultaneously to prevent browsers from stopping streams
-      const mediaPromises = Promise.allSettled([
-        navigator.mediaDevices.getDisplayMedia({
-          video: {
-            width: 1920,
-            height: 1080,
-            frameRate: 1, // Minimal video since we only want audio
-          },
-          audio: {
-            echoCancellation: false, // Keep original audio quality
-            noiseSuppression: false,
-            autoGainControl: false,
-          }
-        }),
-        navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          }
+      // Start the meeting bot
+      const response = await fetch('/api/meeting-bot/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          meeting_url: url.trim(),
+          sandbox_id: sandboxId 
         })
-      ]);
+      });
       
-      const [displayResult, microphoneResult] = await mediaPromises;
+      const result = await response.json();
       
-      // Handle microphone stream (required)
-      let microphoneStream: MediaStream;
-      if (microphoneResult.status === 'fulfilled') {
-        microphoneStream = microphoneResult.value;
-        console.log('[MEETING RECORDER] Microphone access granted');
+      if (result.success) {
+        setBotId(result.bot_id);
+        setBotStatus(result.status);
+        startPolling(result.bot_id);
+        console.log(`[MEETING RECORDER] Bot started with ID: ${result.bot_id}`);
       } else {
-        console.error('[MEETING RECORDER] Microphone access failed:', microphoneResult.reason);
-        throw new Error('Microphone access required for recording');
-      }
-      
-      // Handle display stream (optional)
-      if (displayResult.status === 'fulfilled') {
-        const displayStream = displayResult.value;
-        console.log('[MEETING RECORDER] Screen sharing access granted');
-        
-        // Extract what the user shared for display purposes
-        const videoTrack = displayStream.getVideoTracks()[0];
-        if (videoTrack) {
-          const settings = videoTrack.getSettings();
-          if (settings.displaySurface === 'browser') {
-            setSharedSource('tab');
-          } else if (settings.displaySurface === 'window') {
-            setSharedSource('window');
-          } else if (settings.displaySurface === 'monitor') {
-            setSharedSource('screen');
-          } else {
-            setSharedSource('display');
-          }
-        }
-        
-        // Stop video track immediately since we only need audio
-        displayStream.getVideoTracks().forEach(track => {
-          track.stop();
-          displayStream.removeTrack(track);
-        });
-        
-        const displayAudioTracks = displayStream.getAudioTracks();
-        
-        if (displayAudioTracks.length > 0) {
-          console.log('[MEETING RECORDER] Display audio available, mixing with microphone');
-          // We have both microphone and display audio
-          const mixedStream = mixAudioStreams(microphoneStream, displayStream);
-          
-          // Store streams for cleanup
-          streamsRef.current.microphone = microphoneStream;
-          streamsRef.current.display = displayStream;
-          streamsRef.current.mixed = mixedStream;
-          
-          setRecordingMode('screen-and-microphone');
-          await startRecordingWithStream(mixedStream, 'screen-and-microphone');
-        } else {
-          console.log('[MEETING RECORDER] Screen shared but no audio available, using microphone only');
-          // User shared screen/window but no audio available
-          setSharedSource('');
-          streamsRef.current.microphone = microphoneStream;
-          setRecordingMode('microphone-only');
-          await startRecordingWithStream(microphoneStream, 'microphone-only');
-        }
-      } else {
-        console.log('[MEETING RECORDER] Screen sharing declined or failed:', displayResult.reason);
-        console.log('[MEETING RECORDER] Using microphone only');
-        
-        // User declined screen sharing, just use microphone
-        setSharedSource('');
-        streamsRef.current.microphone = microphoneStream;
-        setRecordingMode('microphone-only');
-        await startRecordingWithStream(microphoneStream, 'microphone-only');
+        throw new Error(result.error || 'Failed to start meeting bot');
       }
       
     } catch (error) {
-      console.error('[MEETING RECORDER] Error starting online recording:', error);
+      console.error('[MEETING RECORDER] Error starting meeting bot:', error);
       setUIState('idle');
       setRecordingMode('failed');
-      cleanupStreams();
+      setBotStatus('failed');
     }
   };
 
-  const mixAudioStreams = (micStream: MediaStream, displayStream: MediaStream): MediaStream => {
+  const startPolling = (botId: string) => {
+    setIsPolling(true);
+    
+    // Use localStorage to coordinate polling across tabs
+    const pollKey = `meeting_bot_poll_${botId}`;
+    const completedKey = `meeting_bot_completed_${botId}`;
+    
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        // Check if another tab already marked this as completed
+        if (localStorage.getItem(completedKey)) {
+          stopPolling();
+          return;
+        }
+        
+        // Check if another tab is actively polling (within last 30 seconds)
+        const lastPoll = localStorage.getItem(pollKey);
+        const now = Date.now();
+        
+        if (lastPoll && (now - parseInt(lastPoll)) < 30000) {
+          // Another tab is polling, just listen for status updates
+          const statusUpdate = localStorage.getItem(`meeting_bot_status_${botId}`);
+          if (statusUpdate) {
+            const status = JSON.parse(statusUpdate);
+            setBotStatus(status.value);
+            
+            if (status.value === 'completed' && !localStorage.getItem(completedKey)) {
+              localStorage.setItem(completedKey, 'true');
+              stopPolling();
+              await handleMeetingComplete(botId);
+            }
+          }
+          return;
+        }
+        
+        // This tab will do the polling
+        localStorage.setItem(pollKey, now.toString());
+        
+        const response = await fetch(`/api/meeting-bot/${botId}/status`);
+        const result = await response.json();
+        
+        if (result.success) {
+          setBotStatus(result.status);
+          
+          // Share status with other tabs
+          localStorage.setItem(`meeting_bot_status_${botId}`, JSON.stringify({
+            value: result.status,
+            timestamp: now
+          }));
+          
+          // If meeting completed, stop polling and handle transcript
+          if (result.status === 'completed' && !localStorage.getItem(completedKey)) {
+            localStorage.setItem(completedKey, 'true');
+            stopPolling();
+            await handleMeetingComplete(botId);
+          }
+        }
+      } catch (error) {
+        console.error('[MEETING RECORDER] Error polling bot status:', error);
+      }
+    }, 15000); // Poll every 15 seconds
+  };
+
+  const stopPolling = () => {
+    setIsPolling(false);
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  };
+
+  const handleMeetingComplete = async (botId: string) => {
     try {
-      console.log('[MEETING RECORDER] Mixing microphone and display audio...');
+      const response = await fetch(`/api/meeting-bot/${botId}/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sandbox_id: sandboxId })
+      });
       
-      // Create audio context for mixing
-      const audioContext = new AudioContext();
-      audioContextRef.current = audioContext;
-
-      // Create sources from streams
-      const micSource = audioContext.createMediaStreamSource(micStream);
-      const displaySource = audioContext.createMediaStreamSource(displayStream);
-      const destination = audioContext.createMediaStreamDestination();
-
-      // Create gain nodes for volume control
-      const micGain = audioContext.createGain();
-      const displayGain = audioContext.createGain();
+      const result = await response.json();
       
-      // Balance levels - microphone prominent but display audible
-      micGain.gain.value = 0.8;
-      displayGain.gain.value = 0.6;
-
-      // Connect the audio graph
-      micSource.connect(micGain).connect(destination);
-      displaySource.connect(displayGain).connect(destination);
-
-      console.log('[MEETING RECORDER] Audio streams mixed successfully');
-      return destination.stream;
+      if (result.success && result.content) {
+        // Create file object for transcript
+        const blob = new Blob([result.content], { type: 'text/plain' });
+        const file = new File([blob], result.filename, { type: 'text/plain' });
+        
+        // Auto-attach transcript using existing file upload system
+        await handleFiles(
+          [file],
+          sandboxId,
+          setPendingFiles,
+          setUploadedFiles,
+          setIsUploading,
+          messages,
+          queryClient,
+        );
+        
+        setUIState('stopped');
+        console.log('[MEETING RECORDER] Transcript auto-attached:', result.filename);
+      }
     } catch (error) {
-      console.error('[MEETING RECORDER] Error mixing audio streams:', error);
-      throw error;
+      console.error('[MEETING RECORDER] Error handling meeting completion:', error);
     }
   };
+
+  // Check for existing bot sessions on mount (persistence)
+  useEffect(() => {
+    const checkExistingSessions = async () => {
+      if (!sandboxId) return;
+      
+      try {
+        const response = await fetch(`/api/meeting-bot/sessions?sandbox_id=${sandboxId}`);
+        const result = await response.json();
+        
+        if (result.sessions?.length > 0) {
+          const session = result.sessions[0]; // Get most recent
+          setBotId(session.bot_id);
+          setMeetingUrl(session.meeting_url);
+          setRecordingMode('meeting-bot');
+          setUIState('recording');
+          setBotStatus(session.status);
+          
+          // Resume polling if still active
+          if (session.status === 'joining' || session.status === 'recording') {
+            startPolling(session.bot_id);
+          }
+          
+          console.log('[MEETING RECORDER] Resumed existing bot session:', session.bot_id);
+        }
+      } catch (error) {
+        console.error('[MEETING RECORDER] Error checking existing sessions:', error);
+      }
+    };
+    
+    checkExistingSessions();
+  }, [sandboxId]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, []);
 
   const startRecordingWithStream = async (recordingStream: MediaStream, mode: RecordingMode) => {
     // Create MediaRecorder with optimal settings
@@ -375,11 +435,17 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && (uiState === 'recording' || uiState === 'paused')) {
+  const stopRecording = async () => {
+    if (uiState === 'recording' || uiState === 'paused') {
+      if (recordingMode === 'meeting-bot' && botId) {
+        console.log('[MEETING RECORDER] Manually stopping meeting bot');
+        stopPolling();
+        await handleMeetingComplete(botId);
+      } else if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+        console.log('[MEETING RECORDER] Recording stopped');
+      }
       setUIState('stopped');
-      mediaRecorderRef.current.stop();
-      console.log('[MEETING RECORDER] Recording stopped');
     }
   };
 
@@ -417,36 +483,50 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     setUIState('idle');
     setRecordingTime(0);
     setRecordingMode('microphone-only');
-    setSharedSource('');
+    setMeetingUrl('');
+    setBotId('');
+    setBotStatus('');
+    stopPolling();
     recordingStartTimeRef.current = null;
     pausedDurationRef.current = 0;
     pauseStartTimeRef.current = null;
     chunksRef.current = [];
   };
 
+  const getBotStatusText = () => {
+    switch (botStatus) {
+      case 'starting...':
+        return 'Starting bot...';
+      case 'joining':
+        return 'Joining meeting...';
+      case 'recording':
+        return 'Bot recording ●';
+      case 'processing':
+        return 'Processing...';
+      case 'completed':
+        return 'Complete!';
+      case 'failed':
+        return 'Failed';
+      default:
+        return 'Bot active...';
+    }
+  };
+
   const cleanupStreams = () => {
     console.log('[MEETING RECORDER] Cleaning up streams...');
     
-    // Stop all tracks in all streams
-    const { mixed, microphone, display } = streamsRef.current;
+    // Stop microphone stream
+    const { microphone } = streamsRef.current;
     
-    [mixed, microphone, display].forEach(stream => {
-      if (stream) {
-        stream.getTracks().forEach(track => {
-          track.stop();
-          console.log(`[MEETING RECORDER] Stopped ${track.kind} track`);
-        });
-      }
-    });
+    if (microphone) {
+      microphone.getTracks().forEach(track => {
+        track.stop();
+        console.log(`[MEETING RECORDER] Stopped ${track.kind} track`);
+      });
+    }
     
     // Clear stream references
     streamsRef.current = {};
-
-    // Close audio context
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(console.error);
-      audioContextRef.current = null;
-    }
   };
 
   const handleMainButtonClick = () => {
@@ -534,6 +614,55 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     );
   }
 
+  // URL input state - show input field for meeting URL
+  if (uiState === 'url-input') {
+    return (
+      <div className="flex items-center gap-2 animate-in slide-in-from-left-1 duration-200">
+        <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-md px-3 py-2">
+          <Monitor className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <input
+            type="text"
+            placeholder="Enter meeting URL (Zoom, Teams, Meet...)"
+            value={meetingUrl}
+            onChange={(e) => setMeetingUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleMeetingUrlSubmit(meetingUrl);
+              } else if (e.key === 'Escape') {
+                setUIState('idle');
+                setMeetingUrl('');
+              }
+            }}
+            className="min-w-64 bg-transparent text-sm text-blue-900 dark:text-blue-100 placeholder-blue-500 dark:placeholder-blue-400 border-none outline-none"
+            autoFocus
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleMeetingUrlSubmit(meetingUrl)}
+            disabled={!meetingUrl.trim()}
+            className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30"
+          >
+            <Check className="h-3 w-3" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setUIState('idle');
+              setMeetingUrl('');
+            }}
+            className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Split state UI - two buttons side by side
   if (uiState === 'split') {
     return (
@@ -579,29 +708,36 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
   // Subtle recording panel
   if (uiState === 'recording' || uiState === 'paused') {
+    const isMeetingBot = recordingMode === 'meeting-bot';
+    const panelColor = isMeetingBot ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/50' : 'bg-neutral-50 dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-700/50';
+    
     return (
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700/50 rounded-md px-3 py-1.5 animate-in fade-in duration-300">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleMainButtonClick}
-                  disabled={disabled}
-                  className={cn("h-6 w-6 p-0 transition-colors", getMainButtonClass())}
-                >
-                  {getMainButtonIcon()}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{getTooltipText()}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <div className={cn("flex items-center gap-2 border rounded-md px-3 py-1.5 animate-in fade-in duration-300", panelColor)}>
+          {isMeetingBot ? (
+            <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleMainButtonClick}
+                    disabled={disabled}
+                    className={cn("h-6 w-6 p-0 transition-colors", getMainButtonClass())}
+                  >
+                    {getMainButtonIcon()}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{getTooltipText()}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           
-          <span className="text-sm tabular-nums text-neutral-600 dark:text-neutral-400">
-            {formatTime(recordingTime)}
+          <span className={cn("text-sm tabular-nums", isMeetingBot ? "text-green-700 dark:text-green-300" : "text-neutral-600 dark:text-neutral-400")}>
+            {isMeetingBot ? getBotStatusText() : formatTime(recordingTime)}
           </span>
           
           <TooltipProvider>
@@ -644,5 +780,5 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
         <TooltipContent>{getTooltipText()}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
-  );
-}; 
+      );
+  }; 

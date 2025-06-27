@@ -180,6 +180,203 @@ async def discover_custom_mcp_tools(request: CustomMCPDiscoverRequest):
         logger.error(f"Error discovering custom MCP tools: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Meeting Bot Management Endpoints
+@app.post("/api/meeting-bot/start")
+async def start_meeting_bot(request: Request):
+    """Start a meeting bot for the given URL"""
+    try:
+        data = await request.json()
+        meeting_url = data.get('meeting_url')
+        sandbox_id = data.get('sandbox_id')
+        
+        if not meeting_url:
+            return JSONResponse({"error": "meeting_url is required"}, status_code=400)
+            
+        # Import the tool
+        from agent.tools.meeting_bot_tool import MeetingBotTool
+        tool = MeetingBotTool()
+        
+        # Start the bot
+        result = await tool.start_meeting_bot(meeting_url, "AI Transcription Bot")
+        
+        if result.get('success'):
+            bot_id = result['bot_id']
+            
+            # Store bot session for persistence
+            bot_session = {
+                'bot_id': bot_id,
+                'meeting_url': meeting_url,
+                'sandbox_id': sandbox_id,
+                'status': 'joining',
+                'started_at': time.time(),
+                'last_updated': time.time()
+            }
+            
+            # Store in simple file-based persistence (production would use Redis/DB)
+            import json
+            import os
+            
+            sessions_dir = '/tmp/meeting_bot_sessions'
+            os.makedirs(sessions_dir, exist_ok=True)
+            
+            with open(f'{sessions_dir}/{bot_id}.json', 'w') as f:
+                json.dump(bot_session, f)
+            
+            return JSONResponse({
+                "success": True,
+                "bot_id": bot_id,
+                "status": "joining",
+                "message": "Bot is joining the meeting..."
+            })
+        else:
+            return JSONResponse({"error": result.get('error')}, status_code=400)
+            
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/meeting-bot/{bot_id}/status")
+async def get_meeting_bot_status(bot_id: str):
+    """Get current status of a meeting bot"""
+    try:
+        from agent.tools.meeting_bot_tool import MeetingBotTool
+        tool = MeetingBotTool()
+        
+        # Get live status from API
+        result = await tool.get_bot_status(bot_id)
+        
+        if result.get('success'):
+            status = result.get('status')
+            
+            # Update stored session
+            import json
+            sessions_dir = '/tmp/meeting_bot_sessions'
+            session_file = f'{sessions_dir}/{bot_id}.json'
+            
+            if os.path.exists(session_file):
+                with open(session_file, 'r') as f:
+                    session = json.load(f)
+                
+                session['status'] = status
+                session['last_updated'] = time.time()
+                
+                with open(session_file, 'w') as f:
+                    json.dump(session, f)
+            
+            return JSONResponse({
+                "success": True,
+                "status": status,
+                "transcript": result.get('transcript', ''),
+                "participants": result.get('participants', []),
+                "duration": result.get('duration', 0)
+            })
+        else:
+            return JSONResponse({"error": result.get('error')}, status_code=400)
+            
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/meeting-bot/{bot_id}/stop")
+async def stop_meeting_bot(bot_id: str, request: Request):
+    """Stop meeting bot and get final transcript"""
+    try:
+        data = await request.json()
+        sandbox_id = data.get('sandbox_id')
+        
+        from agent.tools.meeting_bot_tool import MeetingBotTool
+        tool = MeetingBotTool()
+        
+        # Stop the bot and get final transcript
+        result = await tool.stop_meeting_bot(bot_id)
+        
+        if result.get('success'):
+            transcript = result.get('transcript', '')
+            
+            if transcript:
+                # Create transcript file
+                import tempfile
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"meeting_transcript_{timestamp}.txt"
+                
+                # Format the transcript nicely
+                content = f"Meeting Transcript\n"
+                content += f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                content += f"Duration: {result.get('duration', 0) // 60}m {result.get('duration', 0) % 60}s\n"
+                content += f"Participants: {', '.join(result.get('participants', []))}\n\n"
+                
+                if result.get('summary'):
+                    content += f"Summary:\n{result.get('summary')}\n\n"
+                
+                if result.get('action_items'):
+                    content += f"Action Items:\n"
+                    for item in result.get('action_items', []):
+                        content += f"• {item}\n"
+                    content += "\n"
+                
+                content += f"Full Transcript:\n{transcript}"
+                
+                # Save to sandbox files
+                if sandbox_id:
+                    # This would integrate with your existing file upload system
+                    # For now, return the content to be handled by frontend
+                    pass
+                
+                # Clean up session
+                import os
+                sessions_dir = '/tmp/meeting_bot_sessions'
+                session_file = f'{sessions_dir}/{bot_id}.json'
+                if os.path.exists(session_file):
+                    os.remove(session_file)
+                
+                return JSONResponse({
+                    "success": True,
+                    "transcript": transcript,
+                    "summary": result.get('summary', ''),
+                    "action_items": result.get('action_items', []),
+                    "participants": result.get('participants', []),
+                    "duration": result.get('duration', 0),
+                    "filename": filename,
+                    "content": content
+                })
+            else:
+                return JSONResponse({"error": "No transcript available"}, status_code=400)
+        else:
+            return JSONResponse({"error": result.get('error')}, status_code=400)
+            
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/meeting-bot/sessions")
+async def get_active_sessions(sandbox_id: str = None):
+    """Get all active meeting bot sessions for persistence"""
+    try:
+        import json
+        import os
+        
+        sessions_dir = '/tmp/meeting_bot_sessions'
+        if not os.path.exists(sessions_dir):
+            return JSONResponse({"sessions": []})
+        
+        active_sessions = []
+        current_time = time.time()
+        
+        for filename in os.listdir(sessions_dir):
+            if filename.endswith('.json'):
+                try:
+                    with open(f'{sessions_dir}/{filename}', 'r') as f:
+                        session = json.load(f)
+                    
+                    # Only return sessions from last 24 hours
+                    if current_time - session.get('started_at', 0) < 86400:
+                        if not sandbox_id or session.get('sandbox_id') == sandbox_id:
+                            active_sessions.append(session)
+                except:
+                    continue
+        
+        return JSONResponse({"sessions": active_sessions})
+        
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
 if __name__ == "__main__":
     import uvicorn
     
