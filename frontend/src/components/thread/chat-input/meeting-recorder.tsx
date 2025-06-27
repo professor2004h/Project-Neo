@@ -224,64 +224,29 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   const startRealTimeUpdates = (botId: string) => {
     setIsPolling(true);
     
-    // Use Server-Sent Events for real-time updates (replaces polling!)
-    // Skip SSE if no backend URL configured - webhooks still work via polling fallback
-    const eventSource = new EventSource(`/api/meeting-bot/${botId}/events`);
-    
-    eventSource.onmessage = (event) => {
+    // Simple polling for status updates (webhooks handle the heavy lifting)
+    const checkStatus = async () => {
       try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'connected') {
-          console.log('[MEETING RECORDER] Real-time connection established');
-          return;
-        }
-        
-        if (data.type === 'heartbeat') {
-          return; // Keep-alive, no action needed
-        }
-        
-        // Update bot status from real-time webhook
-        if (data.bot_id === botId && data.status) {
-          setBotStatus(data.status);
+        const result = await backendApi.get(`/meeting-bot/${botId}/status`);
+        if (result.success && result.data) {
+          setBotStatus(result.data.status);
           
-          // Share status with other tabs via localStorage
-          localStorage.setItem(`meeting_bot_status_${botId}`, JSON.stringify({
-            value: data.status,
-            timestamp: Date.now()
-          }));
-          
-          // Handle meeting completion (MeetingBaaS sends 'completed' status)
-          if (data.status === 'completed' && !localStorage.getItem(`meeting_bot_completed_${botId}`)) {
+          // Handle meeting completion
+          if (result.data.status === 'completed' && !localStorage.getItem(`meeting_bot_completed_${botId}`)) {
             localStorage.setItem(`meeting_bot_completed_${botId}`, 'true');
             stopRealTimeUpdates();
             handleMeetingComplete(botId);
           }
         }
       } catch (error) {
-        console.error('[MEETING RECORDER] Error processing real-time update:', error);
+        console.error('[MEETING RECORDER] Status check failed:', error);
       }
     };
     
-    eventSource.onerror = (error) => {
-      console.error('[MEETING RECORDER] SSE connection error:', error);
-      eventSource.close();
-      
-      // Fallback to single status check after connection issues
-      setTimeout(async () => {
-        try {
-          const result = await backendApi.get(`/meeting-bot/${botId}/status`);
-          if (result.success && result.data) {
-            setBotStatus(result.data.status);
-          }
-        } catch (e) {
-          console.error('[MEETING RECORDER] Fallback status check failed:', e);
-        }
-      }, 5000);
-    };
-    
-    // Store reference for cleanup
-    pollingIntervalRef.current = eventSource as any;
+    // Check immediately and then every 15 seconds
+    checkStatus();
+    const interval = setInterval(checkStatus, 15000);
+    pollingIntervalRef.current = interval;
   };
 
   const stopRealTimeUpdates = () => {
