@@ -316,7 +316,6 @@ async def start_meeting_bot(request: Request):
             
             # Store in simple file-based persistence (production would use Redis/DB)
             import json
-            import os
             
             sessions_dir = '/tmp/meeting_bot_sessions'
             os.makedirs(sessions_dir, exist_ok=True)
@@ -423,7 +422,6 @@ async def stop_meeting_bot(bot_id: str, request: Request):
                     pass
                 
                 # Clean up session
-                import os
                 sessions_dir = '/tmp/meeting_bot_sessions'
                 session_file = f'{sessions_dir}/{bot_id}.json'
                 if os.path.exists(session_file):
@@ -497,7 +495,6 @@ async def meeting_bot_webhook(request: Request):
         
         # Update stored session
         import json
-        import os
         sessions_dir = '/tmp/meeting_bot_sessions'
         session_file = f'{sessions_dir}/{bot_id}.json'
         
@@ -599,7 +596,6 @@ async def configure_account_webhook(request: Request):
         
         # Set account-level webhook URL
         import aiohttp
-        import os
         
         api_key = os.getenv('MEETINGBAAS_API_KEY')
         if not api_key:
