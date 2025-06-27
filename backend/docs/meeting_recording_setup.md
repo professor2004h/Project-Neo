@@ -1,105 +1,142 @@
-# Meeting Recording Feature Setup
+# Meeting Recording Setup & Usage
 
-## Overview
-The meeting recording feature allows users to record up to 2 hours of audio during meetings and automatically transcribe them using OpenAI's Whisper API.
+The meeting recorder in Operator captures up to 2 hours of audio with intelligent dual-source capture and automatic transcription.
 
-## System Requirements
+## How It Works
 
-### Frontend
-- Modern web browser with WebRTC support (Chrome, Firefox, Safari, Edge)
-- Microphone permissions must be granted
+### Audio Capture Strategy
+The meeting recorder uses a **graceful degradation approach** for maximum compatibility:
 
-### Backend Dependencies
-The following Python packages are required (already added to requirements.txt):
-- `pydub>=0.25.1` - For audio file manipulation and chunking
-- `openai>=1.72.0` - For Whisper API transcription
+1. **Primary**: Attempts to capture both system audio and microphone
+2. **Fallback**: Falls back to microphone-only if system audio fails
+3. **Intelligent Mixing**: Uses Web Audio API to blend both sources when available
 
-### System Dependencies
-**Important**: The audio transcription tool requires FFmpeg to be installed on the system where the backend runs.
+### System Audio Availability
+System audio capture has **browser and platform limitations**:
 
-#### Installing FFmpeg
+- ✅ **Chrome/Edge**: Best support (Windows: full screen + tabs, macOS: tabs only)
+- ❌ **Firefox**: Limited system audio support
+- ❌ **Safari**: No system audio support
+- ❌ **Mobile**: No system audio support
 
-**Ubuntu/Debian:**
+### Visual Indicators
+- **SYS+MIC**: Green indicator = capturing system audio + microphone
+- **MIC**: Blue indicator = microphone only
+- **Pulse animation**: Red pulsing = actively recording
+- **Orange color**: Paused state
+
+## User Experience
+
+### Recording Process
+1. Click the record button (⭕)
+2. **System audio prompt**: Grant screen share permission for system audio (optional)
+3. **Microphone prompt**: Grant microphone permission (required)
+4. Recording starts with best available audio sources
+5. Visual indicator shows capture mode (SYS+MIC or MIC)
+
+### User Controls
+- **Record/Pause**: Click main button to record or pause
+- **Resume**: Click play button when paused
+- **Stop**: Click square button to stop recording
+- **Accept**: Green checkmark to save recording
+- **Delete**: Red X to discard recording
+
+## Browser Permissions
+
+### First Time Setup
+1. **Microphone**: Always required - grant when prompted
+2. **Screen Share**: Optional for system audio - choose:
+   - **Tab**: Captures audio from specific browser tab
+   - **Window**: Captures audio from specific application
+   - **Screen**: Captures all system audio (Chrome/Edge only)
+
+### Permission Tips
+- **macOS Users**: May need to grant "Screen Recording" permission in System Preferences
+- **Corporate Networks**: Some policies may block screen capture
+- **Privacy**: System audio capture only works with user's explicit permission
+
+## Technical Specifications
+
+### Audio Quality
+- **Format**: WebM with Opus codec (fallback to MP4 when needed)
+- **Bitrate**: 64kbps (optimized for speech/meetings)
+- **Channels**: Mixed to mono for efficient processing
+- **Gain Control**: Microphone (80%) + System Audio (70%) balanced mix
+
+### Recording Limits
+- **Duration**: 2 hours maximum (auto-stops)
+- **File Size**: Approximately 55MB for 2-hour recording
+- **Chunks**: 5-second segments for better file structure
+
+### Dependencies for Transcription
+If using the audio transcription tool, ensure FFmpeg is available:
+
 ```bash
-sudo apt update
-sudo apt install ffmpeg
-```
+# Ubuntu/Debian
+sudo apt update && sudo apt install ffmpeg
 
-**macOS (using Homebrew):**
-```bash
+# macOS
 brew install ffmpeg
+
+# Windows
+# Download from https://ffmpeg.org/download.html
 ```
-
-**Windows:**
-Download from https://ffmpeg.org/download.html and add to PATH
-
-**Docker:**
-If running in Docker, add this to your Dockerfile:
-```dockerfile
-RUN apt-get update && apt-get install -y ffmpeg
-```
-
-## Feature Components
-
-### 1. Meeting Recorder Component
-- Location: `frontend/src/components/thread/chat-input/meeting-recorder.tsx`
-- Features:
-  - Record up to 2 hours of audio
-  - Pause/resume functionality
-  - Visual timer display
-  - Accept/delete options when stopped
-
-### 2. Audio Transcription Tool
-- Location: `backend/agent/tools/audio_transcription_tool.py`
-- Features:
-  - Handles files up to 2 hours in length
-  - Automatic chunking for files > 20MB (OpenAI limit is 25MB)
-  - Intelligent chunk boundary detection
-  - Context preservation between chunks
-  - Saves transcript as text file
-
-## Usage
-
-1. **Recording**: Click the circle icon next to the send button to start recording
-2. **Pause/Resume**: Click the pause/play icon during recording
-3. **Stop**: Click the square icon to stop recording
-4. **Accept**: Click the checkmark to attach the recording to your message
-5. **Delete**: Click the X to discard the recording
-
-When accepted, the system automatically adds:
-- The audio file as an attachment
-- A message requesting transcription with duration info
-- The AI will use the `transcribe_audio` tool to process the file
-
-## Technical Details
-
-### Audio Format
-- Recording format: WebM (audio/webm)
-- Supported formats for transcription: mp3, mp4, mpeg, mpga, wav, webm, m4a
-
-### File Size Handling
-- Files under 20MB: Direct transcription
-- Files over 20MB: Automatically chunked into 10-minute segments
-- Each chunk includes context from the previous chunk for continuity
-
-### Transcription Model
-- Uses OpenAI's `gpt-4o-mini-transcribe` model
-- Supports multiple languages (auto-detection or manual specification)
-- Context prompts can be provided for better accuracy
 
 ## Troubleshooting
 
-### "ffmpeg not found" error
-- Ensure FFmpeg is installed and in the system PATH
-- Restart the backend service after installation
+### Common Issues
 
-### Large file transcription fails
-- Check available disk space for temporary files
-- Ensure the audio file is not corrupted
-- Monitor backend logs for specific error messages
+**"No system audio captured"**
+- Expected behavior on Firefox/Safari
+- Check browser compatibility above
+- Grant screen share permission when prompted
 
-### Poor transcription quality
-- Ensure good audio quality during recording
-- Use a headset or external microphone if possible
-- Minimize background noise
-- Consider providing a context prompt for domain-specific terminology 
+**"Microphone access denied"**
+- Check browser permissions in address bar
+- Reload page and try again
+- Verify microphone isn't used by other applications
+
+**"Recording failed to start"**
+- Ensure you're on HTTPS or localhost
+- Check if other applications are using microphone
+- Try refreshing the page
+
+**"macOS permission issues"**
+- Go to System Preferences > Security & Privacy > Privacy
+- Enable "Screen Recording" for your browser
+- Restart browser after enabling
+
+### Quality Issues
+- **Low system audio**: Increase computer volume before recording
+- **Echo/feedback**: Use headphones during recording
+- **Background noise**: Record in quiet environment
+
+## Best Practices
+
+### For Best Audio Quality
+1. **Use headphones** to prevent feedback
+2. **Close unnecessary applications** that might capture audio
+3. **Test recording** for a few seconds first
+4. **Record in quiet environment** when possible
+
+### For System Audio Capture
+1. **Use Chrome or Edge** for best compatibility
+2. **Select appropriate source** when prompted:
+   - Browser tab for meeting audio
+   - Full screen for system-wide capture
+3. **Grant permissions** when prompted
+4. **Check volume levels** before starting
+
+### File Management
+- Recordings auto-upload after acceptance
+- Large files may take time to process
+- Transcription happens automatically when tool is enabled
+- Files are saved with timestamp for easy identification
+
+## Privacy & Security
+
+- **Local processing**: Audio mixing happens in browser
+- **User control**: System audio requires explicit permission
+- **No background recording**: Only active during user session
+- **Clear indicators**: Always shows when recording is active
+- **Secure transmission**: Files uploaded over HTTPS only 
