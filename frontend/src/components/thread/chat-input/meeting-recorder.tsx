@@ -200,13 +200,13 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
         if (videoTrack) {
           const settings = videoTrack.getSettings();
           if (settings.displaySurface === 'browser') {
-            setSharedSource('Browser Tab');
+            setSharedSource('tab');
           } else if (settings.displaySurface === 'window') {
-            setSharedSource('Application Window');
+            setSharedSource('window');
           } else if (settings.displaySurface === 'monitor') {
-            setSharedSource('Screen');
+            setSharedSource('screen');
           } else {
-            setSharedSource('Display Surface');
+            setSharedSource('display');
           }
         }
         
@@ -477,65 +477,45 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
   const getTooltipText = () => {
     if (uiState === 'idle') {
-      return 'Start recording - choose meeting type';
+      return 'Start recording';
     } else if (uiState === 'split') {
       return 'Choose recording type';
     } else if (uiState === 'recording') {
-      if (recordingMode === 'screen-and-microphone') {
-        const sourceText = sharedSource ? ` from ${sharedSource}` : '';
-        return `Recording audio${sourceText} + microphone - Click to pause`;
-      } else {
-        return 'Recording microphone only - Click to pause';
-      }
+      return 'Pause recording';
     } else if (uiState === 'paused') {
       return 'Resume recording';
     }
     return '';
   };
 
-  // Stopped state UI
+  // Clean red completion tag
   if (uiState === 'stopped') {
-    const modeIndicator = recordingMode === 'screen-and-microphone' 
-      ? ` (${sharedSource} + mic)` 
-      : ' (microphone)';
-      
     return (
       <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">
-          Recording complete ({formatTime(recordingTime)}){modeIndicator}
-        </span>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={acceptRecording}
-                className="h-8 w-8 p-0 text-green-500 hover:text-green-600"
-              >
-                <Check className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Accept recording</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={deleteRecording}
-                className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Delete recording</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-md px-2 py-1">
+          <div className="h-2 w-2 rounded-full bg-red-500"></div>
+          <span className="text-sm font-medium text-red-700 dark:text-red-300">
+            {formatTime(recordingTime)}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={acceptRecording}
+            className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30"
+          >
+            <Check className="h-3 w-3" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={deleteRecording}
+            className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
     );
   }
@@ -558,7 +538,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
                 <User className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>In Person - Record microphone only</TooltipContent>
+            <TooltipContent>In Person</TooltipContent>
           </Tooltip>
         </TooltipProvider>
         
@@ -576,47 +556,40 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
                 <Monitor className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Online Meeting - Share screen + microphone</TooltipContent>
+            <TooltipContent>Online</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
     );
   }
 
-  // Recording/paused state UI
-  return (
-    <div className="flex items-center gap-2">
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleMainButtonClick}
-              disabled={disabled}
-              className={cn("h-8 w-8 p-0 transition-colors", getMainButtonClass())}
-            >
-              {getMainButtonIcon()}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{getTooltipText()}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-
-      {(uiState === 'recording' || uiState === 'paused') && (
-        <>
-          <span className="text-sm tabular-nums text-muted-foreground">
+  // Subtle recording panel
+  if (uiState === 'recording' || uiState === 'paused') {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700/50 rounded-md px-3 py-1.5 animate-in fade-in duration-300">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleMainButtonClick}
+                  disabled={disabled}
+                  className={cn("h-6 w-6 p-0 transition-colors", getMainButtonClass())}
+                >
+                  {getMainButtonIcon()}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{getTooltipText()}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <span className="text-sm tabular-nums text-neutral-600 dark:text-neutral-400">
             {formatTime(recordingTime)}
           </span>
-          {recordingMode === 'screen-and-microphone' && uiState === 'recording' && (
-            <span className="text-xs text-green-600 font-medium">
-              {sharedSource ? sharedSource.toUpperCase().replace(' ', '+') : 'SHARED'}+MIC
-            </span>
-          )}
-          {recordingMode === 'microphone-only' && uiState === 'recording' && (
-            <span className="text-xs text-blue-600 font-medium">MIC</span>
-          )}
+          
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -625,16 +598,37 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={stopRecording}
-                  className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:scale-110 transition-transform"
+                  className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                 >
-                  <Square className="h-4 w-4 fill-current" />
+                  <Square className="h-3 w-3 fill-current" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Stop recording</TooltipContent>
+              <TooltipContent>Stop</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-        </>
-      )}
-    </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Idle state - single record button
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleMainButtonClick}
+            disabled={disabled}
+            className={cn("h-8 w-8 p-0 transition-colors", getMainButtonClass())}
+          >
+            {getMainButtonIcon()}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{getTooltipText()}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }; 
