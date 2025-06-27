@@ -49,9 +49,10 @@ export function SidebarLeft({
   });
 
   const pathname = usePathname();
-  const { flags, loading: flagsLoading } = useFeatureFlags(['custom_agents', 'agent_marketplace']);
+  const { flags, loading: flagsLoading } = useFeatureFlags(['custom_agents', 'agent_marketplace', 'enterprise_demo']);
   const customAgentsEnabled = flags.custom_agents;
   const marketplaceEnabled = flags.agent_marketplace;
+  const enterpriseDemoEnabled = flags.enterprise_demo;
 
   // Fetch user data
   useEffect(() => {
@@ -174,7 +175,7 @@ export function SidebarLeft({
         )}
         <NavAgents />
       </SidebarContent>
-      {state !== 'collapsed' && (
+      {state !== 'collapsed' && enterpriseDemoEnabled && (
         <div className="px-3 py-2">
           <CTACard />
         </div>
