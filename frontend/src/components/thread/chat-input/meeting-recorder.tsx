@@ -665,54 +665,46 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
               <TooltipContent>Online</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <PopoverContent className="w-80 p-3" side="top" align="end">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
-                <span className="text-sm font-medium text-green-700 dark:text-green-300">
-                  Join Online Meeting
-                </span>
-              </div>
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="Paste meeting URL (Zoom, Teams, Meet...)"
-                  value={meetingUrl}
-                  onChange={(e) => setMeetingUrl(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleMeetingUrlSubmit(meetingUrl);
-                    } else if (e.key === 'Escape') {
-                      setIsUrlPopoverOpen(false);
-                      setMeetingUrl('');
-                    }
+          <PopoverContent className="w-72 p-3" side="top" align="end">
+            <div className="space-y-2">
+              <input
+                type="text"
+                placeholder="Meeting URL"
+                value={meetingUrl}
+                onChange={(e) => setMeetingUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleMeetingUrlSubmit(meetingUrl);
+                  } else if (e.key === 'Escape') {
+                    setIsUrlPopoverOpen(false);
+                    setMeetingUrl('');
+                  }
+                }}
+                className="w-full px-2 py-1.5 text-sm bg-transparent border border-neutral-200 dark:border-neutral-700 rounded focus:outline-none focus:border-green-500 dark:focus:border-green-400"
+                autoFocus
+              />
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsUrlPopoverOpen(false);
+                    setMeetingUrl('');
                   }}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  autoFocus
-                />
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setIsUrlPopoverOpen(false);
-                      setMeetingUrl('');
-                    }}
-                    className="h-8 px-3 text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => handleMeetingUrlSubmit(meetingUrl)}
-                    disabled={!meetingUrl.trim()}
-                    className="h-8 px-3 bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    Start Bot
-                  </Button>
-                </div>
+                  className="h-6 flex-1 text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => handleMeetingUrlSubmit(meetingUrl)}
+                  disabled={!meetingUrl.trim()}
+                  className="h-6 flex-1 text-xs bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+                >
+                  Start
+                </Button>
               </div>
             </div>
           </PopoverContent>
