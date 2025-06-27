@@ -187,20 +187,50 @@ active_sse_connections = {}
 async def broadcast_bot_update(bot_id: str, session_data: dict):
     """Broadcast bot status update to connected SSE clients"""
     import json
-    message = f"data: {json.dumps({'bot_id': bot_id, **session_data})}\n\n"
     
-    # Send to all connected clients for this bot
-    if bot_id in active_sse_connections:
-        disconnected = []
-        for queue in active_sse_connections[bot_id]:
-            try:
-                await queue.put(message)
-            except:
-                disconnected.append(queue)
+    try:
+        # Create the message with type identifier
+        message_data = {
+            'type': 'status_update',
+            'bot_id': bot_id,
+            **session_data
+        }
+        message = f"data: {json.dumps(message_data)}\n\n"
         
-        # Clean up disconnected clients
-        for queue in disconnected:
-            active_sse_connections[bot_id].remove(queue)
+        logger.info(f"[BROADCAST] Sending update for bot {bot_id}, status: {session_data.get('status', 'unknown')}")
+        
+        # Send to all connected clients for this bot
+        if bot_id in active_sse_connections:
+            total_clients = len(active_sse_connections[bot_id])
+            logger.info(f"[BROADCAST] Broadcasting to {total_clients} clients for bot {bot_id}")
+            
+            disconnected = []
+            successful = 0
+            
+            for queue in active_sse_connections[bot_id]:
+                try:
+                    await queue.put(message)
+                    successful += 1
+                except Exception as queue_error:
+                    logger.error(f"[BROADCAST] Failed to send to client: {queue_error}")
+                    disconnected.append(queue)
+            
+            # Clean up disconnected clients
+            for queue in disconnected:
+                try:
+                    active_sse_connections[bot_id].remove(queue)
+                except ValueError:
+                    pass  # Queue already removed
+            
+            logger.info(f"[BROADCAST] Successfully sent to {successful}/{total_clients} clients for bot {bot_id}")
+            
+            if disconnected:
+                logger.warning(f"[BROADCAST] Cleaned up {len(disconnected)} disconnected clients for bot {bot_id}")
+        else:
+            logger.warning(f"[BROADCAST] No active SSE connections for bot {bot_id}")
+            
+    except Exception as e:
+        logger.error(f"[BROADCAST] Error broadcasting update for bot {bot_id}: {str(e)}")
 
 @app.get("/api/meeting-bot/{bot_id}/events")
 async def bot_status_events(bot_id: str):
@@ -208,36 +238,68 @@ async def bot_status_events(bot_id: str):
     import asyncio
     from fastapi.responses import StreamingResponse
     
+    logger.info(f"[SSE] New connection for bot {bot_id}")
+    
     async def event_publisher():
         queue = asyncio.Queue()
         
-        # Add this client to active connections
-        if bot_id not in active_sse_connections:
-            active_sse_connections[bot_id] = []
-        active_sse_connections[bot_id].append(queue)
-        
         try:
-            # Send initial status
-            yield "data: {\"type\": \"connected\"}\n\n"
+            # Add this client to active connections
+            if bot_id not in active_sse_connections:
+                active_sse_connections[bot_id] = []
+            active_sse_connections[bot_id].append(queue)
+            logger.info(f"[SSE] Added client for bot {bot_id}, total clients: {len(active_sse_connections[bot_id])}")
+            
+            # Send initial connection confirmation
+            yield "data: {\"type\": \"connected\", \"bot_id\": \"" + bot_id + "\"}\n\n"
+            
+            # Send current status if available
+            import json
+            import os
+            sessions_dir = '/tmp/meeting_bot_sessions'
+            session_file = f'{sessions_dir}/{bot_id}.json'
+            
+            if os.path.exists(session_file):
+                try:
+                    with open(session_file, 'r') as f:
+                        session = json.load(f)
+                    
+                    status_update = json.dumps({
+                        "type": "status_update",
+                        "bot_id": bot_id,
+                        "status": session.get('status', 'unknown'),
+                        "last_updated": session.get('last_updated', 0)
+                    })
+                    yield f"data: {status_update}\n\n"
+                    logger.info(f"[SSE] Sent initial status for bot {bot_id}: {session.get('status')}")
+                except Exception as file_error:
+                    logger.error(f"[SSE] Error reading session for {bot_id}: {file_error}")
             
             # Stream real-time updates
             while True:
                 try:
                     message = await asyncio.wait_for(queue.get(), timeout=30.0)
                     yield message
+                    logger.debug(f"[SSE] Sent message to bot {bot_id} client")
                 except asyncio.TimeoutError:
                     # Send heartbeat to keep connection alive
-                    yield "data: {\"type\": \"heartbeat\"}\n\n"
+                    heartbeat = json.dumps({"type": "heartbeat", "timestamp": time.time()})
+                    yield f"data: {heartbeat}\n\n"
+                    logger.debug(f"[SSE] Sent heartbeat for bot {bot_id}")
                     
         except Exception as e:
-            print(f"[SSE] Client disconnected: {e}")
+            logger.error(f"[SSE] Client for bot {bot_id} disconnected with error: {e}")
         finally:
             # Clean up connection
-            if bot_id in active_sse_connections:
-                if queue in active_sse_connections[bot_id]:
-                    active_sse_connections[bot_id].remove(queue)
-                if not active_sse_connections[bot_id]:
-                    del active_sse_connections[bot_id]
+            try:
+                if bot_id in active_sse_connections:
+                    if queue in active_sse_connections[bot_id]:
+                        active_sse_connections[bot_id].remove(queue)
+                    if not active_sse_connections[bot_id]:
+                        del active_sse_connections[bot_id]
+                logger.info(f"[SSE] Cleaned up connection for bot {bot_id}")
+            except Exception as cleanup_error:
+                logger.error(f"[SSE] Error cleaning up for bot {bot_id}: {cleanup_error}")
     
     return StreamingResponse(
         event_publisher(),
@@ -246,7 +308,9 @@ async def bot_status_events(bot_id: str):
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Headers": "Cache-Control",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "X-Accel-Buffering": "no",  # Disable proxy buffering for real-time streaming
         }
     )
 
@@ -332,40 +396,103 @@ async def start_meeting_bot(request: Request):
 async def get_meeting_bot_status(bot_id: str):
     """Get current status of a meeting bot"""
     try:
-        from services.meeting_baas import meeting_baas_service
+        # First check local session for up-to-date status from webhooks
+        import json
+        sessions_dir = '/tmp/meeting_bot_sessions'
+        session_file = f'{sessions_dir}/{bot_id}.json'
         
-        # Get live status from API
-        result = await meeting_baas_service.get_bot_status(bot_id)
+        if os.path.exists(session_file):
+            with open(session_file, 'r') as f:
+                session = json.load(f)
+            
+            status = session.get('status', 'unknown')
+            
+            # If meeting is completed, return session data
+            if status in ['completed', 'ended', 'failed']:
+                logger.info(f"[STATUS] Using session status for {bot_id}: {status}")
+                
+                # Convert transcript list to text if needed
+                transcript_content = ""
+                if session.get('transcript'):
+                    transcript_list = session.get('transcript', [])
+                    if isinstance(transcript_list, list):
+                        transcript_content = '\n'.join([
+                            f"{item.get('speaker', 'Unknown')}: {item.get('text', '')}"
+                            for item in transcript_list
+                            if isinstance(item, dict) and item.get('text')
+                        ])
+                    elif isinstance(transcript_list, str):
+                        transcript_content = transcript_list
+                
+                return JSONResponse({
+                    "success": True,
+                    "status": status,
+                    "transcript": transcript_content,
+                    "participants": session.get('speakers', []),
+                    "duration": int(session.get('completed_at', 0) - session.get('started_at', 0)) if session.get('completed_at') and session.get('started_at') else 0
+                })
         
-        if result.get('success'):
-            status = result.get('status')
+        # If not completed locally, try to get live status from API
+        try:
+            from services.meeting_baas import meeting_baas_service
+            result = await meeting_baas_service.get_bot_status(bot_id)
             
-            # Update stored session
-            import json
-            sessions_dir = '/tmp/meeting_bot_sessions'
-            session_file = f'{sessions_dir}/{bot_id}.json'
-            
+            if result.get('success'):
+                status = result.get('status')
+                
+                # Update stored session
+                if os.path.exists(session_file):
+                    with open(session_file, 'r') as f:
+                        session = json.load(f)
+                    
+                    session['status'] = status
+                    session['last_updated'] = time.time()
+                    
+                    with open(session_file, 'w') as f:
+                        json.dump(session, f)
+                
+                logger.info(f"[STATUS] Using API status for {bot_id}: {status}")
+                return JSONResponse({
+                    "success": True,
+                    "status": status,
+                    "transcript": result.get('transcript', ''),
+                    "participants": result.get('participants', []),
+                    "duration": result.get('duration', 0)
+                })
+            else:
+                logger.error(f"[STATUS] API failed for {bot_id}: {result.get('error')}")
+                # If API fails but we have session data, return session status
+                if os.path.exists(session_file):
+                    with open(session_file, 'r') as f:
+                        session = json.load(f)
+                    return JSONResponse({
+                        "success": True,
+                        "status": session.get('status', 'unknown'),
+                        "transcript": '',
+                        "participants": session.get('speakers', []),
+                        "duration": 0
+                    })
+                else:
+                    return JSONResponse({"error": result.get('error')}, status_code=400)
+                    
+        except Exception as api_error:
+            logger.error(f"[STATUS] API call failed for {bot_id}: {str(api_error)}")
+            # If API fails but we have session data, return session status
             if os.path.exists(session_file):
                 with open(session_file, 'r') as f:
                     session = json.load(f)
-                
-                session['status'] = status
-                session['last_updated'] = time.time()
-                
-                with open(session_file, 'w') as f:
-                    json.dump(session, f)
-            
-            return JSONResponse({
-                "success": True,
-                "status": status,
-                "transcript": result.get('transcript', ''),
-                "participants": result.get('participants', []),
-                "duration": result.get('duration', 0)
-            })
-        else:
-            return JSONResponse({"error": result.get('error')}, status_code=400)
+                return JSONResponse({
+                    "success": True,
+                    "status": session.get('status', 'unknown'),
+                    "transcript": '',
+                    "participants": session.get('speakers', []),
+                    "duration": 0
+                })
+            else:
+                return JSONResponse({"error": str(api_error)}, status_code=500)
             
     except Exception as e:
+        logger.error(f"[STATUS] Error getting status for {bot_id}: {str(e)}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/api/meeting-bot/{bot_id}/stop")
@@ -375,65 +502,95 @@ async def stop_meeting_bot(bot_id: str, request: Request):
         data = await request.json()
         sandbox_id = data.get('sandbox_id')
         
-        from services.meeting_baas import meeting_baas_service
+        # First check if we already have the transcript from webhook
+        import json
+        sessions_dir = '/tmp/meeting_bot_sessions'
+        session_file = f'{sessions_dir}/{bot_id}.json'
         
-        # Stop the bot and get final transcript
-        result = await meeting_baas_service.stop_meeting_bot(bot_id)
+        transcript_content = None
+        session_data = {}
         
-        if result.get('success'):
-            transcript = result.get('transcript', '')
+        if os.path.exists(session_file):
+            with open(session_file, 'r') as f:
+                session_data = json.load(f)
             
-            if transcript:
-                # Create transcript file
-                import tempfile
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"meeting_transcript_{timestamp}.txt"
+            # If meeting completed via webhook, use that data
+            if session_data.get('status') == 'completed' and session_data.get('transcript'):
+                transcript_list = session_data.get('transcript', [])
                 
-                # Format the transcript nicely
-                content = f"Meeting Transcript\n"
-                content += f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                content += f"Duration: {result.get('duration', 0) // 60}m {result.get('duration', 0) % 60}s\n"
-                content += f"Participants: {', '.join(result.get('participants', []))}\n\n"
+                # Convert transcript list to text
+                if isinstance(transcript_list, list):
+                    transcript_content = '\n'.join([
+                        f"{item.get('speaker', 'Unknown')}: {item.get('text', '')}"
+                        for item in transcript_list
+                        if isinstance(item, dict) and item.get('text')
+                    ])
+                elif isinstance(transcript_list, str):
+                    transcript_content = transcript_list
                 
-                if result.get('summary'):
-                    content += f"Summary:\n{result.get('summary')}\n\n"
+                logger.info(f"[STOP] Using webhook transcript for {bot_id}, length: {len(transcript_content) if transcript_content else 0}")
+        
+        # If no transcript from webhook, try to stop bot via API
+        if not transcript_content:
+            try:
+                from services.meeting_baas import meeting_baas_service
+                result = await meeting_baas_service.stop_meeting_bot(bot_id)
                 
-                if result.get('action_items'):
-                    content += f"Action Items:\n"
-                    for item in result.get('action_items', []):
-                        content += f"• {item}\n"
-                    content += "\n"
-                
-                content += f"Full Transcript:\n{transcript}"
-                
-                # Save to sandbox files
-                if sandbox_id:
-                    # This would integrate with your existing file upload system
-                    # For now, return the content to be handled by frontend
-                    pass
-                
-                # Clean up session
-                sessions_dir = '/tmp/meeting_bot_sessions'
-                session_file = f'{sessions_dir}/{bot_id}.json'
-                if os.path.exists(session_file):
-                    os.remove(session_file)
-                
-                return JSONResponse({
-                    "success": True,
-                    "transcript": transcript,
-                    "summary": result.get('summary', ''),
-                    "action_items": result.get('action_items', []),
-                    "participants": result.get('participants', []),
-                    "duration": result.get('duration', 0),
-                    "filename": filename,
-                    "content": content
-                })
-            else:
-                return JSONResponse({"error": "No transcript available"}, status_code=400)
+                if result.get('success'):
+                    transcript_content = result.get('transcript', '')
+                    logger.info(f"[STOP] Got transcript from API for {bot_id}, length: {len(transcript_content) if transcript_content else 0}")
+                else:
+                    logger.error(f"[STOP] API stop failed for {bot_id}: {result.get('error')}")
+            except Exception as api_error:
+                logger.error(f"[STOP] API call failed for {bot_id}: {str(api_error)}")
+        
+        if transcript_content:
+            # Create transcript file
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"meeting_transcript_{timestamp}.txt"
+            
+            # Format the transcript nicely
+            content = f"Meeting Transcript\n"
+            content += f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            content += f"Bot ID: {bot_id}\n"
+            
+            # Add session info if available
+            if session_data:
+                content += f"Meeting URL: {session_data.get('meeting_url', 'Unknown')}\n"
+                if session_data.get('started_at'):
+                    started = datetime.fromtimestamp(session_data['started_at'])
+                    content += f"Started: {started.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                if session_data.get('completed_at'):
+                    completed = datetime.fromtimestamp(session_data['completed_at'])
+                    content += f"Completed: {completed.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    duration = session_data['completed_at'] - session_data.get('started_at', session_data['completed_at'])
+                    content += f"Duration: {int(duration // 60)}m {int(duration % 60)}s\n"
+            
+            content += f"Participants: {', '.join(session_data.get('speakers', ['Unknown']))}\n\n"
+            content += f"Full Transcript:\n{transcript_content}"
+            
+            # Clean up session
+            if os.path.exists(session_file):
+                os.remove(session_file)
+                logger.info(f"[STOP] Cleaned up session file for {bot_id}")
+            
+            return JSONResponse({
+                "success": True,
+                "transcript": transcript_content,
+                "summary": "",  # MeetingBaaS doesn't provide summary in webhook
+                "action_items": [],  # MeetingBaaS doesn't provide action items in webhook
+                "participants": session_data.get('speakers', []),
+                "duration": int(session_data.get('completed_at', 0) - session_data.get('started_at', 0)) if session_data.get('completed_at') and session_data.get('started_at') else 0,
+                "filename": filename,
+                "content": content
+            })
         else:
-            return JSONResponse({"error": result.get('error')}, status_code=400)
+            logger.error(f"[STOP] No transcript available for {bot_id}")
+            return JSONResponse({"error": "No transcript available - meeting may not be completed yet"}, status_code=400)
             
     except Exception as e:
+        logger.error(f"[STOP] Error stopping bot {bot_id}: {str(e)}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/api/meeting-bot/webhook")
