@@ -637,6 +637,60 @@ async def configure_account_webhook(request: Request):
         logger.error(f"[WEBHOOK CONFIG] Error configuring account webhook: {str(e)}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
+@app.get("/api/meeting-bot/test")
+async def test_meeting_bot_setup():
+    """Test MeetingBaaS API setup and connectivity"""
+    try:
+        # Check API key
+        api_key = os.getenv('MEETINGBAAS_API_KEY')
+        if not api_key:
+            return JSONResponse({
+                "success": False,
+                "error": "MEETINGBAAS_API_KEY environment variable not set"
+            }, status_code=500)
+        
+        # Test import
+        try:
+            from agent.tools.meeting_bot_tool import MeetingBotTool
+        except Exception as import_error:
+            return JSONResponse({
+                "success": False,
+                "error": f"Failed to import MeetingBotTool: {str(import_error)}"
+            }, status_code=500)
+        
+        # Test initialization
+        try:
+            tool = MeetingBotTool()
+        except Exception as init_error:
+            return JSONResponse({
+                "success": False,
+                "error": f"Failed to initialize MeetingBotTool: {str(init_error)}"
+            }, status_code=500)
+        
+        # Test aiohttp import
+        try:
+            import aiohttp
+        except Exception as aiohttp_error:
+            return JSONResponse({
+                "success": False,
+                "error": f"aiohttp not available: {str(aiohttp_error)}"
+            }, status_code=500)
+        
+        return JSONResponse({
+            "success": True,
+            "message": "MeetingBaaS setup is working",
+            "api_key_configured": True,
+            "api_key_preview": f"{api_key[:10]}..." if api_key else None,
+            "tool_imported": True,
+            "aiohttp_available": True
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": f"Test failed: {str(e)}"
+        }, status_code=500)
+
 @app.get("/api/meeting-bot/sessions")
 async def get_active_sessions(sandbox_id: str = None):
     """Get all active meeting bot sessions for persistence"""
