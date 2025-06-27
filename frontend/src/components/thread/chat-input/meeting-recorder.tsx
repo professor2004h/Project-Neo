@@ -112,7 +112,9 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
   const startRecording = async () => {
     try {
-      // Try to get both microphone and system audio
+      setState('recording'); // Set state early for UI feedback
+      
+      // Get streams in the same synchronous context as user gesture
       const combinedStream = await getCombinedAudioStream();
       streamRef.current = combinedStream;
 
@@ -158,31 +160,24 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       mediaRecorder.start(5000);
       recordingStartTimeRef.current = Date.now();
       pausedDurationRef.current = 0;
-      setState('recording');
     } catch (error) {
-      console.error('Error starting recording:', error);
+      console.error('[MEETING RECORDER] Error starting recording:', error);
       setState('idle');
     }
   };
 
   const getCombinedAudioStream = async (): Promise<MediaStream> => {
     try {
-      // Get microphone stream first
-      const micStream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        }
-      });
-      micStreamRef.current = micStream;
-
-      // Try to get system audio using the most reliable method
+      // Call getDisplayMedia FIRST while we're still in the user gesture context
+      // This is critical for browser security requirements
+      let systemDisplayStream: MediaStream | null = null;
       let systemStream: MediaStream | null = null;
+      
       try {
+        console.log('[MEETING RECORDER] Requesting system audio access...');
         // Use video: true with audio for maximum browser compatibility
         // We'll discard the video track immediately
-        const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
+        systemDisplayStream = await navigator.mediaDevices.getDisplayMedia({ 
           audio: {
             echoCancellation: false, // Keep system audio natural
             noiseSuppression: false,
@@ -196,7 +191,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
         });
         
         // Extract only audio tracks and stop video immediately
-        const audioTracks = displayStream.getAudioTracks();
+        const audioTracks = systemDisplayStream.getAudioTracks();
         if (audioTracks.length > 0) {
           systemStream = new MediaStream(audioTracks);
           systemStreamRef.current = systemStream;
@@ -204,14 +199,24 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
         }
         
         // Stop and remove video tracks immediately
-        displayStream.getVideoTracks().forEach(track => {
+        systemDisplayStream.getVideoTracks().forEach(track => {
           track.stop();
-          displayStream.removeTrack(track);
+          systemDisplayStream.removeTrack(track);
         });
         
       } catch (systemError) {
         console.log('[MEETING RECORDER] System audio not available, using microphone only:', systemError.name);
       }
+
+      // Now get microphone stream
+      const micStream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }
+      });
+      micStreamRef.current = micStream;
 
       // If we have both streams, mix them; otherwise just use microphone
       if (systemStream) {
