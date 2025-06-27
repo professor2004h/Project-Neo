@@ -22,6 +22,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { UploadedFile } from './chat-input';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
 import { handleFiles } from './file-upload-handler';
@@ -41,7 +46,7 @@ interface MeetingRecorderProps {
 const MAX_RECORDING_TIME = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
 type RecordingMode = 'microphone-only' | 'meeting-bot' | 'failed';
-type UIState = 'idle' | 'split' | 'recording' | 'paused' | 'stopped' | 'url-input';
+type UIState = 'idle' | 'split' | 'recording' | 'paused' | 'stopped';
 
 export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   onFileAttached,
@@ -61,6 +66,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   const [botId, setBotId] = useState<string>('');
   const [botStatus, setBotStatus] = useState<string>('');
   const [isPolling, setIsPolling] = useState(false);
+  const [isUrlPopoverOpen, setIsUrlPopoverOpen] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -175,8 +181,8 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   };
 
   const startOnlineRecording = () => {
-    // Show URL input modal for meeting bot transcription
-    setUIState('url-input');
+    // Open URL popover for meeting bot transcription
+    setIsUrlPopoverOpen(true);
   };
 
   const handleMeetingUrlSubmit = async (url: string) => {
@@ -189,6 +195,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       setRecordingMode('meeting-bot');
       setUIState('recording');
       setBotStatus('starting...');
+      setIsUrlPopoverOpen(false); // Close the popover
       
       // Start the meeting bot using backendApi
       const result = await backendApi.post('/meeting-bot/start', {
@@ -210,6 +217,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       setUIState('idle');
       setRecordingMode('failed');
       setBotStatus('failed');
+      setIsUrlPopoverOpen(false); // Close popover on error too
     }
   };
 
@@ -480,6 +488,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     setMeetingUrl('');
     setBotId('');
     setBotStatus('');
+    setIsUrlPopoverOpen(false); // Close popover on reset
     stopRealTimeUpdates();
     recordingStartTimeRef.current = null;
     pausedDurationRef.current = 0;
@@ -612,54 +621,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     );
   }
 
-  // URL input state - show input field for meeting URL
-  if (uiState === 'url-input') {
-    return (
-      <div className="flex items-center gap-2 animate-in slide-in-from-left-1 duration-200">
-        <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-md px-3 py-2">
-          <Monitor className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <input
-            type="text"
-            placeholder="Enter meeting URL (Zoom, Teams, Meet...)"
-            value={meetingUrl}
-            onChange={(e) => setMeetingUrl(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleMeetingUrlSubmit(meetingUrl);
-              } else if (e.key === 'Escape') {
-                setUIState('idle');
-                setMeetingUrl('');
-              }
-            }}
-            className="min-w-64 bg-transparent text-sm text-blue-900 dark:text-blue-100 placeholder-blue-500 dark:placeholder-blue-400 border-none outline-none"
-            autoFocus
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleMeetingUrlSubmit(meetingUrl)}
-            disabled={!meetingUrl.trim()}
-            className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30"
-          >
-            <Check className="h-3 w-3" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setUIState('idle');
-              setMeetingUrl('');
-            }}
-            className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
-          >
-            <X className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
-    );
-  }
+
 
   // Split state UI - two buttons side by side
   if (uiState === 'split') {
@@ -683,23 +645,78 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
           </Tooltip>
         </TooltipProvider>
         
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={startOnlineRecording}
-                disabled={disabled}
-                className="h-8 w-8 p-0 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 transition-colors"
-              >
-                <Monitor className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Online</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Popover open={isUrlPopoverOpen} onOpenChange={setIsUrlPopoverOpen}>
+          <TooltipProvider>
+            <Tooltip>
+              <PopoverTrigger asChild>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={startOnlineRecording}
+                    disabled={disabled}
+                    className="h-8 w-8 p-0 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                  >
+                    <Monitor className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+              </PopoverTrigger>
+              <TooltipContent>Online</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <PopoverContent className="w-80 p-3" side="top" align="end">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                  Join Online Meeting
+                </span>
+              </div>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Paste meeting URL (Zoom, Teams, Meet...)"
+                  value={meetingUrl}
+                  onChange={(e) => setMeetingUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleMeetingUrlSubmit(meetingUrl);
+                    } else if (e.key === 'Escape') {
+                      setIsUrlPopoverOpen(false);
+                      setMeetingUrl('');
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIsUrlPopoverOpen(false);
+                      setMeetingUrl('');
+                    }}
+                    className="h-8 px-3 text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => handleMeetingUrlSubmit(meetingUrl)}
+                    disabled={!meetingUrl.trim()}
+                    className="h-8 px-3 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    Start Bot
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     );
   }
