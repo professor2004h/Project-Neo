@@ -204,7 +204,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       if (result.success) {
         setBotId(result.bot_id);
         setBotStatus(result.status);
-        startPolling(result.bot_id);
+        startRealTimeUpdates(result.bot_id);
         console.log(`[MEETING RECORDER] Bot started with ID: ${result.bot_id}`);
       } else {
         throw new Error(result.error || 'Failed to start meeting bot');
@@ -218,73 +218,78 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     }
   };
 
-  const startPolling = (botId: string) => {
+  const startRealTimeUpdates = (botId: string) => {
     setIsPolling(true);
     
-    // Use localStorage to coordinate polling across tabs
-    const pollKey = `meeting_bot_poll_${botId}`;
-    const completedKey = `meeting_bot_completed_${botId}`;
+    // Use Server-Sent Events for real-time updates (replaces polling!)
+    const eventSource = new EventSource(`/api/meeting-bot/${botId}/events`);
     
-    pollingIntervalRef.current = setInterval(async () => {
+    eventSource.onmessage = (event) => {
       try {
-        // Check if another tab already marked this as completed
-        if (localStorage.getItem(completedKey)) {
-          stopPolling();
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'connected') {
+          console.log('[MEETING RECORDER] Real-time connection established');
           return;
         }
         
-        // Check if another tab is actively polling (within last 30 seconds)
-        const lastPoll = localStorage.getItem(pollKey);
-        const now = Date.now();
-        
-        if (lastPoll && (now - parseInt(lastPoll)) < 30000) {
-          // Another tab is polling, just listen for status updates
-          const statusUpdate = localStorage.getItem(`meeting_bot_status_${botId}`);
-          if (statusUpdate) {
-            const status = JSON.parse(statusUpdate);
-            setBotStatus(status.value);
-            
-            if (status.value === 'completed' && !localStorage.getItem(completedKey)) {
-              localStorage.setItem(completedKey, 'true');
-              stopPolling();
-              await handleMeetingComplete(botId);
-            }
-          }
-          return;
+        if (data.type === 'heartbeat') {
+          return; // Keep-alive, no action needed
         }
         
-        // This tab will do the polling
-        localStorage.setItem(pollKey, now.toString());
-        
-        const response = await fetch(`/api/meeting-bot/${botId}/status`);
-        const result = await response.json();
-        
-        if (result.success) {
-          setBotStatus(result.status);
+        // Update bot status from real-time webhook
+        if (data.bot_id === botId && data.status) {
+          setBotStatus(data.status);
           
-          // Share status with other tabs
+          // Share status with other tabs via localStorage
           localStorage.setItem(`meeting_bot_status_${botId}`, JSON.stringify({
-            value: result.status,
-            timestamp: now
+            value: data.status,
+            timestamp: Date.now()
           }));
           
-          // If meeting completed, stop polling and handle transcript
-          if (result.status === 'completed' && !localStorage.getItem(completedKey)) {
-            localStorage.setItem(completedKey, 'true');
-            stopPolling();
-            await handleMeetingComplete(botId);
+          // Handle meeting completion
+          if (data.status === 'completed' && !localStorage.getItem(`meeting_bot_completed_${botId}`)) {
+            localStorage.setItem(`meeting_bot_completed_${botId}`, 'true');
+            stopRealTimeUpdates();
+            handleMeetingComplete(botId);
           }
         }
       } catch (error) {
-        console.error('[MEETING RECORDER] Error polling bot status:', error);
+        console.error('[MEETING RECORDER] Error processing real-time update:', error);
       }
-    }, 15000); // Poll every 15 seconds
+    };
+    
+    eventSource.onerror = (error) => {
+      console.error('[MEETING RECORDER] SSE connection error:', error);
+      eventSource.close();
+      
+      // Fallback to single status check after connection issues
+      setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/meeting-bot/${botId}/status`);
+          const result = await response.json();
+          if (result.success) {
+            setBotStatus(result.status);
+          }
+        } catch (e) {
+          console.error('[MEETING RECORDER] Fallback status check failed:', e);
+        }
+      }, 5000);
+    };
+    
+    // Store reference for cleanup
+    pollingIntervalRef.current = eventSource as any;
   };
 
-  const stopPolling = () => {
+  const stopRealTimeUpdates = () => {
     setIsPolling(false);
     if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
+      // Close SSE connection or clear interval
+      if (pollingIntervalRef.current.close) {
+        pollingIntervalRef.current.close();
+      } else {
+        clearInterval(pollingIntervalRef.current);
+      }
       pollingIntervalRef.current = null;
     }
   };
@@ -340,9 +345,9 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
           setUIState('recording');
           setBotStatus(session.status);
           
-          // Resume polling if still active
+          // Resume real-time updates if still active
           if (session.status === 'joining' || session.status === 'recording') {
-            startPolling(session.bot_id);
+            startRealTimeUpdates(session.bot_id);
           }
           
           console.log('[MEETING RECORDER] Resumed existing bot session:', session.bot_id);
@@ -355,10 +360,10 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     checkExistingSessions();
   }, [sandboxId]);
 
-  // Cleanup polling on unmount
+  // Cleanup real-time updates on unmount
   useEffect(() => {
     return () => {
-      stopPolling();
+      stopRealTimeUpdates();
     };
   }, []);
 
@@ -439,7 +444,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     if (uiState === 'recording' || uiState === 'paused') {
       if (recordingMode === 'meeting-bot' && botId) {
         console.log('[MEETING RECORDER] Manually stopping meeting bot');
-        stopPolling();
+        stopRealTimeUpdates();
         await handleMeetingComplete(botId);
       } else if (mediaRecorderRef.current) {
         mediaRecorderRef.current.stop();
@@ -486,7 +491,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     setMeetingUrl('');
     setBotId('');
     setBotStatus('');
-    stopPolling();
+    stopRealTimeUpdates();
     recordingStartTimeRef.current = null;
     pausedDurationRef.current = 0;
     pauseStartTimeRef.current = null;

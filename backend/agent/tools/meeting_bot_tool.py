@@ -33,13 +33,14 @@ class MeetingBotTool(SandboxToolsBase):
         self.api_key = os.getenv('MEETINGBAAS_API_KEY')
         self.base_url = 'https://api.meetingbaas.com/v1'
         
-    async def start_meeting_bot(self, meeting_url: str, bot_name: str = "Transcription Bot") -> Dict[str, Any]:
+    async def start_meeting_bot(self, meeting_url: str, bot_name: str = "Transcription Bot", webhook_url: str = None) -> Dict[str, Any]:
         """
         Start a meeting bot to join and transcribe the meeting.
         
         Args:
             meeting_url: URL of the meeting (Zoom, Teams, Meet, etc.)
             bot_name: Name to display for the bot in the meeting
+            webhook_url: URL to receive real-time webhook events
             
         Returns:
             Dictionary with bot_id and status
@@ -61,6 +62,10 @@ class MeetingBotTool(SandboxToolsBase):
             'speaker_detection': True,
             'language': 'en',  # Auto-detect available
         }
+        
+        # Add webhook URL for real-time updates (replaces polling!)
+        if webhook_url:
+            payload['webhook_url'] = webhook_url
         
         async with aiohttp.ClientSession() as session:
             async with session.post(

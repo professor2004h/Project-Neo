@@ -11,6 +11,7 @@ from utils.config import config, EnvMode
 import asyncio
 from utils.logger import logger, structlog
 import time
+import os
 from collections import OrderedDict
 from typing import Dict, Any
 
@@ -180,6 +181,75 @@ async def discover_custom_mcp_tools(request: CustomMCPDiscoverRequest):
         logger.error(f"Error discovering custom MCP tools: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# SSE connections storage for real-time updates
+active_sse_connections = {}
+
+async def broadcast_bot_update(bot_id: str, session_data: dict):
+    """Broadcast bot status update to connected SSE clients"""
+    import json
+    message = f"data: {json.dumps({'bot_id': bot_id, **session_data})}\n\n"
+    
+    # Send to all connected clients for this bot
+    if bot_id in active_sse_connections:
+        disconnected = []
+        for queue in active_sse_connections[bot_id]:
+            try:
+                await queue.put(message)
+            except:
+                disconnected.append(queue)
+        
+        # Clean up disconnected clients
+        for queue in disconnected:
+            active_sse_connections[bot_id].remove(queue)
+
+@app.get("/api/meeting-bot/{bot_id}/events")
+async def bot_status_events(bot_id: str):
+    """Server-Sent Events stream for real-time bot status updates"""
+    import asyncio
+    from fastapi.responses import StreamingResponse
+    
+    async def event_publisher():
+        queue = asyncio.Queue()
+        
+        # Add this client to active connections
+        if bot_id not in active_sse_connections:
+            active_sse_connections[bot_id] = []
+        active_sse_connections[bot_id].append(queue)
+        
+        try:
+            # Send initial status
+            yield "data: {\"type\": \"connected\"}\n\n"
+            
+            # Stream real-time updates
+            while True:
+                try:
+                    message = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    yield message
+                except asyncio.TimeoutError:
+                    # Send heartbeat to keep connection alive
+                    yield "data: {\"type\": \"heartbeat\"}\n\n"
+                    
+        except Exception as e:
+            print(f"[SSE] Client disconnected: {e}")
+        finally:
+            # Clean up connection
+            if bot_id in active_sse_connections:
+                if queue in active_sse_connections[bot_id]:
+                    active_sse_connections[bot_id].remove(queue)
+                if not active_sse_connections[bot_id]:
+                    del active_sse_connections[bot_id]
+    
+    return StreamingResponse(
+        event_publisher(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
 # Meeting Bot Management Endpoints
 @app.post("/api/meeting-bot/start")
 async def start_meeting_bot(request: Request):
@@ -196,8 +266,9 @@ async def start_meeting_bot(request: Request):
         from agent.tools.meeting_bot_tool import MeetingBotTool
         tool = MeetingBotTool()
         
-        # Start the bot
-        result = await tool.start_meeting_bot(meeting_url, "AI Transcription Bot")
+        # Start the bot with webhook URL for real-time updates
+        webhook_url = f"{request.base_url}api/meeting-bot/webhook"
+        result = await tool.start_meeting_bot(meeting_url, "AI Transcription Bot", webhook_url)
         
         if result.get('success'):
             bot_id = result['bot_id']
@@ -343,6 +414,182 @@ async def stop_meeting_bot(bot_id: str, request: Request):
             return JSONResponse({"error": result.get('error')}, status_code=400)
             
     except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/meeting-bot/webhook")
+async def meeting_bot_webhook(request: Request):
+    """
+    Handle MeetingBaaS webhook events for real-time bot status updates.
+    
+    MeetingBaaS sends webhooks with:
+    - x-meeting-baas-api-key header for verification
+    - JSON payload with event data
+    
+    Webhook Events:
+    - meeting.started: Bot joined meeting
+    - meeting.completed: Meeting ended, transcript ready
+    - meeting.failed: Bot failed to join
+    - transcription.available: Transcript ready
+    """
+    try:
+        # Verify webhook authenticity using API key header
+        api_key_header = request.headers.get('x-meeting-baas-api-key')
+        expected_api_key = os.getenv('MEETINGBAAS_API_KEY')
+        
+        if not api_key_header or api_key_header != expected_api_key:
+            print(f"[WEBHOOK] Unauthorized webhook attempt. Expected key: {expected_api_key[:10]}...")
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        
+        data = await request.json()
+        event_type = data.get('type')
+        event_data = data.get('data', {})
+        bot_id = event_data.get('botId')
+        
+        if not bot_id:
+            return JSONResponse({"error": "Missing botId in webhook"}, status_code=400)
+        
+        # Handle idempotency to prevent duplicate processing
+        event_id = data.get('event_id') or f"{bot_id}_{event_type}_{int(time.time())}"
+        processed_events_key = f"webhook_processed_{event_id}"
+        
+        # Check if we've already processed this event (simple in-memory check)
+        # In production, use Redis or database for distributed systems
+        if hasattr(meeting_bot_webhook, '_processed_events'):
+            if event_id in meeting_bot_webhook._processed_events:
+                print(f"[WEBHOOK] Duplicate event {event_id}, skipping")
+                return JSONResponse({"success": True, "message": "Already processed"})
+        else:
+            meeting_bot_webhook._processed_events = set()
+        
+        # Mark as processed
+        meeting_bot_webhook._processed_events.add(event_id)
+        
+        # Update stored session
+        import json
+        import os
+        sessions_dir = '/tmp/meeting_bot_sessions'
+        session_file = f'{sessions_dir}/{bot_id}.json'
+        
+        if os.path.exists(session_file):
+            with open(session_file, 'r') as f:
+                session = json.load(f)
+            
+            # Update session based on event type (comprehensive event handling)
+            if event_type == 'meeting.started':
+                session['status'] = 'recording'
+                session['joined_at'] = event_data.get('startTime', time.time())
+                logger.info(f"[WEBHOOK] Bot {bot_id} successfully joined meeting")
+                
+            elif event_type == 'meeting.completed':
+                session['status'] = 'completed'
+                session['transcript_ready'] = True
+                session['completed_at'] = time.time()
+                # Store comprehensive meeting data
+                session['transcript'] = event_data.get('transcripts', [])
+                session['duration'] = event_data.get('duration', 0)
+                session['recording_url'] = event_data.get('mp4Url')
+                session['participants'] = event_data.get('participants', [])
+                logger.info(f"[WEBHOOK] Meeting {bot_id} completed - transcript ready")
+                
+            elif event_type == 'meeting.failed':
+                session['status'] = 'failed'
+                session['error'] = event_data.get('error', 'Unknown error')
+                session['failed_at'] = time.time()
+                logger.error(f"[WEBHOOK] Bot {bot_id} failed: {session['error']}")
+                
+            elif event_type == 'transcription.available':
+                session['transcript'] = event_data.get('transcripts', [])
+                logger.info(f"[WEBHOOK] Transcription available for bot {bot_id}")
+                
+            elif event_type == 'transcription.updated':
+                session['transcript'] = event_data.get('transcripts', [])
+                logger.info(f"[WEBHOOK] Transcription updated for bot {bot_id}")
+                
+            elif event_type == 'bot.status_change':
+                # Handle generic status changes
+                new_status = event_data.get('status', session.get('status'))
+                session['status'] = new_status
+                logger.info(f"[WEBHOOK] Bot {bot_id} status changed to: {new_status}")
+                
+            else:
+                logger.warning(f"[WEBHOOK] Unknown event type '{event_type}' for bot {bot_id}")
+            
+            session['last_updated'] = time.time()
+            session['last_event'] = event_type
+            
+            with open(session_file, 'w') as f:
+                json.dump(session, f)
+            
+            # Send real-time update to frontend via SSE
+            await broadcast_bot_update(bot_id, session)
+            
+            logger.info(f"[WEBHOOK] Successfully processed {event_type} for bot {bot_id}")
+            
+        else:
+            logger.warning(f"[WEBHOOK] No session file found for bot {bot_id}, event: {event_type}")
+            
+        return JSONResponse({"success": True, "message": "Webhook processed"})
+        
+    except Exception as e:
+        logger.error(f"[WEBHOOK] Error processing webhook: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/meeting-bot/configure-webhook")
+async def configure_account_webhook(request: Request):
+    """
+    Configure account-level webhook URL with MeetingBaaS.
+    This sets a default webhook for all bots in your account.
+    
+    Optional optimization - individual bot webhooks work fine too.
+    """
+    try:
+        data = await request.json()
+        webhook_url = data.get('webhook_url')
+        
+        if not webhook_url:
+            webhook_url = f"{request.base_url}api/meeting-bot/webhook"
+        
+        from agent.tools.meeting_bot_tool import MeetingBotTool
+        tool = MeetingBotTool()
+        
+        # Set account-level webhook URL
+        import aiohttp
+        import os
+        
+        api_key = os.getenv('MEETINGBAAS_API_KEY')
+        if not api_key:
+            return JSONResponse({"error": "MEETINGBAAS_API_KEY not configured"}, status_code=500)
+        
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'webhook_url': webhook_url
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                'https://api.meetingbaas.com/accounts/webhook_url',
+                headers=headers,
+                json=payload
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    logger.info(f"[WEBHOOK CONFIG] Account webhook set to: {webhook_url}")
+                    return JSONResponse({
+                        "success": True,
+                        "webhook_url": webhook_url,
+                        "message": "Account-level webhook configured successfully"
+                    })
+                else:
+                    error_text = await response.text()
+                    logger.error(f"[WEBHOOK CONFIG] Failed to set account webhook: {error_text}")
+                    return JSONResponse({"error": f"Failed to configure webhook: {error_text}"}, status_code=400)
+                    
+    except Exception as e:
+        logger.error(f"[WEBHOOK CONFIG] Error configuring account webhook: {str(e)}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/meeting-bot/sessions")
