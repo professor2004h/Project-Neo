@@ -26,6 +26,7 @@ import { UploadedFile } from './chat-input';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
 import { handleFiles } from './file-upload-handler';
 import { useQueryClient } from '@tanstack/react-query';
+import { backendApi } from '@/lib/api-client';
 
 interface MeetingRecorderProps {
   onFileAttached: (file: UploadedFile) => void;
@@ -189,25 +190,19 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       setUIState('recording');
       setBotStatus('starting...');
       
-      // Start the meeting bot
-      const response = await fetch('/api/meeting-bot/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          meeting_url: url.trim(),
-          sandbox_id: sandboxId 
-        })
+      // Start the meeting bot using backendApi
+      const result = await backendApi.post('/meeting-bot/start', {
+        meeting_url: url.trim(),
+        sandbox_id: sandboxId
       });
       
-      const result = await response.json();
-      
-      if (result.success) {
-        setBotId(result.bot_id);
-        setBotStatus(result.status);
-        startRealTimeUpdates(result.bot_id);
-        console.log(`[MEETING RECORDER] Bot started with ID: ${result.bot_id}`);
+      if (result.success && result.data) {
+        setBotId(result.data.bot_id);
+        setBotStatus(result.data.status);
+        startRealTimeUpdates(result.data.bot_id);
+        console.log(`[MEETING RECORDER] Bot started with ID: ${result.data.bot_id}`);
       } else {
-        throw new Error(result.error || 'Failed to start meeting bot');
+        throw new Error(result.error?.message || 'Failed to start meeting bot');
       }
       
     } catch (error) {
@@ -266,10 +261,9 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       // Fallback to single status check after connection issues
       setTimeout(async () => {
         try {
-          const response = await fetch(`/api/meeting-bot/${botId}/status`);
-          const result = await response.json();
-          if (result.success) {
-            setBotStatus(result.status);
+          const result = await backendApi.get(`/meeting-bot/${botId}/status`);
+          if (result.success && result.data) {
+            setBotStatus(result.data.status);
           }
         } catch (e) {
           console.error('[MEETING RECORDER] Fallback status check failed:', e);
@@ -296,18 +290,14 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
   const handleMeetingComplete = async (botId: string) => {
     try {
-      const response = await fetch(`/api/meeting-bot/${botId}/stop`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sandbox_id: sandboxId })
+      const result = await backendApi.post(`/meeting-bot/${botId}/stop`, {
+        sandbox_id: sandboxId
       });
       
-      const result = await response.json();
-      
-      if (result.success && result.content) {
+      if (result.success && result.data?.content) {
         // Create file object for transcript
-        const blob = new Blob([result.content], { type: 'text/plain' });
-        const file = new File([blob], result.filename, { type: 'text/plain' });
+        const blob = new Blob([result.data.content], { type: 'text/plain' });
+        const file = new File([blob], result.data.filename, { type: 'text/plain' });
         
         // Auto-attach transcript using existing file upload system
         await handleFiles(
@@ -321,7 +311,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
         );
         
         setUIState('stopped');
-        console.log('[MEETING RECORDER] Transcript auto-attached:', result.filename);
+        console.log('[MEETING RECORDER] Transcript auto-attached:', result.data.filename);
       }
     } catch (error) {
       console.error('[MEETING RECORDER] Error handling meeting completion:', error);
@@ -334,11 +324,10 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       if (!sandboxId) return;
       
       try {
-        const response = await fetch(`/api/meeting-bot/sessions?sandbox_id=${sandboxId}`);
-        const result = await response.json();
+        const result = await backendApi.get(`/meeting-bot/sessions?sandbox_id=${sandboxId}`);
         
-        if (result.sessions?.length > 0) {
-          const session = result.sessions[0]; // Get most recent
+        if (result.success && result.data?.sessions?.length > 0) {
+          const session = result.data.sessions[0]; // Get most recent
           setBotId(session.bot_id);
           setMeetingUrl(session.meeting_url);
           setRecordingMode('meeting-bot');
