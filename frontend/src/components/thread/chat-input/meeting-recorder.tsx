@@ -167,30 +167,62 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
   const getCombinedAudioStream = async (): Promise<MediaStream> => {
     try {
-      // Get microphone stream
-      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Get microphone stream first
+      const micStream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }
+      });
       micStreamRef.current = micStream;
 
-      // Try to get system audio (will prompt user)
+      // Try to get system audio using the most reliable method
       let systemStream: MediaStream | null = null;
       try {
-        systemStream = await navigator.mediaDevices.getDisplayMedia({ 
-          audio: true, 
-          video: false 
+        // Use video: true with audio for maximum browser compatibility
+        // We'll discard the video track immediately
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
+          audio: {
+            echoCancellation: false, // Keep system audio natural
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+          video: {
+            width: 1, 
+            height: 1, 
+            frameRate: 1 // Minimal video for compatibility
+          }
         });
-        systemStreamRef.current = systemStream;
+        
+        // Extract only audio tracks and stop video immediately
+        const audioTracks = displayStream.getAudioTracks();
+        if (audioTracks.length > 0) {
+          systemStream = new MediaStream(audioTracks);
+          systemStreamRef.current = systemStream;
+          console.log('[MEETING RECORDER] System audio captured successfully');
+        }
+        
+        // Stop and remove video tracks immediately
+        displayStream.getVideoTracks().forEach(track => {
+          track.stop();
+          displayStream.removeTrack(track);
+        });
+        
       } catch (systemError) {
-        console.log('System audio not available, using microphone only:', systemError);
+        console.log('[MEETING RECORDER] System audio not available, using microphone only:', systemError.name);
       }
 
       // If we have both streams, mix them; otherwise just use microphone
       if (systemStream) {
+        console.log('[MEETING RECORDER] Using combined microphone + system audio');
         return mixAudioStreams(micStream, systemStream);
       } else {
+        console.log('[MEETING RECORDER] Using microphone only');
         return micStream;
       }
     } catch (error) {
-      console.error('Error getting audio streams:', error);
+      console.error('[MEETING RECORDER] Error getting audio streams:', error);
       throw error;
     }
   };
