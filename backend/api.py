@@ -255,20 +255,51 @@ async def bot_status_events(bot_id: str):
 async def start_meeting_bot(request: Request):
     """Start a meeting bot for the given URL"""
     try:
+        logger.info("[MEETING BOT] Starting meeting bot request")
+        
         data = await request.json()
         meeting_url = data.get('meeting_url')
         sandbox_id = data.get('sandbox_id')
         
+        logger.info(f"[MEETING BOT] Request data: meeting_url={meeting_url}, sandbox_id={sandbox_id}")
+        
         if not meeting_url:
+            logger.error("[MEETING BOT] Missing meeting_url in request")
             return JSONResponse({"error": "meeting_url is required"}, status_code=400)
+        
+        # Check API key exists
+        api_key = os.getenv('MEETINGBAAS_API_KEY')
+        if not api_key:
+            logger.error("[MEETING BOT] MEETINGBAAS_API_KEY environment variable not set")
+            return JSONResponse({"error": "MeetingBaaS API key not configured"}, status_code=500)
+        
+        logger.info(f"[MEETING BOT] API key configured (first 10 chars): {api_key[:10]}...")
             
         # Import the tool
-        from agent.tools.meeting_bot_tool import MeetingBotTool
-        tool = MeetingBotTool()
+        try:
+            from agent.tools.meeting_bot_tool import MeetingBotTool
+            logger.info("[MEETING BOT] Successfully imported MeetingBotTool")
+        except Exception as import_error:
+            logger.error(f"[MEETING BOT] Failed to import MeetingBotTool: {str(import_error)}")
+            return JSONResponse({"error": f"Failed to import tool: {str(import_error)}"}, status_code=500)
+        
+        try:
+            tool = MeetingBotTool()
+            logger.info("[MEETING BOT] Successfully initialized MeetingBotTool")
+        except Exception as init_error:
+            logger.error(f"[MEETING BOT] Failed to initialize MeetingBotTool: {str(init_error)}")
+            return JSONResponse({"error": f"Failed to initialize tool: {str(init_error)}"}, status_code=500)
         
         # Start the bot with webhook URL for real-time updates
         webhook_url = f"{request.base_url}api/meeting-bot/webhook"
-        result = await tool.start_meeting_bot(meeting_url, "AI Transcription Bot", webhook_url)
+        logger.info(f"[MEETING BOT] Using webhook URL: {webhook_url}")
+        
+        try:
+            result = await tool.start_meeting_bot(meeting_url, "AI Transcription Bot", webhook_url)
+            logger.info(f"[MEETING BOT] Tool result: {result}")
+        except Exception as tool_error:
+            logger.error(f"[MEETING BOT] Tool execution failed: {str(tool_error)}")
+            return JSONResponse({"error": f"Failed to start bot: {str(tool_error)}"}, status_code=500)
         
         if result.get('success'):
             bot_id = result['bot_id']
