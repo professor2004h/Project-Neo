@@ -225,11 +225,19 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     setIsPolling(true);
     
     // Use Server-Sent Events for real-time updates (replaces polling!)
-    // Get backend URL from the same source as backendApi
-    const backendUrl = typeof window !== 'undefined' 
-      ? window.location.origin.replace('dev1.operator.becomeomni.com', 'operator-dev1-backend.onrender.com')
-      : '';
-    const eventSource = new EventSource(`${backendUrl}/api/meeting-bot/${botId}/events`);
+    // Construct backend URL from current frontend URL
+    let backendBaseUrl = '';
+    if (typeof window !== 'undefined') {
+      const currentUrl = window.location.origin;
+      if (currentUrl.includes('dev1.operator.becomeomni.com')) {
+        backendBaseUrl = 'https://operator-dev1-backend.onrender.com/api';
+      } else if (currentUrl.includes('localhost')) {
+        backendBaseUrl = 'http://localhost:8000/api';
+      } else {
+        backendBaseUrl = '/api'; // fallback to relative
+      }
+    }
+    const eventSource = new EventSource(`${backendBaseUrl}/meeting-bot/${botId}/events`);
     
     eventSource.onmessage = (event) => {
       try {
