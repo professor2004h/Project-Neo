@@ -709,7 +709,7 @@ ${meeting.transcript}`;
                       startChatWithMeeting(meeting.meeting_id);
                     }}>
                       <MessageSquare className="h-4 w-4 mr-2" />
-                      Open inChat
+                      Open in Chat
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={(e) => {

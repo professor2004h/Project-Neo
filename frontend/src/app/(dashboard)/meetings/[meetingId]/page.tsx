@@ -1162,7 +1162,7 @@ ${transcript}`;
             className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50"
           >
             <MessageSquare className="h-4 w-4 mr-2" />
-            Talk to Operator
+            Open in Chat
           </Button>
         </div>
       </div>

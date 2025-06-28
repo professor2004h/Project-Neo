@@ -73,11 +73,14 @@ export function DashboardContent() {
         try {
           const meeting = await getMeeting(attachMeetingId);
           if (meeting.transcript) {
-            // Format transcript with metadata header
+            // Format transcript with enhanced metadata header
             const createdAt = new Date(meeting.created_at);
+            const now = new Date();
             const formattedTranscript = `Meeting Transcript
-Meeting: ${meeting.title}
-Created: ${createdAt.toLocaleDateString('en-US', { 
+
+MEETING INFORMATION:
+- Title: ${meeting.title}
+- Meeting Created: ${createdAt.toLocaleDateString('en-US', { 
   year: 'numeric', 
   month: 'long', 
   day: 'numeric' 
@@ -86,9 +89,20 @@ Created: ${createdAt.toLocaleDateString('en-US', {
   minute: '2-digit', 
   hour12: true 
 })}
+- File Generated: ${now.toLocaleDateString('en-US', { 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric' 
+})} at ${now.toLocaleTimeString('en-US', { 
+  hour: 'numeric', 
+  minute: '2-digit', 
+  hour12: true 
+})}
 
-Full Transcript:
-${meeting.transcript}`;
+FULL TRANSCRIPT:
+${meeting.transcript || '(No transcript available)'}`;
+
+            console.log('Formatted transcript for operator:', formattedTranscript.substring(0, 500) + '...');
             
             // Create a file from the formatted transcript
             const blob = new Blob([formattedTranscript], { type: 'text/plain' });
