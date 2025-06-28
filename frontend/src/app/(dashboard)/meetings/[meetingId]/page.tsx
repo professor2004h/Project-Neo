@@ -367,6 +367,23 @@ export default function MeetingPage() {
         setPauseStartTime(null);
         wsConnection?.updateStatus('active');
         
+        // Add timestamp header for local recording session
+        const now = new Date();
+        const timestampHeader = `=== Recording Session Started: ${now.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        })} at ${now.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit', 
+          hour12: true 
+        })} ===`;
+        
+        setTranscript(prev => {
+          const newHeader = prev.trim() ? `\n\n${timestampHeader}\n\n` : `${timestampHeader}\n\n`;
+          return prev + newHeader;
+        });
+        
         // If meeting was completed, reactivate it
         if (meeting?.status === 'completed') {
           await updateMeeting(meetingId, { status: 'active' });
@@ -979,11 +996,39 @@ export default function MeetingPage() {
 
   // Download transcript
   const downloadTranscript = () => {
-    const blob = new Blob([transcript], { type: 'text/plain' });
+    if (!meeting || !transcript) return;
+    
+    // Format transcript with metadata header
+    const createdAt = new Date(meeting.created_at);
+    const header = `Meeting Transcript
+Generated: ${new Date().toLocaleDateString('en-US', { 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric' 
+})} at ${new Date().toLocaleTimeString('en-US', { 
+  hour: 'numeric', 
+  minute: '2-digit', 
+  hour12: true 
+})}
+Meeting: ${meeting.title}
+Created: ${createdAt.toLocaleDateString('en-US', { 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric' 
+})} at ${createdAt.toLocaleTimeString('en-US', { 
+  hour: 'numeric', 
+  minute: '2-digit', 
+  hour12: true 
+})}
+
+Full Transcript:
+${transcript}`;
+
+    const blob = new Blob([header], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${meeting?.title.replace(/[^a-z0-9]/gi, '_')}_transcript.txt`;
+    a.download = `${meeting.title.replace(/[^a-z0-9]/gi, '_')}_transcript.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -992,10 +1037,11 @@ export default function MeetingPage() {
 
   // Start chat with transcript
   const startChatWithTranscript = async () => {
-    // Save current transcript
+    // Save current transcript to ensure it's persisted
     await updateMeeting(meetingId, { transcript });
     
     // Navigate to dashboard with meeting attachment
+    // The formatting will happen in the dashboard component
     router.push(`/dashboard?attachMeeting=${meetingId}`);
   };
 

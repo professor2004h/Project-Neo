@@ -73,8 +73,25 @@ export function DashboardContent() {
         try {
           const meeting = await getMeeting(attachMeetingId);
           if (meeting.transcript) {
-            // Create a file from the transcript
-            const blob = new Blob([meeting.transcript], { type: 'text/plain' });
+            // Format transcript with metadata header
+            const createdAt = new Date(meeting.created_at);
+            const formattedTranscript = `Meeting Transcript
+Meeting: ${meeting.title}
+Created: ${createdAt.toLocaleDateString('en-US', { 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric' 
+})} at ${createdAt.toLocaleTimeString('en-US', { 
+  hour: 'numeric', 
+  minute: '2-digit', 
+  hour12: true 
+})}
+
+Full Transcript:
+${meeting.transcript}`;
+            
+            // Create a file from the formatted transcript
+            const blob = new Blob([formattedTranscript], { type: 'text/plain' });
             const file = new File([blob], `${meeting.title}_transcript.txt`, { type: 'text/plain' });
             
             // Add file to chat input

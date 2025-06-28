@@ -226,7 +226,35 @@ export default function MeetingsPage() {
   };
 
   const downloadTranscript = (meeting: Meeting) => {
-    const blob = new Blob([meeting.transcript], { type: 'text/plain' });
+    if (!meeting.transcript) return;
+    
+    // Format transcript with metadata header
+    const createdAt = new Date(meeting.created_at);
+    const header = `Meeting Transcript
+Generated: ${new Date().toLocaleDateString('en-US', { 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric' 
+})} at ${new Date().toLocaleTimeString('en-US', { 
+  hour: 'numeric', 
+  minute: '2-digit', 
+  hour12: true 
+})}
+Meeting: ${meeting.title}
+Created: ${createdAt.toLocaleDateString('en-US', { 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric' 
+})} at ${createdAt.toLocaleTimeString('en-US', { 
+  hour: 'numeric', 
+  minute: '2-digit', 
+  hour12: true 
+})}
+
+Full Transcript:
+${meeting.transcript}`;
+
+    const blob = new Blob([header], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

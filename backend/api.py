@@ -1139,13 +1139,45 @@ async def meeting_bot_webhook(request: Request):
                                     transcript_text_parts.append(f"{speaker}: {text}")
                     
                     if transcript_text_parts:
-                        session['transcript_text'] = '\n'.join(transcript_text_parts)
+                        # Add session timestamp header to transcript
+                        from datetime import datetime
+                        started_at = session.get('started_at', time.time())
+                        try:
+                            started_at = float(started_at) if started_at else time.time()
+                        except (ValueError, TypeError):
+                            started_at = time.time()
+                        
+                        start_time = datetime.fromtimestamp(started_at)
+                        timestamp_header = f"=== Recording Session Started: {start_time.strftime('%B %d, %Y at %I:%M %p')} ==="
+                        
+                        transcript_content = '\n'.join(transcript_text_parts)
+                        session['transcript_text'] = f"{timestamp_header}\n\n{transcript_content}"
                         logger.info(f"[WEBHOOK] Meeting {bot_id} completed - transcript ready ({len(transcript_text_parts)} segments)")
                     else:
-                        session['transcript_text'] = "[No speech detected during meeting]"
+                        from datetime import datetime
+                        started_at = session.get('started_at', time.time())
+                        try:
+                            started_at = float(started_at) if started_at else time.time()
+                        except (ValueError, TypeError):
+                            started_at = time.time()
+                        
+                        start_time = datetime.fromtimestamp(started_at)
+                        timestamp_header = f"=== Recording Session Started: {start_time.strftime('%B %d, %Y at %I:%M %p')} ==="
+                        
+                        session['transcript_text'] = f"{timestamp_header}\n\n[No speech detected during meeting]"
                         logger.info(f"[WEBHOOK] Meeting {bot_id} completed - no speech detected")
                 else:
-                    session['transcript_text'] = "[No speech detected during meeting]"
+                    from datetime import datetime
+                    started_at = session.get('started_at', time.time())
+                    try:
+                        started_at = float(started_at) if started_at else time.time()
+                    except (ValueError, TypeError):
+                        started_at = time.time()
+                    
+                    start_time = datetime.fromtimestamp(started_at)
+                    timestamp_header = f"=== Recording Session Started: {start_time.strftime('%B %d, %Y at %I:%M %p')} ==="
+                    
+                    session['transcript_text'] = f"{timestamp_header}\n\n[No speech detected during meeting]"
                     logger.info(f"[WEBHOOK] Meeting {bot_id} completed - empty transcript")
                 
                 logger.info(f"[WEBHOOK] Speakers: {session['speakers']}")
