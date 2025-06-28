@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Folder, FileAudio, MoreHorizontal, Edit2, Trash2, Download, Share2, FolderOpen, Move, MessageSquare } from 'lucide-react';
+import { Plus, Search, Folder, FileAudio, MoreHorizontal, Edit2, Trash2, Download, Share2, FolderOpen, Move, MessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -376,17 +376,22 @@ export default function MeetingsPage() {
     <div className="flex-1 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Meetings</h1>
+        <div className="flex justify-between items-start mb-8">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Meetings</h1>
             {/* Breadcrumbs */}
-            <div className="flex items-center mt-2 text-sm text-muted-foreground">
+            <div className="flex items-center mt-3 text-sm">
               {breadcrumbs.map((crumb, index) => (
                 <React.Fragment key={index}>
-                  {index > 0 && <span className="mx-2">/</span>}
+                  {index > 0 && <span className="mx-2 text-muted-foreground/50">/</span>}
                   <button
                     onClick={() => navigateToBreadcrumb(index)}
-                    className="hover:text-foreground transition-colors"
+                    className={cn(
+                      "px-2 py-1 rounded-md transition-all duration-200 hover:scale-105",
+                      index === breadcrumbs.length - 1
+                        ? "text-foreground font-medium bg-primary/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                    )}
                   >
                     {crumb.name}
                   </button>
@@ -394,50 +399,75 @@ export default function MeetingsPage() {
               ))}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
             {/* Show "Go to Root" button when in empty folders */}
             {currentFolderId && meetings.length === 0 && folders.length === 0 && (
-              <Button onClick={() => navigateToBreadcrumb(0)} variant="outline">
+              <Button 
+                onClick={() => navigateToBreadcrumb(0)} 
+                variant="outline"
+                className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+              >
                 <FolderOpen className="h-4 w-4 mr-2" />
                 Go to Root
               </Button>
             )}
-            <Button onClick={() => setShowNewFolderDialog(true)} variant="outline">
-              <Folder className="h-4 w-4 mr-2" />
-              New Folder
-            </Button>
-            <Button onClick={() => setShowNewMeetingDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Meeting
-            </Button>
+            <div className="flex items-center bg-card/50 backdrop-blur border border-border/50 rounded-xl p-1 shadow-sm hover:shadow-md transition-all duration-300">
+              <Button 
+                onClick={() => setShowNewFolderDialog(true)} 
+                variant="ghost"
+                size="sm"
+                className="hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-all duration-200 hover:scale-105"
+              >
+                <Folder className="h-4 w-4 mr-2" />
+                New Folder
+              </Button>
+              <div className="w-px h-6 bg-gradient-to-t from-transparent via-border to-transparent mx-1" />
+              <Button 
+                onClick={() => setShowNewMeetingDialog(true)}
+                size="sm"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Meeting
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <div className="relative mb-8 max-w-md">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60">
+            <Search className="h-4 w-4" />
+          </div>
           <Input
-            placeholder="Search meetings..."
+            placeholder="Search meetings and folders..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-11 bg-card/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.02] placeholder:text-muted-foreground/60"
           />
+          {isSearching && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
         </div>
 
         {/* Search Results */}
         {searchQuery && searchResults.length > 0 && (
-          <div className="mb-6 bg-muted/50 rounded-lg p-4">
-            <h3 className="font-semibold mb-3">Search Results</h3>
-            <div className="space-y-2">
+          <div className="mb-8 bg-gradient-to-r from-card/80 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-6 shadow-lg">
+            <h3 className="font-semibold mb-4 text-foreground/90">Search Results</h3>
+            <div className="space-y-3">
               {searchResults.map((result) => (
                 <div
                   key={result.meeting_id}
-                  className="p-3 bg-background rounded-md hover:bg-accent cursor-pointer transition-colors"
+                  className="group p-4 bg-background/50 backdrop-blur border border-border/30 rounded-lg hover:bg-accent/50 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
                   onClick={() => router.push(`/meetings/${result.meeting_id}`)}
                 >
-                  <div className="font-medium">{result.title}</div>
+                  <div className="font-medium text-foreground group-hover:text-primary transition-colors">
+                    {result.title}
+                  </div>
                   <div
-                    className="text-sm text-muted-foreground mt-1"
+                    className="text-sm text-muted-foreground mt-1.5"
                     dangerouslySetInnerHTML={{ __html: result.snippet }}
                   />
                 </div>
@@ -449,8 +479,8 @@ export default function MeetingsPage() {
         {/* Folders and Meetings Grid */}
         <div 
           className={cn(
-            "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-32 rounded-lg transition-colors",
-            dragOverTarget === 'root' && "bg-blue-50 border-2 border-dashed border-blue-300 dark:bg-blue-950 dark:border-blue-600"
+            "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-32 rounded-xl transition-all duration-300",
+            dragOverTarget === 'root' && "bg-gradient-to-br from-blue-50/80 to-blue-100/60 dark:from-blue-950/60 dark:to-blue-900/40 border-2 border-dashed border-blue-300 dark:border-blue-600 shadow-lg"
           )}
           onDragOver={(e) => handleDragOver(e)}
           onDragLeave={(e) => handleDragLeave(e)}
@@ -466,25 +496,36 @@ export default function MeetingsPage() {
               onDragLeave={(e) => handleDragLeave(e, folder.folder_id)}
               onDrop={(e) => handleDrop(e, folder.folder_id)}
               className={cn(
-                "border rounded-lg p-4 hover:bg-accent/50 cursor-pointer transition-colors group",
-                dragOverTarget === folder.folder_id && "bg-blue-50 border-blue-300 dark:bg-blue-950 dark:border-blue-600",
-                draggedItem?.id === folder.folder_id && "opacity-50"
+                "group bg-gradient-to-br from-card/60 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-5 hover:bg-gradient-to-br hover:from-accent/30 hover:to-accent/10 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5",
+                dragOverTarget === folder.folder_id && "bg-gradient-to-br from-blue-50/80 to-blue-100/60 dark:from-blue-950/60 dark:to-blue-900/40 border-blue-300 dark:border-blue-600 shadow-lg shadow-blue-500/20",
+                draggedItem?.id === folder.folder_id && "opacity-50 scale-95"
               )}
               onClick={() => navigateToFolder(folder)}
             >
               <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
-                  <Folder className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <h3 className="font-medium">{folder.name}</h3>
-                    <p className="text-sm text-muted-foreground">
+                <div className="flex items-center space-x-4 flex-1 min-w-0">
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-950/50 dark:to-amber-900/60 flex items-center justify-center group-hover:scale-110 transition-all duration-200 shadow-sm">
+                      <Folder className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-500 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 animate-pulse" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                      {folder.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground/80 mt-1">
                       {formatDistanceToNow(new Date(folder.created_at), { addSuffix: true })}
                     </p>
                   </div>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-accent/80 h-8 w-8 p-0"
+                    >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -544,28 +585,53 @@ export default function MeetingsPage() {
               draggable
               onDragStart={(e) => handleDragStart(e, 'meeting', meeting.meeting_id)}
               className={cn(
-                "border rounded-lg p-4 hover:bg-accent/50 cursor-pointer transition-colors group",
-                draggedItem?.id === meeting.meeting_id && "opacity-50"
+                "group bg-gradient-to-br from-card/60 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-5 hover:bg-gradient-to-br hover:from-accent/30 hover:to-accent/10 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5",
+                draggedItem?.id === meeting.meeting_id && "opacity-50 scale-95"
               )}
               onClick={() => router.push(`/meetings/${meeting.meeting_id}`)}
             >
               <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
-                  <FileAudio className="h-5 w-5 text-muted-foreground" />
+                <div className="flex items-center space-x-4 flex-1 min-w-0">
+                  <div className="relative">
+                    <div className={cn(
+                      "w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-all duration-200 shadow-sm",
+                      meeting.status === 'active' 
+                        ? "bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950/50 dark:to-green-900/60"
+                        : "bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950/50 dark:to-blue-900/60"
+                    )}>
+                      <FileAudio className={cn(
+                        "h-6 w-6",
+                        meeting.status === 'active' 
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-blue-600 dark:text-blue-400"
+                      )} />
+                    </div>
+                    <div className={cn(
+                      "absolute -bottom-1 -right-1 w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200",
+                      meeting.status === 'active' 
+                        ? "bg-green-500 animate-pulse"
+                        : "bg-blue-500 animate-pulse"
+                    )} />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium truncate">{meeting.title}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                      {meeting.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground/80 mt-1">
                       {formatDistanceToNow(new Date(meeting.created_at), { addSuffix: true })}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        meeting.status === 'active' ? 'bg-green-100 text-green-700' :
-                        meeting.status === 'completed' ? 'bg-blue-100 text-blue-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={cn(
+                        "text-xs px-3 py-1 rounded-full font-medium border",
+                        meeting.status === 'active' 
+                          ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-300 dark:border-green-800'
+                          : meeting.status === 'completed' 
+                          ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800'
+                          : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800'
+                      )}>
                         {meeting.status}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground/60 px-2 py-1 bg-secondary/50 rounded-full">
                         {meeting.recording_mode === 'online' ? 'Online' : 'Local'}
                       </span>
                     </div>
@@ -573,7 +639,11 @@ export default function MeetingsPage() {
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-accent/80 h-8 w-8 p-0"
+                    >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -650,43 +720,66 @@ export default function MeetingsPage() {
 
         {/* Empty state */}
         {meetings.length === 0 && folders.length === 0 && !searchQuery && (
-          <div className="text-center py-12">
-            <FileAudio className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No meetings yet</h3>
-            <p className="text-muted-foreground mb-4">Create your first meeting to get started</p>
-            <Button onClick={() => setShowNewMeetingDialog(true)}>
+          <div className="text-center py-16">
+            <div className="relative inline-block mb-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-primary/10 to-primary/20 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                <FileAudio className="h-10 w-10 text-primary" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary rounded-full opacity-60 animate-pulse" />
+            </div>
+            <h3 className="text-xl font-semibold mb-3">No meetings yet</h3>
+            <p className="text-muted-foreground/80 mb-6 max-w-md mx-auto leading-relaxed">
+              Create your first meeting to start recording and transcribing conversations
+            </p>
+            <Button 
+              onClick={() => setShowNewMeetingDialog(true)}
+              className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+            >
               <Plus className="h-4 w-4 mr-2" />
-              New Meeting
+              Create First Meeting
             </Button>
           </div>
         )}
 
         {/* New Meeting Dialog */}
         <Dialog open={showNewMeetingDialog} onOpenChange={setShowNewMeetingDialog}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create New Meeting</DialogTitle>
-              <DialogDescription>
-                Enter a title for your new meeting
+          <DialogContent className="max-w-md bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
+            <DialogHeader className="space-y-3">
+              <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+                Create New Meeting
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground/80 leading-relaxed">
+                Enter a title for your new meeting to get started with recording and transcription
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="meeting-title">Meeting Title</Label>
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="meeting-title" className="text-sm font-medium text-foreground/90">
+                  Meeting Title
+                </Label>
                 <Input
                   id="meeting-title"
                   value={newMeetingTitle}
                   onChange={(e) => setNewMeetingTitle(e.target.value)}
-                  placeholder="e.g., Team Standup"
+                  placeholder="e.g., Team Standup, Client Call, Product Review..."
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateMeeting()}
+                  className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.01] placeholder:text-muted-foreground/60"
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowNewMeetingDialog(false)}>
+            <DialogFooter className="gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowNewMeetingDialog(false)}
+                className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+              >
                 Cancel
               </Button>
-              <Button onClick={handleCreateMeeting} disabled={!newMeetingTitle.trim()}>
+              <Button 
+                onClick={handleCreateMeeting} 
+                disabled={!newMeetingTitle.trim()}
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 Create Meeting
               </Button>
             </DialogFooter>
@@ -695,30 +788,43 @@ export default function MeetingsPage() {
 
         {/* New Folder Dialog */}
         <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create New Folder</DialogTitle>
-              <DialogDescription>
-                Enter a name for your new folder
+          <DialogContent className="max-w-md bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
+            <DialogHeader className="space-y-3">
+              <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+                Create New Folder
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground/80 leading-relaxed">
+                Organize your meetings by creating a new folder
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="folder-name">Folder Name</Label>
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="folder-name" className="text-sm font-medium text-foreground/90">
+                  Folder Name
+                </Label>
                 <Input
                   id="folder-name"
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder="e.g., Weekly Meetings"
+                  placeholder="e.g., Weekly Meetings, Q4 Reviews, Team Calls..."
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+                  className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.01] placeholder:text-muted-foreground/60"
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowNewFolderDialog(false)}>
+            <DialogFooter className="gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowNewFolderDialog(false)}
+                className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+              >
                 Cancel
               </Button>
-              <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>
+              <Button 
+                onClick={handleCreateFolder} 
+                disabled={!newFolderName.trim()}
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 Create Folder
               </Button>
             </DialogFooter>
@@ -727,27 +833,43 @@ export default function MeetingsPage() {
 
         {/* Edit Dialog */}
         <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Rename {editingItem?.type === 'meeting' ? 'Meeting' : 'Folder'}</DialogTitle>
+          <DialogContent className="max-w-md bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
+            <DialogHeader className="space-y-3">
+              <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+                Rename {editingItem?.type === 'meeting' ? 'Meeting' : 'Folder'}
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground/80 leading-relaxed">
+                Enter a new name for this {editingItem?.type === 'meeting' ? 'meeting' : 'folder'}
+              </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="edit-name">Name</Label>
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name" className="text-sm font-medium text-foreground/90">
+                  {editingItem?.type === 'meeting' ? 'Meeting' : 'Folder'} Name
+                </Label>
                 <Input
                   id="edit-name"
                   value={editingItem?.name || ''}
                   onChange={(e) => editingItem && setEditingItem({ ...editingItem, name: e.target.value })}
                   onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+                  className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.01]"
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditingItem(null)}>
+            <DialogFooter className="gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setEditingItem(null)}
+                className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+              >
                 Cancel
               </Button>
-              <Button onClick={handleRename} disabled={!editingItem?.name.trim()}>
-                Save
+              <Button 
+                onClick={handleRename} 
+                disabled={!editingItem?.name.trim()}
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Save Changes
               </Button>
             </DialogFooter>
           </DialogContent>

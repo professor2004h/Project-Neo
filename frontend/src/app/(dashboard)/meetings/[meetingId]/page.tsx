@@ -617,51 +617,67 @@ export default function MeetingPage() {
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b px-6 py-4 flex items-center justify-between">
+      <div className="flex-shrink-0 border-b bg-gradient-to-r from-background/95 via-background to-background/95 backdrop-blur-sm px-6 py-5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.push('/meetings')}
+            className="hover:bg-accent/80 transition-all duration-200 hover:scale-105"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
           <div>
-            <h1 className="text-xl font-semibold">{meeting.title}</h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-              <span>{formatDistanceToNow(new Date(meeting.created_at), { addSuffix: true })}</span>
-              <Badge variant={meeting.status === 'active' ? 'default' : 'secondary'}>
+            <h1 className="text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+              {meeting.title}
+            </h1>
+            <div className="flex items-center gap-2 text-sm mt-2">
+              <span className="text-muted-foreground/80">
+                {formatDistanceToNow(new Date(meeting.created_at), { addSuffix: true })}
+              </span>
+              <Badge 
+                variant={meeting.status === 'active' ? 'default' : 'secondary'}
+                className="shadow-sm"
+              >
                 {meeting.status}
               </Badge>
               {botStatus && (
-                <Badge variant="outline">{botStatus}</Badge>
+                <Badge variant="outline" className="shadow-sm">
+                  {botStatus}
+                </Badge>
               )}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={downloadTranscript}
-            disabled={!transcript}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Download
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => toast.info('Sharing coming soon')}
-          >
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
-          </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-card/60 backdrop-blur border border-border/50 rounded-xl p-1 shadow-sm hover:shadow-md transition-all duration-300">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={downloadTranscript}
+              disabled={!transcript}
+              className="hover:bg-blue-50 dark:hover:bg-blue-950/30 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-all duration-200 hover:scale-105 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+            <div className="w-px h-6 bg-gradient-to-t from-transparent via-border to-transparent mx-1" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toast.info('Sharing coming soon')}
+              className="hover:bg-purple-50 dark:hover:bg-purple-950/30 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 transition-all duration-200 hover:scale-105"
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              Share
+            </Button>
+          </div>
           <Button
             size="sm"
             onClick={startChatWithTranscript}
             disabled={!transcript}
+            className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50"
           >
             <MessageSquare className="h-4 w-4 mr-2" />
             Talk to Operator
@@ -670,28 +686,34 @@ export default function MeetingPage() {
       </div>
 
       {/* Search bar */}
-      <div className="flex-shrink-0 px-6 py-3 border-b">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="flex-shrink-0 px-6 py-4 border-b bg-gradient-to-r from-background/50 to-background/80 backdrop-blur">
+        <div className="relative max-w-lg">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60">
+            <Search className="h-4 w-4" />
+          </div>
           <Input
-            placeholder="Search in transcript..."
+            placeholder="Search within transcript..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-20 h-9"
+            className="pl-10 pr-24 h-10 bg-card/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.02] placeholder:text-muted-foreground/60"
           />
           {searchResults.length > 0 && (
-            <div className="absolute right-2 top-2 flex items-center gap-1 text-xs text-muted-foreground">
-              <span>{currentSearchIndex + 1}/{searchResults.length}</span>
-              <div className="flex">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground/80 bg-background/80 px-2 py-1 rounded-md font-medium">
+                {currentSearchIndex + 1}/{searchResults.length}
+              </span>
+              <div className="flex bg-background/80 backdrop-blur rounded-md border border-border/30 shadow-sm">
                 <button
                   onClick={() => navigateSearch('prev')}
-                  className="p-0.5 hover:bg-accent rounded"
+                  className="p-1.5 hover:bg-accent/80 rounded-l-md transition-all duration-200 hover:scale-110 text-muted-foreground hover:text-foreground"
+                  aria-label="Previous result"
                 >
                   ↑
                 </button>
                 <button
                   onClick={() => navigateSearch('next')}
-                  className="p-0.5 hover:bg-accent rounded"
+                  className="p-1.5 hover:bg-accent/80 rounded-r-md transition-all duration-200 hover:scale-110 text-muted-foreground hover:text-foreground"
+                  aria-label="Next result"
                 >
                   ↓
                 </button>
