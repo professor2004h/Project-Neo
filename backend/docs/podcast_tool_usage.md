@@ -9,7 +9,7 @@ The Podcast Generation Tool integrates with the [podcastfy library](https://gith
 - **Customizable conversation styles**: Educational, casual, analytical, storytelling, etc.
 - **Multiple podcast lengths**: Short (2-5 min), medium (10-15 min), long (20-30 min)
 - **Multi-language support**: Generate podcasts in various languages
-- **TTS model options**: OpenAI (default) or ElevenLabs for higher quality
+- **High-quality TTS**: Uses ElevenLabs for professional-grade voice synthesis
 - **Transcript-only mode**: Review content before audio generation
 - **Sandbox integration**: All files are processed and saved within the sandbox
 
@@ -46,14 +46,22 @@ await generate_podcast(
 
 ### Mixed Content Podcast
 ```python
-# Combine multiple content types
+# Combine multiple content types with advanced configuration
 await generate_podcast(
     urls=["https://research.example.com/paper"],
     file_paths=["local_analysis.pdf"],
     image_paths=["chart.png"],
     output_name="comprehensive_analysis",
     podcast_length="medium",
-    tts_model="elevenlabs"
+    conversation_style=["engaging", "fast-paced", "enthusiastic"],
+    roles_person1="expert analyst",
+    roles_person2="curious interviewer",
+    dialogue_structure=["Introduction", "Key Findings", "Implications", "Conclusion"],
+    podcast_name="Tech Deep Dive",
+    podcast_tagline="Exploring cutting-edge research",
+    engagement_techniques=["rhetorical questions", "analogies", "humor"],
+    creativity=0.8,
+    user_instructions="Focus on practical applications and real-world impact"
 )
 ```
 
@@ -74,12 +82,25 @@ await generate_podcast(
 - `image_paths`: List of image file paths in sandbox
 
 ### Customization Options
+
+#### Basic Options
 - `output_name`: Custom name for generated files (default: timestamp-based)
-- `conversation_style`: List of styles - "engaging", "educational", "casual", "formal", "analytical", "storytelling", "interview", "debate"
+- `conversation_style`: List of styles - "engaging", "educational", "casual", "formal", "analytical", "storytelling", "interview", "debate", "fast-paced", "enthusiastic"
 - `podcast_length`: "short", "medium", or "long"
 - `language`: Target language for the podcast (default: "English")
-- `tts_model`: "openai" (default) or "elevenlabs"
 - `transcript_only`: Generate only transcript without audio (default: False)
+
+#### Advanced Conversation Configuration
+- `roles_person1`: Role of the first speaker (e.g., "main summarizer", "host", "expert")
+- `roles_person2`: Role of the second speaker (e.g., "questioner/clarifier", "co-host", "interviewer")
+- `dialogue_structure`: Structure of the podcast dialogue (e.g., ["Introduction", "Main Content", "Deep Dive", "Conclusion"])
+- `podcast_name`: Custom name for the podcast series
+- `podcast_tagline`: Tagline or subtitle for the podcast
+- `engagement_techniques`: Techniques to make the podcast engaging (e.g., ["rhetorical questions", "anecdotes", "analogies", "humor"])
+- `creativity`: Level of creativity/temperature (0.0-1.0, where 1.0 is most creative)
+- `user_instructions`: Custom instructions to guide the conversation focus
+- `max_num_chunks`: Maximum number of discussion rounds in longform podcasts (1-15)
+- `min_chunk_size`: Minimum characters per discussion round (200-2000)
 
 ## Output
 
@@ -91,8 +112,8 @@ Use the `list_podcasts` function to view all generated podcasts with their detai
 
 ## API Key Requirements
 
-- **OpenAI**: Required for transcript generation and default TTS
-- **ElevenLabs**: Optional, for higher quality TTS (set `tts_model="elevenlabs"`)
+- **OpenAI**: Required for transcript generation
+- **ElevenLabs**: Required for high-quality voice synthesis
 
 Configure API keys in your environment variables or config files.
 
@@ -149,6 +170,6 @@ The tool includes comprehensive error handling for:
    - Provide at least one of: urls, file_paths, or image_paths
 
 4. **TTS generation fails**
-   - Check API key configuration
-   - Try switching TTS model
-   - Verify network connectivity 
+   - Check ElevenLabs API key configuration
+   - Verify network connectivity
+   - Ensure ElevenLabs API quota is available 
