@@ -816,9 +816,9 @@ export default function MeetingPage() {
             setSseConnection(null);
           }
           return;
-        } else if (['starting', 'joining', 'waiting', 'in_call', 'recording', 'stopping', 'completed'].includes(newStatus)) {
-          // If status is completed but transcript missing, continue polling
-          if (newStatus === 'completed' && !data.transcript) {
+        } else if (['starting', 'joining', 'waiting', 'in_call', 'recording', 'stopping', 'completed', 'ended'].includes(newStatus)) {
+          if (newStatus === 'ended') {
+            // Meeting ended but transcript may still be processing
             setBotStatus('stopping');
           }
           // Adaptive polling intervals based on status
@@ -839,6 +839,9 @@ export default function MeetingPage() {
               break;
             case 'stopping':
               pollInterval = 1000; // Frequent while waiting for final transcript
+              break;
+            case 'ended':
+              pollInterval = 1000; // Treat like stopping – still waiting for transcript
               break;
             case 'completed':
               pollInterval = 1000; // Frequent while waiting for final transcript

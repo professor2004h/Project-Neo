@@ -1160,19 +1160,12 @@ async def meeting_bot_webhook(request: Request):
                         
                         supabase_url = os.getenv("SUPABASE_URL")
                         
-                        # Prefer user auth token over service role for security
-                        user_token = session.get('user_auth_token')
-                        if user_token:
-                            # Use the user's own auth token - much more secure
-                            supabase: Client = create_supabase_client(supabase_url, user_token)
-                            logger.info(f"[WEBHOOK] Using user auth token for meeting {sandbox_id}")
-                        else:
-                            # Fallback to service role if no user token available
-                            supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-                            if not supabase_key:
-                                raise Exception("No authentication method available for database update")
-                            supabase: Client = create_supabase_client(supabase_url, supabase_key)
-                            logger.warning(f"[WEBHOOK] Using service role fallback for meeting {sandbox_id}")
+                        # Use service role key for webhook operations (always available and doesn't expire)
+                        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+                        if not supabase_key:
+                            raise Exception("No service role key available for database update")
+                        supabase: Client = create_supabase_client(supabase_url, supabase_key)
+                        logger.info(f"[WEBHOOK] Using service role key for meeting {sandbox_id}")
                         
                         if supabase_url:
                             # First verify the meeting exists
@@ -1188,13 +1181,12 @@ async def meeting_bot_webhook(request: Request):
                                         'completed_at': datetime.now().isoformat(),
                                         'speakers': session.get('speakers', []),
                                         'webhook_processed': True,  # Mark as processed by webhook
-                                        'auth_method': 'user_token' if user_token else 'service_role'  # Track auth method
+                                        'auth_method': 'service_role'  # Always use service role for webhooks
                                     },
                                     'updated_at': datetime.now().isoformat()
                                 }).eq('meeting_id', sandbox_id).execute()
                                 
-                                auth_method = 'user_token' if user_token else 'service_role'
-                                logger.info(f"[WEBHOOK] Updated meeting {sandbox_id} with transcript using {auth_method} (owner: {meeting_check.data.get('account_id')})")
+                                logger.info(f"[WEBHOOK] Updated meeting {sandbox_id} with transcript using service_role (owner: {meeting_check.data.get('account_id')})")
                                 
                                 # Clean up session file now that transcript is safely stored in database
                                 if os.path.exists(session_file):
@@ -1505,19 +1497,12 @@ async def _persist_transcript_to_database(session, session_file, bot_id):
         
         supabase_url = os.getenv("SUPABASE_URL")
         
-        # Prefer user auth token over service role for security
-        user_token = session.get('user_auth_token')
-        if user_token:
-            # Use the user's own auth token - much more secure
-            supabase: Client = create_supabase_client(supabase_url, user_token)
-            logger.info(f"[WEBHOOK] Using user auth token for meeting {sandbox_id}")
-        else:
-            # Fallback to service role if no user token available
-            supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-            if not supabase_key:
-                raise Exception("No authentication method available for database update")
-            supabase: Client = create_supabase_client(supabase_url, supabase_key)
-            logger.warning(f"[WEBHOOK] Using service role fallback for meeting {sandbox_id}")
+        # Use service role key for webhook operations (always available and doesn't expire)
+        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        if not supabase_key:
+            raise Exception("No service role key available for database update")
+        supabase: Client = create_supabase_client(supabase_url, supabase_key)
+        logger.info(f"[WEBHOOK] Using service role key for meeting {sandbox_id}")
         
         if supabase_url:
             # First verify the meeting exists
@@ -1533,13 +1518,12 @@ async def _persist_transcript_to_database(session, session_file, bot_id):
                         'completed_at': datetime.now().isoformat(),
                         'speakers': session.get('speakers', []),
                         'webhook_processed': True,  # Mark as processed by webhook
-                        'auth_method': 'user_token' if user_token else 'service_role'  # Track auth method
+                        'auth_method': 'service_role'  # Always use service role for webhooks
                     },
                     'updated_at': datetime.now().isoformat()
                 }).eq('meeting_id', sandbox_id).execute()
                 
-                auth_method = 'user_token' if user_token else 'service_role'
-                logger.info(f"[WEBHOOK] Updated meeting {sandbox_id} with transcript using {auth_method} (owner: {meeting_check.data.get('account_id')})")
+                logger.info(f"[WEBHOOK] Updated meeting {sandbox_id} with transcript using service_role (owner: {meeting_check.data.get('account_id')})")
             else:
                 logger.error(f"[WEBHOOK] Meeting {sandbox_id} not found in database - skipping update")
                 logger.error(f"[WEBHOOK] Transcript saved in session file: {session_file}")
