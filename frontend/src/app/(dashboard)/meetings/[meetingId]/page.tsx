@@ -815,11 +815,12 @@ export default function MeetingPage() {
         if (newStatus === 'completed') {
           // Simply refresh the meeting data - webhook handles all transcript logic  
           console.log('[POLLING] Meeting completed, refreshing data from database');
-          loadMeeting(); // Refresh from database
+          await loadMeeting(); // Refresh from database
           
           setIsRecording(false);
           setRecordingMode(null);
           setCurrentBotId(null);
+          setIsProcessingTranscript(false); // Clear processing state
           
           // Stop monitoring
           if (sseConnection) {
@@ -1004,18 +1005,23 @@ export default function MeetingPage() {
     const interval = setInterval(async () => {
       try {
         const latest = await getMeeting(meetingId);
-        if (latest.status === 'completed' && latest.transcript) {
+        // Check if we got a transcript (either new or existing)
+        if (latest.transcript && latest.transcript !== transcript) {
           setMeeting(latest);
           setTranscript(latest.transcript);
           setIsProcessingTranscript(false);
           toast.success('Transcript ready');
+        } else if (latest.status === 'completed' && !latest.transcript) {
+          // Meeting completed but no transcript - stop waiting
+          setIsProcessingTranscript(false);
+          toast.info('Meeting completed without transcript');
         }
       } catch (err) {
         console.error('[PROCESSING] failed to poll', err);
       }
     }, 10000); // every 10s
     return () => clearInterval(interval);
-  }, [isProcessingTranscript, meetingId]);
+  }, [isProcessingTranscript, meetingId, transcript]);
 
   if (isLoading) {
     return (
@@ -1255,14 +1261,14 @@ export default function MeetingPage() {
       {/* Recording controls */}
       {(meeting.status === 'active' || (meeting.status === 'completed' && transcript)) && (
         <div className="flex-shrink-0 border-t bg-gradient-to-r from-background/95 via-background to-background/95 backdrop-blur-sm">
-          <div className="px-6 py-6 max-h-36 overflow-visible">
+          <div className="px-6 py-4">
             <div className="max-w-4xl mx-auto">
               {!isRecording ? (
                 <div className="flex flex-col items-center justify-center space-y-4">
                   {meeting.status === 'completed' ? (
                     /* Continue Recording Section */
                     <>
-                      <div className="text-center mb-3">
+                      <div className="text-center mb-2">
                         <p className="text-sm font-medium text-foreground/90 mb-1">Meeting Completed</p>
                         <p className="text-xs text-muted-foreground/80">Start a new recording session to continue adding to this transcript</p>
                       </div>
