@@ -395,6 +395,13 @@ export default function MeetingsPage() {
             </div>
           </div>
           <div className="flex gap-2">
+            {/* Show "Go to Root" button when in empty folders */}
+            {currentFolderId && meetings.length === 0 && folders.length === 0 && (
+              <Button onClick={() => navigateToBreadcrumb(0)} variant="outline">
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Go to Root
+              </Button>
+            )}
             <Button onClick={() => setShowNewFolderDialog(true)} variant="outline">
               <Folder className="h-4 w-4 mr-2" />
               New Folder
@@ -495,14 +502,19 @@ export default function MeetingsPage() {
                         Move to Folder
                       </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          handleMoveToFolder('folder', folder.folder_id, null);
-                        }}>
-                          <FolderOpen className="h-4 w-4 mr-2" />
-                          Move to Root
-                        </DropdownMenuItem>
-                        {buildFolderTree(allFolders).length > 0 && <DropdownMenuSeparator />}
+                        {/* Only show "Move to Root" if not already in root */}
+                        {currentFolderId && (
+                          <>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveToFolder('folder', folder.folder_id, null);
+                            }}>
+                              <FolderOpen className="h-4 w-4 mr-2" />
+                              Move to Root
+                            </DropdownMenuItem>
+                            {buildFolderTree(allFolders).length > 0 && <DropdownMenuSeparator />}
+                          </>
+                        )}
                         {buildFolderTree(allFolders)
                           .filter(f => f.folder_id !== folder.folder_id)
                           .map(f => renderFolderMenuItem(f, 'folder', folder.folder_id))}
@@ -587,14 +599,19 @@ export default function MeetingsPage() {
                         Move to Folder
                       </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          handleMoveToFolder('meeting', meeting.meeting_id, null);
-                        }}>
-                          <FolderOpen className="h-4 w-4 mr-2" />
-                          Move to Root
-                        </DropdownMenuItem>
-                        {buildFolderTree(allFolders).length > 0 && <DropdownMenuSeparator />}
+                        {/* Only show "Move to Root" if not already in root */}
+                        {currentFolderId && (
+                          <>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveToFolder('meeting', meeting.meeting_id, null);
+                            }}>
+                              <FolderOpen className="h-4 w-4 mr-2" />
+                              Move to Root
+                            </DropdownMenuItem>
+                            {buildFolderTree(allFolders).length > 0 && <DropdownMenuSeparator />}
+                          </>
+                        )}
                         {buildFolderTree(allFolders).map(f => renderFolderMenuItem(f, 'meeting', meeting.meeting_id))}
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
