@@ -440,7 +440,7 @@ export default function MeetingsPage() {
                 onClick={() => setShowNewFolderDialog(true)} 
                 variant="ghost"
                 size="sm"
-                className="hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-all duration-200 hover:scale-105 focus:scale-105 focus:bg-amber-50 dark:focus:bg-amber-950/30"
+                className="hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-all duration-200 focus:bg-amber-50 dark:focus:bg-amber-950/30 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
               >
                 <Folder className="h-4 w-4 mr-2" />
                 New Folder
@@ -449,7 +449,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={() => setShowNewMeetingDialog(true)}
                 size="sm"
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 focus:scale-105 focus:shadow-md"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Meeting
@@ -806,7 +806,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={handleCreateMeeting} 
                 disabled={!newMeetingTitle.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:scale-105"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 Create Meeting
               </Button>
@@ -851,7 +851,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={handleCreateFolder} 
                 disabled={!newFolderName.trim()}
-                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:scale-105"
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500/20"
               >
                 Create Folder
               </Button>
@@ -895,7 +895,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={handleRename} 
                 disabled={!editingItem?.name.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:scale-105"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 Save Changes
               </Button>
