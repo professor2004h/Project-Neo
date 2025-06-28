@@ -22,6 +22,7 @@ import { ThreeSpinner } from '@/components/ui/three-spinner';
 export interface ChatInputHandles {
   getPendingFiles: () => File[];
   clearPendingFiles: () => void;
+  addExternalFile: (file: File) => void;
 }
 
 export interface ChatInputProps {
@@ -112,6 +113,17 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     useImperativeHandle(ref, () => ({
       getPendingFiles: () => pendingFiles,
       clearPendingFiles: () => setPendingFiles([]),
+      addExternalFile: (file: File) => {
+        handleFiles(
+          [file],
+          sandboxId,
+          setPendingFiles,
+          setUploadedFiles,
+          setIsUploading,
+          messages,
+          queryClient,
+        );
+      },
     }));
 
     useEffect(() => {
