@@ -125,32 +125,69 @@ class MeetingBaaSService:
             Dictionary with bot status and transcript if available
         """
         
+        if not self.api_key:
+            return {
+                'success': False,
+                'error': 'MEETINGBAAS_API_KEY environment variable not set'
+            }
+        
         headers = {
             'x-meeting-baas-api-key': self.api_key,  # Correct header format
             'Content-Type': 'application/json'
         }
         
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f'{self.base_url}/bots/{bot_id}',
-                headers=headers
-            ) as response:
-                
-                if response.status == 200:
-                    result = await response.json()
-                    return {
-                        'success': True,
-                        'status': result.get('status'),
-                        'transcript': result.get('transcript', ''),
-                        'participants': result.get('participants', []),
-                        'duration': result.get('duration_seconds', 0),
-                        'recording_url': result.get('recording_url')
-                    }
-                else:
-                    return {
-                        'success': False,
-                        'error': f'Failed to get bot status: {await response.text()}'
-                    }
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f'{self.base_url}/bots/{bot_id}',
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=10)  # 10 second timeout
+                ) as response:
+                    
+                    if response.status == 200:
+                        try:
+                            result = await response.json()
+                            return {
+                                'success': True,
+                                'status': result.get('status'),
+                                'transcript': result.get('transcript', ''),
+                                'participants': result.get('participants', []),
+                                'duration': result.get('duration_seconds', 0),
+                                'recording_url': result.get('recording_url')
+                            }
+                        except Exception as json_error:
+                            return {
+                                'success': False,
+                                'error': f'Failed to parse response JSON: {str(json_error)}'
+                            }
+                    elif response.status == 404:
+                        return {
+                            'success': False,
+                            'error': f'Bot {bot_id} not found (may have been removed)',
+                            'status_code': 404
+                        }
+                    else:
+                        error_text = await response.text()
+                        return {
+                            'success': False,
+                            'error': f'API returned {response.status}: {error_text}',
+                            'status_code': response.status
+                        }
+        except asyncio.TimeoutError:
+            return {
+                'success': False,
+                'error': 'Request timed out - MeetingBaaS API may be unreachable'
+            }
+        except aiohttp.ClientError as client_error:
+            return {
+                'success': False,
+                'error': f'Network error: {str(client_error)}'
+            }
+        except Exception as unexpected_error:
+            return {
+                'success': False,
+                'error': f'Unexpected error: {str(unexpected_error)}'
+            }
     
     async def stop_meeting_bot(self, bot_id: str) -> Dict[str, Any]:
         """

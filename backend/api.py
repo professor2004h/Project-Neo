@@ -350,52 +350,58 @@ async def discover_custom_mcp_tools(request: CustomMCPDiscoverRequest):
 active_sse_connections = {}
 
 async def broadcast_bot_update(bot_id: str, session_data: dict):
-    """Broadcast bot status update to connected SSE clients"""
+    """
+    Broadcast real-time bot status updates to connected SSE clients.
+    
+    Args:
+        bot_id: The bot ID to broadcast for
+        session_data: The current session data including status and transcript
+    """
+    global active_sse_connections
     import json
     
-    try:
-        # Create the message with type identifier
-        message_data = {
-            'type': 'status_update',
-            'bot_id': bot_id,
-            **session_data
-        }
-        message = f"data: {json.dumps(message_data)}\n\n"
-        
-        logger.info(f"[BROADCAST] Sending update for bot {bot_id}, status: {session_data.get('status', 'unknown')}")
-        
-        # Send to all connected clients for this bot
-        if bot_id in active_sse_connections:
-            total_clients = len(active_sse_connections[bot_id])
-            logger.info(f"[BROADCAST] Broadcasting to {total_clients} clients for bot {bot_id}")
-            
-            disconnected = []
-            successful = 0
-            
-            for queue in active_sse_connections[bot_id]:
-                try:
-                    await queue.put(message)
-                    successful += 1
-                except Exception as queue_error:
-                    logger.error(f"[BROADCAST] Failed to send to client: {queue_error}")
-                    disconnected.append(queue)
-            
-            # Clean up disconnected clients
-            for queue in disconnected:
-                try:
-                    active_sse_connections[bot_id].remove(queue)
-                except ValueError:
-                    pass  # Queue already removed
-            
-            logger.info(f"[BROADCAST] Successfully sent to {successful}/{total_clients} clients for bot {bot_id}")
-            
-            if disconnected:
-                logger.warning(f"[BROADCAST] Cleaned up {len(disconnected)} disconnected clients for bot {bot_id}")
-        else:
-            logger.warning(f"[BROADCAST] No active SSE connections for bot {bot_id}")
-            
-    except Exception as e:
-        logger.error(f"[BROADCAST] Error broadcasting update for bot {bot_id}: {str(e)}")
+    # Prepare the update message
+    update_data = {
+        'type': 'status_update',
+        'status': session_data.get('status', 'unknown'),
+        'bot_id': bot_id,
+        'timestamp': time.time()
+    }
+    
+    # Include transcript if status is completed
+    if session_data.get('status') == 'completed' and session_data.get('transcript_text'):
+        update_data['transcript'] = session_data.get('transcript_text')
+        logger.info(f"[BROADCAST] Including transcript in update for bot {bot_id}")
+    
+    logger.info(f"[BROADCAST] Sending update for bot {bot_id}, status: {update_data['status']}")
+    
+    # Format as SSE message
+    message = f"data: {json.dumps(update_data)}\n\n"
+    
+    # Get connections for this bot
+    bot_connections = active_sse_connections.get(bot_id, [])
+    if not bot_connections:
+        logger.warning(f"[BROADCAST] No active SSE connections for bot {bot_id}")
+        return
+    
+    logger.info(f"[BROADCAST] Broadcasting to {len(bot_connections)} clients for bot {bot_id}")
+    
+    # Send to all connected clients
+    successful = 0
+    for queue in bot_connections[:]:  # Create a copy to safely modify during iteration
+        try:
+            # Put the formatted message in queue
+            await queue.put(message)
+            successful += 1
+        except Exception as e:
+            logger.error(f"[BROADCAST] Error sending to queue: {str(e)}")
+            bot_connections.remove(queue)
+    
+    logger.info(f"[BROADCAST] Successfully sent to {successful}/{len(bot_connections)} clients for bot {bot_id}")
+    
+    # Clean up if no connections remain
+    if not bot_connections:
+        del active_sse_connections[bot_id]
 
 @app.get("/api/meeting-bot/{bot_id}/events")
 async def bot_status_events(bot_id: str):

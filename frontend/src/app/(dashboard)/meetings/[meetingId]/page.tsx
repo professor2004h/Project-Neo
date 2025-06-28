@@ -82,6 +82,7 @@ export default function MeetingPage() {
   const [recognition, setRecognition] = useState<any>(null);
   const [wsConnection, setWsConnection] = useState<TranscriptionWebSocket | null>(null);
   const [botStatus, setBotStatus] = useState<string>('');
+  const [currentBotId, setCurrentBotId] = useState<string | null>(null);
   
   // Meeting URL dialog state
   const [showMeetingUrlDialog, setShowMeetingUrlDialog] = useState(false);
@@ -127,6 +128,7 @@ export default function MeetingPage() {
         setRecordingMode('online');
         setIsRecording(true);
         setBotStatus('checking...');
+        setCurrentBotId(data.metadata.bot_id);  // Restore bot ID
         toast.info('Reconnecting to existing meeting bot...');
         checkBotStatus(data.metadata.bot_id);
       }
@@ -387,6 +389,7 @@ export default function MeetingPage() {
       if (data.success) {
         setBotStatus(data.status);
         setIsRecording(true);
+        setCurrentBotId(data.bot_id);  // Store bot ID in state
         
         // Update meeting metadata with bot info and recording mode
         await updateMeeting(meetingId, {
@@ -394,6 +397,14 @@ export default function MeetingPage() {
           recording_mode: 'online',
           status: 'active',
         });
+
+        // Also update local state immediately
+        setMeeting(prev => prev ? {
+          ...prev,
+          metadata: { bot_id: data.bot_id, meeting_url: meetingUrl },
+          recording_mode: 'online',
+          status: 'active'
+        } : prev);
 
         toast.success('Meeting bot is joining the meeting...');
         
@@ -469,9 +480,20 @@ export default function MeetingPage() {
       });
       
       toast.success('Recording stopped and saved');
-    } else if (recordingMode === 'online' && meeting?.metadata?.bot_id) {
+    } else if (recordingMode === 'online') {
+      // Use currentBotId or meeting metadata bot_id
+      const botId = currentBotId || meeting?.metadata?.bot_id;
+      
+      if (!botId) {
+        toast.error('No bot ID found - cannot stop recording');
+        setIsRecording(false);
+        setRecordingMode(null);
+        setBotStatus('');
+        return;
+      }
+      
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/${meeting.metadata.bot_id}/stop`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/${botId}/stop`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -492,7 +514,11 @@ export default function MeetingPage() {
             status: 'completed',
             metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot data
           });
-          toast.success('Meeting recording completed and transcript saved');
+          setIsRecording(false);
+          setRecordingMode(null);
+          setBotStatus('completed');
+          setCurrentBotId(null);  // Clear current bot ID
+          toast.success('Meeting recording completed');
         } else if (data.success && data.status === 'stopping') {
           // Bot is stopping, wait for final transcript via polling
           toast.info('Stopping meeting bot, waiting for final transcript...');
@@ -539,6 +565,7 @@ export default function MeetingPage() {
         setIsRecording(false);
         setRecordingMode(null);
         setBotStatus('completed');
+        setCurrentBotId(null);  // Clear current bot ID
         toast.success('Meeting recording completed');
       } catch (error) {
         console.error('Error stopping bot:', error);
@@ -604,9 +631,38 @@ export default function MeetingPage() {
               if (['starting', 'joining', 'waiting', 'in_call', 'recording'].includes(newStatus)) {
                 setIsRecording(true);
                 setRecordingMode('online');
-              } else if (['completed', 'ended', 'failed'].includes(newStatus)) {
+              } else if (newStatus === 'completed') {
+                // When completed, check if transcript is included
+                if (data.transcript) {
+                  console.log('[SSE] Received transcript with completed status');
+                  const fullTranscript = transcript + '\n\n' + data.transcript;
+                  setTranscript(fullTranscript);
+                  
+                  // Update meeting with transcript
+                  updateMeeting(meetingId, {
+                    transcript: fullTranscript,
+                    status: 'completed',
+                    metadata: { ...meeting?.metadata, bot_id: undefined }
+                  });
+                  
+                  toast.success('Meeting recording completed - transcript updated');
+                } else {
+                  // If no transcript in SSE, poll for it
+                  console.log('[SSE] Completed without transcript, polling for it');
+                  if (currentBotId || meeting?.metadata?.bot_id) {
+                    checkBotStatusWithPolling(currentBotId || meeting?.metadata?.bot_id!);
+                  }
+                }
+                
                 setIsRecording(false);
                 setRecordingMode(null);
+                setCurrentBotId(null);
+                eventSource.close();
+                setSseConnection(null);
+              } else if (['ended', 'failed'].includes(newStatus)) {
+                setIsRecording(false);
+                setRecordingMode(null);
+                setCurrentBotId(null);
                 eventSource.close();
                 setSseConnection(null);
               }
