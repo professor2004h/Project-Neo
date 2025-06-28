@@ -165,7 +165,6 @@ export default function MeetingsPage() {
     try {
       await deleteFolder(folderId);
       loadData();
-      loadAllFolders(); // Also refresh the folder tree
       toast.success('Folder deleted');
     } catch (error) {
       console.error('Error deleting folder:', error);
@@ -225,7 +224,7 @@ export default function MeetingsPage() {
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragOver = (e: React.DragEvent, targetFolderId?: string | null) => {
+  const handleDragOver = (e: React.DragEvent, targetFolderId?: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     
@@ -237,14 +236,14 @@ export default function MeetingsPage() {
     setDragOverTarget(targetFolderId || 'root');
   };
 
-  const handleDragLeave = (e: React.DragEvent, targetFolderId?: string | null) => {
+  const handleDragLeave = (e: React.DragEvent, targetFolderId?: string) => {
     // Only clear drag target if we're leaving the actual target, not bubbling
     if (!targetFolderId || !e.currentTarget.contains(e.relatedTarget as Node)) {
       setDragOverTarget(null);
     }
   };
 
-  const handleDrop = async (e: React.DragEvent, targetFolderId?: string | null) => {
+  const handleDrop = async (e: React.DragEvent, targetFolderId?: string) => {
     e.preventDefault();
     
     // If dropping on a specific folder, stop propagation
@@ -299,7 +298,7 @@ export default function MeetingsPage() {
   };
 
   // Move item to folder
-  const handleMoveToFolder = async (itemType: 'meeting' | 'folder', itemId: string, targetFolderId?: string | null) => {
+  const handleMoveToFolder = async (itemType: 'meeting' | 'folder', itemId: string, targetFolderId?: string) => {
     try {
       if (itemType === 'meeting') {
         await updateMeeting(itemId, { folder_id: targetFolderId });
@@ -498,7 +497,7 @@ export default function MeetingsPage() {
                       <DropdownMenuSubContent>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          handleMoveToFolder('folder', folder.folder_id, null);
+                          handleMoveToFolder('folder', folder.folder_id, undefined);
                         }}>
                           <FolderOpen className="h-4 w-4 mr-2" />
                           Move to Root
@@ -590,7 +589,7 @@ export default function MeetingsPage() {
                       <DropdownMenuSubContent>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          handleMoveToFolder('meeting', meeting.meeting_id, null);
+                          handleMoveToFolder('meeting', meeting.meeting_id, undefined);
                         }}>
                           <FolderOpen className="h-4 w-4 mr-2" />
                           Move to Root
