@@ -754,8 +754,7 @@ export default function MeetingPage() {
     
     setupSSE();
     
-    // Also start polling as backup (less frequent than SSE)
-    checkBotStatusWithPolling(botId);
+    // SSE provides real-time updates, no need for polling backup
   };
 
   // Enhanced polling with adaptive intervals

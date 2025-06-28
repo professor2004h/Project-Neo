@@ -662,49 +662,25 @@ async def get_meeting_bot_status(bot_id: str):
                     "duration": int(session.get('completed_at', 0) - session.get('started_at', 0)) if session.get('completed_at') and session.get('started_at') else 0
                 })
         
-        # If not completed locally, try to get live status from API
-        # But don't fail if API is unavailable - always return some status
-        api_status = None
-        try:
-            from services.meeting_baas import meeting_baas_service
-            result = await meeting_baas_service.get_bot_status(bot_id)
-            
-            if result.get('success'):
-                api_status = result.get('status')
-                logger.info(f"[STATUS] Got API status for {bot_id}: {api_status}")
-            else:
-                logger.warning(f"[STATUS] API call unsuccessful for {bot_id}: {result.get('error', 'Unknown error')}")
-                
-        except Exception as api_error:
-            logger.warning(f"[STATUS] API call failed for {bot_id}: {str(api_error)}")
-        
-        # Always return a status, preferring session data or defaulting to 'unknown'
+        # Return session data if available, webhooks provide real-time updates
         if os.path.exists(session_file):
             with open(session_file, 'r') as f:
                 session = json.load(f)
             
-            # Use API status if available and session isn't completed
             final_status = session.get('status', 'unknown')
-            if api_status and final_status not in ['completed', 'ended', 'failed']:
-                final_status = api_status
-                # Update session with API status
-                session['status'] = api_status
-                session['last_updated'] = time.time()
-                with open(session_file, 'w') as f:
-                    json.dump(session, f)
             
             return JSONResponse({
                 "success": True,
                 "status": final_status,
-                "transcript": '',
+                "transcript": session.get('transcript_text', ''),
                 "participants": session.get('speakers', []),
-                "duration": 0
+                "duration": int(session.get('completed_at', 0) - session.get('started_at', 0)) if session.get('completed_at') and session.get('started_at') else 0
             })
         else:
-            # No session file - return API status or unknown
+            # No session file found
             return JSONResponse({
                 "success": True,
-                "status": api_status or 'unknown',
+                "status": 'unknown',
                 "transcript": '',
                 "participants": [],
                 "duration": 0
@@ -1052,46 +1028,10 @@ async def meeting_bot_webhook(request: Request):
                     if session.get('status') != 'completed':
                         logger.warning(f"[WEBHOOK] No complete event received for {bot_id}, attempting fallback transcript retrieval")
                         
-                        try:
-                            from services.meeting_baas import meeting_baas_service
-                            
-                            # Try to get the bot data which might include transcript
-                            bot_result = await meeting_baas_service.get_bot_status(bot_id)
-                            if bot_result.get('success') and bot_result.get('transcript'):
-                                logger.info(f"[WEBHOOK] Retrieved transcript via status call for {bot_id}")
-                                
-                                # Mark as completed and process like a complete event
-                                session['status'] = 'completed'
-                                session['transcript_ready'] = True
-                                session['completed_at'] = time.time()
-                                session['transcript'] = bot_result.get('transcript', [])
-                                session['speakers'] = bot_result.get('speakers', [])
-                                
-                                # Convert transcript format
-                                transcript_text_parts = []
-                                if session['transcript']:
-                                    for item in session['transcript']:
-                                        if isinstance(item, dict):
-                                            speaker = item.get('speaker', 'Unknown')
-                                            text = item.get('text', '')
-                                            if text.strip():
-                                                transcript_text_parts.append(f"{speaker}: {text}")
-                                
-                                if transcript_text_parts:
-                                    session['transcript_text'] = '\n'.join(transcript_text_parts)
-                                    logger.info(f"[WEBHOOK] Processed fallback transcript for {bot_id} ({len(transcript_text_parts)} segments)")
-                                    # Persist to database immediately
-                                    await _persist_transcript_to_database(session, session_file, bot_id)
-                                else:
-                                    session['transcript_text'] = "[No speech detected during meeting]"
-                                    
-                            else:
-                                logger.warning(f"[WEBHOOK] No transcript available via status call for {bot_id}")
-                                session['transcript_text'] = "[Meeting ended but no transcript available]"
-                                
-                        except Exception as transcript_error:
-                            logger.error(f"[WEBHOOK] Failed to retrieve fallback transcript for {bot_id}: {str(transcript_error)}")
-                            session['transcript_text'] = "[Meeting ended but transcript retrieval failed]"
+                        # Since webhooks are the primary data source, just mark as ended
+                        # The complete webhook with transcript should arrive separately
+                        logger.warning(f"[WEBHOOK] Call ended for {bot_id} without complete event - waiting for transcript webhook")
+                        session['transcript_text'] = "[Meeting ended - waiting for transcript]"
                 elif status_code in ['bot_rejected', 'bot_removed', 'waiting_room_timeout']:
                     session['status'] = 'failed'
                     session['error'] = status_code
