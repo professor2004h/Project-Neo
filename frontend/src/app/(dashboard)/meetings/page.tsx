@@ -411,7 +411,7 @@ export default function MeetingsPage() {
                 Go to Root
               </Button>
             )}
-            <div className="flex items-center bg-card/50 backdrop-blur border border-border/50 rounded-xl p-1 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="flex items-center bg-card/50 backdrop-blur border border-border/50 rounded-xl p-1 shadow-sm">
               <Button 
                 onClick={() => setShowNewFolderDialog(true)} 
                 variant="ghost"
@@ -771,14 +771,14 @@ export default function MeetingsPage() {
               <Button 
                 variant="outline" 
                 onClick={() => setShowNewMeetingDialog(false)}
-                className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+                className="shadow-sm hover:shadow-md transition-all duration-200"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleCreateMeeting} 
                 disabled={!newMeetingTitle.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Create Meeting
               </Button>
@@ -816,14 +816,14 @@ export default function MeetingsPage() {
               <Button 
                 variant="outline" 
                 onClick={() => setShowNewFolderDialog(false)}
-                className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+                className="shadow-sm hover:shadow-md transition-all duration-200"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleCreateFolder} 
                 disabled={!newFolderName.trim()}
-                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Create Folder
               </Button>
@@ -860,14 +860,14 @@ export default function MeetingsPage() {
               <Button 
                 variant="outline" 
                 onClick={() => setEditingItem(null)}
-                className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+                className="shadow-sm hover:shadow-md transition-all duration-200"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleRename} 
                 disabled={!editingItem?.name.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Save Changes
               </Button>

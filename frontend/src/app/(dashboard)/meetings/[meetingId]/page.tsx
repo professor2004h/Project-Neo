@@ -35,6 +35,15 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 // Speech recognition types
 interface SpeechRecognitionEvent extends Event {
@@ -73,6 +82,10 @@ export default function MeetingPage() {
   const [recognition, setRecognition] = useState<any>(null);
   const [wsConnection, setWsConnection] = useState<TranscriptionWebSocket | null>(null);
   const [botStatus, setBotStatus] = useState<string>('');
+  
+  // Meeting URL dialog state
+  const [showMeetingUrlDialog, setShowMeetingUrlDialog] = useState(false);
+  const [meetingUrl, setMeetingUrl] = useState('');
   
   // Timestamp tracking for local recordings
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
@@ -269,85 +282,94 @@ export default function MeetingPage() {
       }
     } else {
       // For online mode, show meeting URL input dialog
-      const meetingUrl = prompt('Enter the meeting URL:');
-      if (!meetingUrl) return;
+      setShowMeetingUrlDialog(true);
+    }
+  };
 
-      try {
-        // Start meeting bot
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/start`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            meeting_url: meetingUrl,
-            sandbox_id: meetingId, // Using meeting ID as sandbox ID
-          }),
+  // Handle starting online recording with URL
+  const handleStartOnlineRecording = async () => {
+    if (!meetingUrl.trim()) return;
+
+    setShowMeetingUrlDialog(false);
+
+    try {
+      // Start meeting bot
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          meeting_url: meetingUrl,
+          sandbox_id: meetingId, // Using meeting ID as sandbox ID
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setBotStatus(data.status);
+        setIsRecording(true);
+        
+        // Update meeting metadata with bot info and recording mode
+        await updateMeeting(meetingId, {
+          metadata: { bot_id: data.bot_id, meeting_url: meetingUrl },
+          recording_mode: 'online',
+          status: 'active',
         });
 
-        const data = await response.json();
-        if (data.success) {
-          setBotStatus(data.status);
-          setIsRecording(true);
-          
-          // Update meeting metadata with bot info and recording mode
-          await updateMeeting(meetingId, {
-            metadata: { bot_id: data.bot_id, meeting_url: meetingUrl },
-            recording_mode: 'online',
-            status: 'active',
+        toast.success('Meeting bot is joining the meeting...');
+        
+        // Start polling for bot status
+        checkBotStatus(data.bot_id);
+      } else {
+        throw new Error(data.error || 'Failed to start meeting bot');
+      }
+    } catch (error) {
+      console.error('Error starting online recording:', error);
+      
+      // If error is "AlreadyStarted", try to find existing bot
+      if (error.message.includes('AlreadyStarted')) {
+        try {
+          // Try to get existing bot for this meeting URL
+          const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/find`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              meeting_url: meetingUrl,
+              sandbox_id: meetingId,
+            }),
           });
 
-          toast.success('Meeting bot is joining the meeting...');
-          
-          // Start polling for bot status
-          checkBotStatus(data.bot_id);
-        } else {
-          throw new Error(data.error || 'Failed to start meeting bot');
-        }
-      } catch (error) {
-        console.error('Error starting online recording:', error);
-        
-        // If error is "AlreadyStarted", try to find existing bot
-        if (error.message.includes('AlreadyStarted')) {
-          try {
-            // Try to get existing bot for this meeting URL
-            const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/find`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                meeting_url: meetingUrl,
-                sandbox_id: meetingId,
-              }),
+          const statusData = await statusResponse.json();
+          if (statusData.success && statusData.bot_id) {
+            setBotStatus(statusData.status || 'in_call');
+            setIsRecording(true);
+            
+            // Update meeting metadata with existing bot info
+            await updateMeeting(meetingId, {
+              metadata: { bot_id: statusData.bot_id, meeting_url: meetingUrl },
+              recording_mode: 'online',
+              status: 'active',
             });
 
-            const statusData = await statusResponse.json();
-            if (statusData.success && statusData.bot_id) {
-              setBotStatus(statusData.status || 'in_call');
-              setIsRecording(true);
-              
-              // Update meeting metadata with existing bot info
-              await updateMeeting(meetingId, {
-                metadata: { bot_id: statusData.bot_id, meeting_url: meetingUrl },
-                recording_mode: 'online',
-                status: 'active',
-              });
-
-              toast.success('Reconnected to existing meeting bot!');
-              checkBotStatus(statusData.bot_id);
-            } else {
-              toast.error('Bot already exists but could not reconnect');
-            }
-          } catch (findError) {
-            console.error('Error finding existing bot:', findError);
-            toast.error('Bot already running for this meeting URL. Please try again.');
+            toast.success('Reconnected to existing meeting bot!');
+            checkBotStatus(statusData.bot_id);
+          } else {
+            toast.error('Bot already exists but could not reconnect');
           }
-        } else {
-          toast.error('Failed to start meeting bot');
+        } catch (findError) {
+          console.error('Error finding existing bot:', findError);
+          toast.error('Bot already running for this meeting URL. Please try again.');
         }
+      } else {
+        toast.error('Failed to start meeting bot');
       }
     }
+
+    // Clear the URL for next time
+    setMeetingUrl('');
   };
 
   // Stop recording
@@ -794,13 +816,12 @@ export default function MeetingPage() {
                   <div className="flex items-center gap-1 bg-card/60 backdrop-blur border border-border/50 rounded-2xl p-1.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
                     <button
                       onClick={() => startRecording('local')}
-                      className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all duration-200 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:scale-[1.02] active:scale-[0.98]"
+                      className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-950/30 transition-all duration-200 text-slate-700 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-200 hover:scale-[1.02] active:scale-[0.98]"
                     >
                       <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-900/60 transition-all duration-200 group-hover:scale-110">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center group-hover:bg-slate-200 dark:group-hover:bg-slate-800/60 transition-all duration-200 group-hover:scale-110">
                           <User className="h-5 w-5" />
                         </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 animate-pulse" />
                       </div>
                       <span className="text-sm font-semibold">In Person</span>
                     </button>
@@ -809,13 +830,12 @@ export default function MeetingPage() {
                     
                     <button
                       onClick={() => startRecording('online')}
-                      className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 hover:scale-[1.02] active:scale-[0.98]"
+                      className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:scale-[1.02] active:scale-[0.98]"
                     >
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/60 transition-all duration-200 group-hover:scale-110">
                           <Monitor className="h-5 w-5" />
                         </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 animate-pulse" />
                       </div>
                       <span className="text-sm font-semibold">Online</span>
                     </button>
@@ -846,8 +866,8 @@ export default function MeetingPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center">
-                              <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center">
+                              <User className="h-4 w-4 text-slate-700 dark:text-slate-300" />
                             </div>
                             <span className="text-sm font-medium text-foreground/90 tabular-nums">
                               {isPaused ? 'Recording Paused' : 'Recording...'}
@@ -916,6 +936,55 @@ export default function MeetingPage() {
           </div>
         </div>
       )}
+
+      {/* Meeting URL Dialog */}
+      <Dialog open={showMeetingUrlDialog} onOpenChange={(open) => {
+        setShowMeetingUrlDialog(open);
+        if (!open) setMeetingUrl('');
+      }}>
+        <DialogContent className="max-w-md bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+              Join Online Meeting
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground/80 leading-relaxed">
+              Enter the meeting URL to join with an AI bot that will record and transcribe the conversation
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="meeting-url" className="text-sm font-medium text-foreground/90">
+                Meeting URL
+              </Label>
+              <Input
+                id="meeting-url"
+                value={meetingUrl}
+                onChange={(e) => setMeetingUrl(e.target.value)}
+                placeholder="https://zoom.us/j/123456789 or https://meet.google.com/abc-defg-hij"
+                onKeyDown={(e) => e.key === 'Enter' && handleStartOnlineRecording()}
+                className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.01] placeholder:text-muted-foreground/60"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowMeetingUrlDialog(false)}
+              className="shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleStartOnlineRecording} 
+              disabled={!meetingUrl.trim()}
+              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Monitor className="h-4 w-4 mr-2" />
+              Start Bot Recording
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 
