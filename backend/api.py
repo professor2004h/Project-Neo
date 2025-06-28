@@ -469,15 +469,15 @@ async def bot_status_events(bot_id: str):
             while True:
                 try:
                     # Wait for message or timeout for heartbeat
-                    message = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    message = await asyncio.wait_for(queue.get(), timeout=5.0)
                     yield message
                     last_heartbeat = time.time()
                     logger.debug(f"[SSE] Sent message to bot {bot_id} client")
                     
                 except asyncio.TimeoutError:
-                    # Send heartbeat every 30 seconds to keep connection alive
+                    # Send heartbeat every 5 seconds to keep connection alive
                     current_time = time.time()
-                    if current_time - last_heartbeat >= 30:
+                    if current_time - last_heartbeat >= 5:
                         heartbeat = json.dumps({
                             "type": "heartbeat", 
                             "timestamp": current_time,

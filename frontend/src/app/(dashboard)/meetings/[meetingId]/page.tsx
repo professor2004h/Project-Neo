@@ -666,6 +666,7 @@ export default function MeetingPage() {
         eventSource.onopen = () => {
           console.log('[SSE] Connected to bot status stream');
           setStatusRetryCount(0);
+          setLastStatusUpdate(Date.now());
         };
         
         eventSource.onmessage = (event) => {
@@ -736,14 +737,19 @@ export default function MeetingPage() {
           eventSource.close();
           setSseConnection(null);
           
+          // Immediately start polling as fallback
+          console.log('[SSE] Connection failed, immediately switching to polling');
+          checkBotStatusWithPolling(botId);
+          
           // Fallback to polling with retry logic
-          if (statusRetryCount < 3) {
+          if (statusRetryCount < 2) {
             setTimeout(() => {
               setStatusRetryCount(prev => prev + 1);
+              console.log('[SSE] Retrying SSE connection');
               setupSSE();
-            }, Math.min(1000 * Math.pow(2, statusRetryCount), 5000));
+            }, Math.min(500 * Math.pow(2, statusRetryCount), 2000));
           } else {
-            // Switch to enhanced polling mode
+            console.log('[SSE] Max retries reached, switching to polling permanently');
             checkBotStatusWithPolling(botId);
           }
         };
@@ -825,29 +831,31 @@ export default function MeetingPage() {
           let pollInterval;
           switch (newStatus) {
             case 'starting':
+              pollInterval = 200; // Ultra frequent during bot startup
+              break;
             case 'joining':
-              pollInterval = 500; // Very frequent during critical joining phase
+              pollInterval = 300; // Very frequent during critical joining phase
               break;
             case 'waiting':
-              pollInterval = 1000; // Frequent while waiting
+              pollInterval = 500; // More frequent while waiting
               break;
             case 'in_call':
-              pollInterval = 2000; // Moderate once in call
+              pollInterval = 1000; // More frequent once in call
               break;
             case 'recording':
-              pollInterval = 5000; // Less frequent once recording
+              pollInterval = 2000; // More frequent even when recording
               break;
             case 'stopping':
-              pollInterval = 1000; // Frequent while waiting for final transcript
+              pollInterval = 500; // Very frequent while waiting for final transcript
               break;
             case 'ended':
-              pollInterval = 1000; // Treat like stopping – still waiting for transcript
+              pollInterval = 500; // Very frequent while waiting for transcript
               break;
             case 'completed':
-              pollInterval = 1000; // Frequent while waiting for final transcript
+              pollInterval = 500; // Very frequent while waiting for final transcript
               break;
             default:
-              pollInterval = 2000;
+              pollInterval = 1000;
           }
           
           setTimeout(() => checkBotStatusWithPolling(botId), pollInterval);
