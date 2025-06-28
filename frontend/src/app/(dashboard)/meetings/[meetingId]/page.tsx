@@ -580,12 +580,16 @@ export default function MeetingPage() {
           
           return; // Don't set recording to false yet
         } else if (data.success) {
-          // Meeting ended successfully but no transcript
-          await updateMeeting(meetingId, {
-            status: 'completed',
-            metadata: { ...meeting?.metadata, bot_id: undefined }
-          });
-          toast.info('Meeting ended - no transcript was generated');
+          // Meeting ended but transcript not ready yet. Keep polling until it arrives.
+          toast.info('Meeting ended - waiting for transcript to finalize...');
+          setBotStatus('stopping');
+          // Continue polling for the final result
+          setTimeout(() => {
+            if (botId) {
+              checkBotStatusWithPolling(botId);
+            }
+          }, 1000);
+          return; // Defer clearing recording state until transcript is ready
         } else {
           // Handle partial success or informational errors
           const errorMessage = data.error || 'Unknown error occurred';
@@ -707,7 +711,7 @@ export default function MeetingPage() {
                 setCurrentBotId(null);
                 eventSource.close();
                 setSseConnection(null);
-              } else if (['ended', 'failed'].includes(newStatus)) {
+              } else if (['failed'].includes(newStatus)) {
                 setIsRecording(false);
                 setRecordingMode(null);
                 setCurrentBotId(null);
@@ -798,7 +802,7 @@ export default function MeetingPage() {
             setSseConnection(null);
           }
           return;
-        } else if (['failed', 'ended'].includes(newStatus)) {
+        } else if (['failed'].includes(newStatus)) {
           setIsRecording(false);
           setRecordingMode(null);
           await updateMeeting(meetingId, { 
@@ -812,7 +816,11 @@ export default function MeetingPage() {
             setSseConnection(null);
           }
           return;
-        } else if (['starting', 'joining', 'waiting', 'in_call', 'recording', 'stopping'].includes(newStatus)) {
+        } else if (['starting', 'joining', 'waiting', 'in_call', 'recording', 'stopping', 'completed'].includes(newStatus)) {
+          // If status is completed but transcript missing, continue polling
+          if (newStatus === 'completed' && !data.transcript) {
+            setBotStatus('stopping');
+          }
           // Adaptive polling intervals based on status
           let pollInterval;
           switch (newStatus) {
@@ -830,6 +838,9 @@ export default function MeetingPage() {
               pollInterval = 5000; // Less frequent once recording
               break;
             case 'stopping':
+              pollInterval = 1000; // Frequent while waiting for final transcript
+              break;
+            case 'completed':
               pollInterval = 1000; // Frequent while waiting for final transcript
               break;
             default:
