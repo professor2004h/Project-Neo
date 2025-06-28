@@ -165,6 +165,7 @@ export default function MeetingsPage() {
     try {
       await deleteFolder(folderId);
       loadData();
+      loadAllFolders(); // Also refresh the folder tree
       toast.success('Folder deleted');
     } catch (error) {
       console.error('Error deleting folder:', error);
@@ -224,18 +225,33 @@ export default function MeetingsPage() {
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragOver = (e: React.DragEvent, targetFolderId?: string) => {
+  const handleDragOver = (e: React.DragEvent, targetFolderId?: string | null) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    
+    // If targeting a specific folder, stop propagation to prevent grid highlighting
+    if (targetFolderId) {
+      e.stopPropagation();
+    }
+    
     setDragOverTarget(targetFolderId || 'root');
   };
 
-  const handleDragLeave = () => {
-    setDragOverTarget(null);
+  const handleDragLeave = (e: React.DragEvent, targetFolderId?: string | null) => {
+    // Only clear drag target if we're leaving the actual target, not bubbling
+    if (!targetFolderId || !e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverTarget(null);
+    }
   };
 
-  const handleDrop = async (e: React.DragEvent, targetFolderId?: string) => {
+  const handleDrop = async (e: React.DragEvent, targetFolderId?: string | null) => {
     e.preventDefault();
+    
+    // If dropping on a specific folder, stop propagation
+    if (targetFolderId) {
+      e.stopPropagation();
+    }
+    
     setDragOverTarget(null);
 
     if (!draggedItem) return;
@@ -283,7 +299,7 @@ export default function MeetingsPage() {
   };
 
   // Move item to folder
-  const handleMoveToFolder = async (itemType: 'meeting' | 'folder', itemId: string, targetFolderId?: string) => {
+  const handleMoveToFolder = async (itemType: 'meeting' | 'folder', itemId: string, targetFolderId?: string | null) => {
     try {
       if (itemType === 'meeting') {
         await updateMeeting(itemId, { folder_id: targetFolderId });
@@ -431,7 +447,7 @@ export default function MeetingsPage() {
             dragOverTarget === 'root' && "bg-blue-50 border-2 border-dashed border-blue-300 dark:bg-blue-950 dark:border-blue-600"
           )}
           onDragOver={(e) => handleDragOver(e)}
-          onDragLeave={handleDragLeave}
+          onDragLeave={(e) => handleDragLeave(e)}
           onDrop={(e) => handleDrop(e)}
         >
           {/* Folders */}
@@ -441,7 +457,7 @@ export default function MeetingsPage() {
               draggable
               onDragStart={(e) => handleDragStart(e, 'folder', folder.folder_id)}
               onDragOver={(e) => handleDragOver(e, folder.folder_id)}
-              onDragLeave={handleDragLeave}
+              onDragLeave={(e) => handleDragLeave(e, folder.folder_id)}
               onDrop={(e) => handleDrop(e, folder.folder_id)}
               className={cn(
                 "border rounded-lg p-4 hover:bg-accent/50 cursor-pointer transition-colors group",
@@ -482,7 +498,7 @@ export default function MeetingsPage() {
                       <DropdownMenuSubContent>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          handleMoveToFolder('folder', folder.folder_id, undefined);
+                          handleMoveToFolder('folder', folder.folder_id, null);
                         }}>
                           <FolderOpen className="h-4 w-4 mr-2" />
                           Move to Root
@@ -553,6 +569,14 @@ export default function MeetingsPage() {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
+                      startChatWithMeeting(meeting.meeting_id);
+                    }}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Talk to Operator
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
                       setEditingItem({ type: 'meeting', id: meeting.meeting_id, name: meeting.title });
                     }}>
                       <Edit2 className="h-4 w-4 mr-2" />
@@ -566,7 +590,7 @@ export default function MeetingsPage() {
                       <DropdownMenuSubContent>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          handleMoveToFolder('meeting', meeting.meeting_id, undefined);
+                          handleMoveToFolder('meeting', meeting.meeting_id, null);
                         }}>
                           <FolderOpen className="h-4 w-4 mr-2" />
                           Move to Root
@@ -589,13 +613,6 @@ export default function MeetingsPage() {
                     }}>
                       <Share2 className="h-4 w-4 mr-2" />
                       Share
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => {
-                      e.stopPropagation();
-                      startChatWithMeeting(meeting.meeting_id);
-                    }}>
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Talk to Operator
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
