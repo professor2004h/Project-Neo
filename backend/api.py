@@ -1146,7 +1146,7 @@ async def meeting_bot_webhook(request: Request):
                         from datetime import datetime
                         from supabase import create_client as create_supabase_client, Client
                         
-                        supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+                        supabase_url = os.getenv("SUPABASE_URL")
                         
                         # Prefer user auth token over service role for security
                         user_token = session.get('user_auth_token')
@@ -1445,7 +1445,7 @@ async def _persist_transcript_to_database(session, session_file, bot_id):
             logger.error(f"[WEBHOOK] No sandbox_id in session for bot {bot_id}")
             return
         
-        supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+        supabase_url = os.getenv("SUPABASE_URL")
         
         # Prefer user auth token over service role for security
         user_token = session.get('user_auth_token')
