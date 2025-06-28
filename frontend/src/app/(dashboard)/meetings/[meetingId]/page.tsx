@@ -18,6 +18,7 @@ import {
   Square,
   AlertCircle,
   FileAudio,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/components/AuthProvider';
 
 // Speech recognition types
 interface SpeechRecognitionEvent extends Event {
@@ -66,6 +68,7 @@ export default function MeetingPage() {
   const params = useParams();
   const router = useRouter();
   const meetingId = params.meetingId as string;
+  const { user } = useAuth(); // Get current user for security
   
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,6 +119,36 @@ export default function MeetingPage() {
     loadMeeting();
   }, [meetingId]);
 
+  // Periodically check for transcript updates when bot is recording
+  useEffect(() => {
+    if (!isRecording || recordingMode !== 'online' || !meeting) return;
+
+    // Check for transcript updates every 30 seconds (less aggressive)
+    const checkForTranscriptUpdates = async () => {
+      try {
+        const latestData = await getMeeting(meetingId);
+        
+        // If meeting completed and has transcript, update local state
+        if (latestData.status === 'completed' && latestData.transcript && 
+            latestData.transcript !== transcript) {
+          console.log('[PERIODIC] Found updated transcript from webhook');
+          setTranscript(latestData.transcript);
+          setMeeting(latestData);
+          setIsRecording(false);
+          setRecordingMode(null);
+          toast.success('Transcript received from webhook!');
+        }
+      } catch (error) {
+        console.error('[PERIODIC] Error checking for transcript updates:', error);
+      }
+    };
+
+    const intervalId = setInterval(checkForTranscriptUpdates, 30000); // 30 seconds
+
+    // Cleanup interval on unmount or when recording stops
+    return () => clearInterval(intervalId);
+  }, [isRecording, recordingMode, meeting, meetingId, transcript]);
+
   const loadMeeting = async () => {
     try {
       setIsLoading(true);
@@ -131,6 +164,16 @@ export default function MeetingPage() {
         setCurrentBotId(data.metadata.bot_id);  // Restore bot ID
         toast.info('Reconnecting to existing meeting bot...');
         checkBotStatus(data.metadata.bot_id);
+      } else if (data.status === 'completed' && data.metadata?.bot_id) {
+        // Meeting is completed but still has bot_id - clean it up
+        await updateMeeting(meetingId, {
+          metadata: { ...data.metadata, bot_id: undefined }
+        });
+        // Update local state
+        setMeeting(prev => prev ? {
+          ...prev,
+          metadata: { ...prev.metadata, bot_id: undefined }
+        } : prev);
       }
     } catch (error) {
       console.error('Error loading meeting:', error);
@@ -382,6 +425,7 @@ export default function MeetingPage() {
         body: JSON.stringify({
           meeting_url: meetingUrl,
           sandbox_id: meetingId, // Using meeting ID as sandbox ID
+          user_id: user?.id, // Add user ID to the request (optional if not loaded)
         }),
       });
 
@@ -1102,6 +1146,44 @@ export default function MeetingPage() {
                   : 'This meeting doesn\'t have any recorded transcript yet.'
                 }
               </p>
+              {meeting.status === 'completed' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={async () => {
+                    // Rate limit: disable button temporarily
+                    const button = document.querySelector('[data-refresh-button]') as HTMLButtonElement;
+                    if (button) {
+                      button.disabled = true;
+                      button.textContent = 'Checking...';
+                    }
+                    
+                    try {
+                      await loadMeeting();
+                      if (transcript) {
+                        toast.success('Transcript loaded!');
+                      } else {
+                        toast.info('No transcript available yet. The bot may still be processing.');
+                      }
+                    } catch (error) {
+                      toast.error('Failed to check for updates');
+                    } finally {
+                      // Re-enable after 5 seconds (rate limiting)
+                      setTimeout(() => {
+                        if (button) {
+                          button.disabled = false;
+                          button.textContent = 'Check for Updates';
+                        }
+                      }, 5000);
+                    }
+                  }}
+                  data-refresh-button
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Check for Updates
+                </Button>
+              )}
             </div>
           )}
         </div>

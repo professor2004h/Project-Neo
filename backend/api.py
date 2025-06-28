@@ -66,7 +66,22 @@ async def lifespan(app: FastAPI):
         # Start background tasks
         # asyncio.create_task(agent_api.restore_running_agent_runs())
         
+        # Startup
+        cleanup_session_files_task = asyncio.create_task(periodic_session_cleanup())
+        
+        from mcp_local.client import cleanup_connections
+        
         yield
+        
+        # Shutdown
+        cleanup_session_files_task.cancel()
+        
+        try:
+            await cleanup_session_files_task
+        except asyncio.CancelledError:
+            pass
+        
+        await cleanup_connections()
         
         # Clean up agent resources
         logger.info("Cleaning up agent resources")
@@ -83,6 +98,8 @@ async def lifespan(app: FastAPI):
         # Clean up database connection
         logger.info("Disconnecting from database")
         await db.disconnect()
+        
+        print("Server shutdown complete")
     except Exception as e:
         logger.error(f"Error during application startup: {e}")
         raise
@@ -495,8 +512,9 @@ async def start_meeting_bot(request: Request):
         data = await request.json()
         meeting_url = data.get('meeting_url')
         sandbox_id = data.get('sandbox_id')
+        user_id = data.get('user_id')
         
-        logger.info(f"[MEETING BOT] Request data: meeting_url={meeting_url}, sandbox_id={sandbox_id}")
+        logger.info(f"[MEETING BOT] Request data: meeting_url={meeting_url}, sandbox_id={sandbox_id}, user_id={user_id}")
         
         if not meeting_url:
             logger.error("[MEETING BOT] Missing meeting_url in request")
@@ -532,30 +550,54 @@ async def start_meeting_bot(request: Request):
         if result.get('success'):
             bot_id = result['bot_id']
             
-            # Store bot session for persistence
+            # Store bot session for webhook tracking
             bot_session = {
                 'bot_id': bot_id,
                 'meeting_url': meeting_url,
                 'sandbox_id': sandbox_id,
-                'status': 'joining',
+                'user_id': user_id,  # Store user ID for webhook auth
+                'status': 'starting',
                 'started_at': time.time(),
                 'last_updated': time.time()
             }
+            
+            # Get user's auth token for webhook operations
+            # Store encrypted token that webhook can use to update as this user
+            from utils.auth_utils import get_current_user_token
+            try:
+                user_token = get_current_user_token(request)
+                if user_token:
+                    bot_session['user_auth_token'] = user_token
+                    logger.info(f"[START] Stored user auth for bot {bot_id}")
+                else:
+                    logger.warning(f"[START] No user token available for bot {bot_id}")
+            except Exception as token_error:
+                logger.warning(f"[START] Failed to get user token for bot {bot_id}: {str(token_error)}")
             
             # Store in simple file-based persistence (production would use Redis/DB)
             import json
             
             sessions_dir = '/tmp/meeting_bot_sessions'
-            os.makedirs(sessions_dir, exist_ok=True)
             
-            with open(f'{sessions_dir}/{bot_id}.json', 'w') as f:
+            # Create sessions directory with restricted permissions
+            if not os.path.exists(sessions_dir):
+                os.makedirs(sessions_dir, mode=0o700)  # Only owner can read/write/execute
+            
+            session_file = f'{sessions_dir}/{bot_id}.json'
+            
+            with open(session_file, 'w') as f:
                 json.dump(bot_session, f)
+            
+            # Ensure secure file permissions are maintained
+            os.chmod(session_file, 0o600)
+            
+            logger.info(f"[START] Created meeting bot {bot_id} - joining {meeting_url}")
             
             return JSONResponse({
                 "success": True,
                 "bot_id": bot_id,
-                "status": "joining",
-                "message": "Bot is joining the meeting..."
+                "status": "starting",
+                "message": "Bot is starting..."
             })
         else:
             return JSONResponse({"error": result.get('error')}, status_code=400)
@@ -893,6 +935,32 @@ async def meeting_bot_webhook(request: Request):
         if not bot_id:
             return JSONResponse({"error": "Missing bot_id in webhook"}, status_code=400)
         
+        # Simple rate limiting - max 100 requests per minute per bot
+        if not hasattr(meeting_bot_webhook, '_rate_limits'):
+            meeting_bot_webhook._rate_limits = {}
+        
+        current_time = time.time()
+        rate_key = f"bot_{bot_id}"
+        
+        # Clean up old entries (older than 1 minute)
+        meeting_bot_webhook._rate_limits = {
+            k: v for k, v in meeting_bot_webhook._rate_limits.items()
+            if current_time - v['first_request'] < 60
+        }
+        
+        # Check rate limit
+        if rate_key in meeting_bot_webhook._rate_limits:
+            rate_info = meeting_bot_webhook._rate_limits[rate_key]
+            if rate_info['count'] >= 100:  # Max 100 requests per minute
+                logger.warning(f"[WEBHOOK] Rate limit exceeded for bot {bot_id}")
+                return JSONResponse({"error": "Rate limit exceeded"}, status_code=429)
+            rate_info['count'] += 1
+        else:
+            meeting_bot_webhook._rate_limits[rate_key] = {
+                'first_request': current_time,
+                'count': 1
+            }
+        
         # Handle idempotency to prevent duplicate processing
         event_id = data.get('event_id') or f"{bot_id}_{event_type}_{int(time.time())}"
         processed_events_key = f"webhook_processed_{event_id}"
@@ -912,6 +980,11 @@ async def meeting_bot_webhook(request: Request):
         # Update stored session
         import json
         sessions_dir = '/tmp/meeting_bot_sessions'
+        
+        # Create sessions directory with restricted permissions
+        if not os.path.exists(sessions_dir):
+            os.makedirs(sessions_dir, mode=0o700)  # Only owner can read/write/execute
+        
         session_file = f'{sessions_dir}/{bot_id}.json'
         
         if os.path.exists(session_file):
@@ -984,6 +1057,66 @@ async def meeting_bot_webhook(request: Request):
                 
                 logger.info(f"[WEBHOOK] Speakers: {session['speakers']}")
                 
+                # IMPORTANT: Persist transcript to database immediately
+                # This ensures transcript is saved even if user doesn't click stop
+                if sandbox_id := session.get('sandbox_id'):
+                    try:
+                        # Validate that the meeting exists and get owner info
+                        from datetime import datetime
+                        from supabase import create_client as create_supabase_client, Client
+                        
+                        supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+                        
+                        # Prefer user auth token over service role for security
+                        user_token = session.get('user_auth_token')
+                        if user_token:
+                            # Use the user's own auth token - much more secure
+                            supabase: Client = create_supabase_client(supabase_url, user_token)
+                            logger.info(f"[WEBHOOK] Using user auth token for meeting {sandbox_id}")
+                        else:
+                            # Fallback to service role if no user token available
+                            supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+                            if not supabase_key:
+                                raise Exception("No authentication method available for database update")
+                            supabase: Client = create_supabase_client(supabase_url, supabase_key)
+                            logger.warning(f"[WEBHOOK] Using service role fallback for meeting {sandbox_id}")
+                        
+                        if supabase_url:
+                            # First verify the meeting exists
+                            meeting_check = supabase.table('meetings').select('meeting_id, account_id').eq('meeting_id', sandbox_id).single().execute()
+                            
+                            if meeting_check.data:
+                                # Meeting exists, update it with transcript
+                                update_result = supabase.table('meetings').update({
+                                    'transcript': session['transcript_text'],
+                                    'status': 'completed',
+                                    'metadata': {
+                                        'bot_id': None,  # Clear bot_id
+                                        'completed_at': datetime.now().isoformat(),
+                                        'speakers': session.get('speakers', []),
+                                        'webhook_processed': True,  # Mark as processed by webhook
+                                        'auth_method': 'user_token' if user_token else 'service_role'  # Track auth method
+                                    },
+                                    'updated_at': datetime.now().isoformat()
+                                }).eq('meeting_id', sandbox_id).execute()
+                                
+                                auth_method = 'user_token' if user_token else 'service_role'
+                                logger.info(f"[WEBHOOK] Updated meeting {sandbox_id} with transcript using {auth_method} (owner: {meeting_check.data.get('account_id')})")
+                            else:
+                                logger.error(f"[WEBHOOK] Meeting {sandbox_id} not found in database - skipping update")
+                                logger.error(f"[WEBHOOK] Transcript saved in session file: {session_file}")
+                        else:
+                            logger.warning(f"[WEBHOOK] Supabase URL not configured, transcript only in session")
+                            logger.warning(f"[WEBHOOK] Transcript saved in session file: {session_file}")
+                            logger.warning(f"[WEBHOOK] To manually recover, read file and update meeting {sandbox_id}")
+                            
+                    except Exception as db_error:
+                        logger.error(f"[WEBHOOK] Failed to persist transcript to database: {str(db_error)}")
+                        # Log session file path for manual recovery
+                        logger.error(f"[WEBHOOK] Transcript saved in session file: {session_file}")
+                        logger.error(f"[WEBHOOK] To manually recover, read file and update meeting {sandbox_id}")
+                        # Continue anyway - transcript is still in session file
+                
             elif event_type == 'failed':
                 # Handle bot failure
                 session['status'] = 'failed'
@@ -999,6 +1132,9 @@ async def meeting_bot_webhook(request: Request):
             
             with open(session_file, 'w') as f:
                 json.dump(session, f)
+            
+            # Ensure secure file permissions are maintained
+            os.chmod(session_file, 0o600)
             
             # Send real-time update to frontend via SSE
             await broadcast_bot_update(bot_id, session)
@@ -1175,6 +1311,39 @@ async def get_active_sessions(sandbox_id: str = None):
         
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+async def periodic_session_cleanup():
+    """Clean up old meeting bot session files periodically"""
+    while True:
+        try:
+            sessions_dir = '/tmp/meeting_bot_sessions'
+            if os.path.exists(sessions_dir):
+                current_time = time.time()
+                cleaned_count = 0
+                
+                for filename in os.listdir(sessions_dir):
+                    if filename.endswith('.json'):
+                        filepath = os.path.join(sessions_dir, filename)
+                        try:
+                            # Get file modification time
+                            file_age = current_time - os.path.getmtime(filepath)
+                            
+                            # Remove files older than 24 hours
+                            if file_age > 86400:  # 24 hours in seconds
+                                os.remove(filepath)
+                                cleaned_count += 1
+                                logger.info(f"[SESSION CLEANUP] Removed old session file: {filename} (age: {file_age/3600:.1f} hours)")
+                        except Exception as e:
+                            logger.error(f"[SESSION CLEANUP] Error cleaning {filename}: {str(e)}")
+                
+                if cleaned_count > 0:
+                    logger.info(f"[SESSION CLEANUP] Cleaned {cleaned_count} old session files")
+                    
+        except Exception as e:
+            logger.error(f"[SESSION CLEANUP] Error during cleanup: {str(e)}")
+        
+        # Run cleanup every hour
+        await asyncio.sleep(3600)
 
 if __name__ == "__main__":
     import uvicorn
