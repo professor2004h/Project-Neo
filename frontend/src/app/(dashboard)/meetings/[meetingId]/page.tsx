@@ -792,15 +792,17 @@ export default function MeetingPage() {
           console.log('[SSE] Connection failed, immediately switching to polling');
           checkBotStatusWithPolling(botId);
           
-          // Fallback to polling with retry logic
-          if (statusRetryCount < 2) {
+          // More aggressive SSE retry with longer backoff
+          if (statusRetryCount < 5) {
+            const retryDelay = Math.min(1000 * Math.pow(1.5, statusRetryCount), 10000);
             setTimeout(() => {
               setStatusRetryCount(prev => prev + 1);
-              console.log('[SSE] Retrying SSE connection');
+              console.log(`[SSE] Retrying SSE connection (attempt ${statusRetryCount + 1}/5)`);
               setupSSE();
-            }, Math.min(500 * Math.pow(2, statusRetryCount), 2000));
+            }, retryDelay);
           } else {
             console.log('[SSE] Max retries reached, switching to polling permanently');
+            setStatusRetryCount(0); // Reset for future SSE attempts
             checkBotStatusWithPolling(botId);
           }
         };

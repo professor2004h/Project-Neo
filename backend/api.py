@@ -1186,10 +1186,20 @@ async def meeting_bot_webhook(request: Request):
                                 existing_transcript = meeting_check.data.get('transcript', '') or ''
                                 new_transcript_content = session['transcript_text']
                                 
-                                # Append new transcript to existing content
+                                # Smart append logic - check if content is already appended
                                 if existing_transcript.strip():
-                                    # Add separator and new content
-                                    combined_transcript = existing_transcript + '\n\n' + new_transcript_content
+                                    # Check if the new content is already in the existing transcript (avoid duplication)
+                                    if new_transcript_content.strip() in existing_transcript:
+                                        logger.info(f"[WEBHOOK] New transcript content already exists in meeting {sandbox_id}, skipping append")
+                                        combined_transcript = existing_transcript
+                                    else:
+                                        # Check if existing transcript already ends with a session separator
+                                        if existing_transcript.strip().endswith('---'):
+                                            # Just append without extra separator
+                                            combined_transcript = existing_transcript + '\n' + new_transcript_content
+                                        else:
+                                            # Add separator and new content
+                                            combined_transcript = existing_transcript + '\n\n' + new_transcript_content
                                 else:
                                     # First transcript for this meeting
                                     combined_transcript = new_transcript_content
@@ -1547,10 +1557,20 @@ async def _persist_transcript_to_database(session, session_file, bot_id):
                 existing_transcript = meeting_check.data.get('transcript', '') or ''
                 new_transcript_content = session['transcript_text']
                 
-                # Append new transcript to existing content
+                # Smart append logic - check if content is already appended
                 if existing_transcript.strip():
-                    # Add separator and new content
-                    combined_transcript = existing_transcript + '\n\n' + new_transcript_content
+                    # Check if the new content is already in the existing transcript (avoid duplication)
+                    if new_transcript_content.strip() in existing_transcript:
+                        logger.info(f"[WEBHOOK] New transcript content already exists in meeting {sandbox_id}, skipping append")
+                        combined_transcript = existing_transcript
+                    else:
+                        # Check if existing transcript already ends with a session separator
+                        if existing_transcript.strip().endswith('---'):
+                            # Just append without extra separator
+                            combined_transcript = existing_transcript + '\n' + new_transcript_content
+                        else:
+                            # Add separator and new content
+                            combined_transcript = existing_transcript + '\n\n' + new_transcript_content
                 else:
                     # First transcript for this meeting
                     combined_transcript = new_transcript_content
