@@ -68,6 +68,17 @@ class MeetingsService:
             logger.error(f"Error fetching meetings: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to fetch meetings")
     
+    async def get_all_meetings(self, account_id: str) -> List[Dict[str, Any]]:
+        """Get ALL meetings for an account across all folders (for search)."""
+        client = await self.db.client
+        
+        try:
+            result = await client.table('meetings').select('*').eq('account_id', account_id).order('created_at', desc=True).execute()
+            return result.data
+        except Exception as e:
+            logger.error(f"Error fetching all meetings: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to fetch all meetings")
+    
     async def get_meeting(self, meeting_id: str) -> Dict[str, Any]:
         """Get a specific meeting by ID."""
         client = await self.db.client

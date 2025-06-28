@@ -192,10 +192,14 @@ async def create_meeting(
 @app.get("/api/meetings")
 async def get_meetings(
     folder_id: Optional[str] = None,
+    include_all: bool = False,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    """Get all meetings for the current user."""
-    meetings = await meetings_service.get_meetings(user_id, folder_id)
+    """Get meetings for the current user. If include_all=true, gets all meetings across folders."""
+    if include_all:
+        meetings = await meetings_service.get_all_meetings(user_id)
+    else:
+        meetings = await meetings_service.get_meetings(user_id, folder_id)
     return {"meetings": meetings}
 
 @app.get("/api/meetings/{meeting_id}")
