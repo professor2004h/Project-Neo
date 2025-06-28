@@ -1169,7 +1169,7 @@ async def meeting_bot_webhook(request: Request):
                         
                         if supabase_url:
                             # First verify the meeting exists and belongs to this bot
-                            meeting_check = supabase.table('meetings').select('meeting_id, account_id, metadata').eq('meeting_id', sandbox_id).single().execute()
+                            meeting_check = supabase.table('meetings').select('meeting_id, account_id, transcript, metadata').eq('meeting_id', sandbox_id).single().execute()
                             
                             if meeting_check.data:
                                 # Additional security: verify this bot was actually assigned to this meeting
@@ -1182,31 +1182,30 @@ async def meeting_bot_webhook(request: Request):
                                 
                                 logger.info(f"[WEBHOOK] Security check passed: bot {bot_id} is authorized for meeting {sandbox_id}")
                                 
-                                # Simple & robust: Use session metadata to prevent duplicates
+                                # Prepare transcript append without exposing session IDs
                                 existing_transcript = meeting_check.data.get('transcript', '') or ''
                                 new_transcript_content = session['transcript_text']
-                                
-                                # Check if this bot session already contributed to this meeting
                                 session_id = f"bot_{bot_id}_{session.get('started_at', 0)}"
-                                
-                                if f"[Session: {session_id}]" in existing_transcript:
-                                    # This bot session already contributed - skip
+
+                                # Fetch processed sessions list from metadata
+                                processed_sessions = meeting_metadata.get('processed_sessions', []) or []
+
+                                if session_id in processed_sessions:
                                     logger.info(f"[WEBHOOK] Session {session_id} already processed for meeting {sandbox_id}")
                                     combined_transcript = existing_transcript
                                 else:
-                                    # Append with session marker
-                                    if existing_transcript.strip():
-                                        combined_transcript = existing_transcript + f"\n\n[Session: {session_id}]\n{new_transcript_content}"
-                                    else:
-                                        combined_transcript = f"[Session: {session_id}]\n{new_transcript_content}"
-                                
-                                logger.info(f"[WEBHOOK] Session {session_id}: existing={len(existing_transcript)} + new={len(new_transcript_content)} = total={len(combined_transcript)}")
+                                    # Append the new transcript with a simple separator
+                                    combined_transcript = (existing_transcript + "\n\n" + new_transcript_content).strip() if existing_transcript.strip() else new_transcript_content.strip()
+                                    processed_sessions.append(session_id)
+                                    meeting_metadata['processed_sessions'] = processed_sessions
+                                    logger.info(f"[WEBHOOK] Appended transcript from session {session_id}: existing={len(existing_transcript)} new={len(new_transcript_content)} total={len(combined_transcript)}")
                                 
                                 # Meeting exists, update it with APPENDED transcript
                                 update_result = supabase.table('meetings').update({
                                     'transcript': combined_transcript,
                                     'status': 'completed',
                                     'metadata': {
+                                        **meeting_metadata,
                                         'bot_id': None,  # Clear bot_id
                                         'completed_at': datetime.now().isoformat(),
                                         'speakers': session.get('speakers', []),
@@ -1536,7 +1535,7 @@ async def _persist_transcript_to_database(session, session_file, bot_id):
         
         if supabase_url:
             # First verify the meeting exists and belongs to this bot
-            meeting_check = supabase.table('meetings').select('meeting_id, account_id, metadata').eq('meeting_id', sandbox_id).single().execute()
+            meeting_check = supabase.table('meetings').select('meeting_id, account_id, transcript, metadata').eq('meeting_id', sandbox_id).single().execute()
             
             if meeting_check.data:
                 # Additional security: verify this bot was actually assigned to this meeting
@@ -1549,31 +1548,30 @@ async def _persist_transcript_to_database(session, session_file, bot_id):
                 
                 logger.info(f"[WEBHOOK] Security check passed: bot {bot_id} is authorized for meeting {sandbox_id}")
                 
-                # Simple & robust: Use session metadata to prevent duplicates
+                # Prepare transcript append without exposing session IDs
                 existing_transcript = meeting_check.data.get('transcript', '') or ''
                 new_transcript_content = session['transcript_text']
-                
-                # Check if this bot session already contributed to this meeting
                 session_id = f"bot_{bot_id}_{session.get('started_at', 0)}"
-                
-                if f"[Session: {session_id}]" in existing_transcript:
-                    # This bot session already contributed - skip
+
+                # Fetch processed sessions list from metadata
+                processed_sessions = meeting_metadata.get('processed_sessions', []) or []
+
+                if session_id in processed_sessions:
                     logger.info(f"[WEBHOOK] Session {session_id} already processed for meeting {sandbox_id}")
                     combined_transcript = existing_transcript
                 else:
-                    # Append with session marker
-                    if existing_transcript.strip():
-                        combined_transcript = existing_transcript + f"\n\n[Session: {session_id}]\n{new_transcript_content}"
-                    else:
-                        combined_transcript = f"[Session: {session_id}]\n{new_transcript_content}"
-                
-                logger.info(f"[WEBHOOK] Session {session_id}: existing={len(existing_transcript)} + new={len(new_transcript_content)} = total={len(combined_transcript)}")
+                    # Append the new transcript with a simple separator
+                    combined_transcript = (existing_transcript + "\n\n" + new_transcript_content).strip() if existing_transcript.strip() else new_transcript_content.strip()
+                    processed_sessions.append(session_id)
+                    meeting_metadata['processed_sessions'] = processed_sessions
+                    logger.info(f"[WEBHOOK] Appended transcript from session {session_id}: existing={len(existing_transcript)} new={len(new_transcript_content)} total={len(combined_transcript)}")
                 
                 # Meeting exists, update it with APPENDED transcript
                 update_result = supabase.table('meetings').update({
                     'transcript': combined_transcript,
                     'status': 'completed',
                     'metadata': {
+                        **meeting_metadata,
                         'bot_id': None,  # Clear bot_id
                         'completed_at': datetime.now().isoformat(),
                         'speakers': session.get('speakers', []),
