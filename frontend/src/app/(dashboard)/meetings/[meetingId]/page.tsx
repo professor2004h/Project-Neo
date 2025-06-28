@@ -69,6 +69,7 @@ export default function MeetingPage() {
   const router = useRouter();
   const meetingId = params.meetingId as string;
   const { user, session } = useAuth(); // Get current user and session for security
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
   
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,6 +120,65 @@ export default function MeetingPage() {
     loadMeeting();
   }, [meetingId]);
 
+  // Check bot status after meeting loads if there's an active bot
+  useEffect(() => {
+    if (!meeting || !currentBotId || !session?.access_token) return;
+    
+    // Only check if meeting is active with a bot
+    if (meeting.status === 'active' && currentBotId) {
+      const checkInitialBotStatus = async () => {
+        try {
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+          const response = await fetch(`${backendUrl}/meeting-bot/${currentBotId}/status`, {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+          });
+          const botData = await response.json();
+          
+          if (botData.success) {
+            const status = botData.status;
+            setBotStatus(status);
+            
+            // If bot is in stopping/ended state, show processing pill
+            if (['stopping', 'ended'].includes(status)) {
+              setIsProcessingTranscript(true);
+              toast.info('Meeting ended - waiting for transcript to process...');
+              // Start polling for completion
+              checkBotStatusWithPolling(currentBotId);
+            } else if (['starting', 'joining', 'waiting', 'in_call', 'recording'].includes(status)) {
+              // Bot is still active - show recording UI
+              setRecordingMode('online');
+              setIsRecording(true);
+              toast.info('Reconnecting to existing meeting bot...');
+              checkBotStatus(currentBotId);
+            } else if (status === 'completed') {
+              // Bot completed but meeting still marked active - clean up
+              await updateMeeting(meetingId, {
+                status: 'completed',
+                metadata: { ...meeting.metadata, bot_id: undefined }
+              });
+              setMeeting(prev => prev ? {
+                ...prev,
+                status: 'completed',
+                metadata: { ...prev.metadata, bot_id: undefined }
+              } : prev);
+              setCurrentBotId(null);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking initial bot status:', error);
+          // Default to showing recording UI
+          setRecordingMode('online');
+          setIsRecording(true);
+          checkBotStatus(currentBotId);
+        }
+      };
+      
+      checkInitialBotStatus();
+    }
+  }, [meeting, currentBotId, session, meetingId]);
+
   // Periodically check for transcript updates when bot is recording
   useEffect(() => {
     if (!isRecording || recordingMode !== 'online' || !meeting) return;
@@ -156,14 +216,12 @@ export default function MeetingPage() {
       setMeeting(data);
       setTranscript(data.transcript || '');
       
-      // If meeting is active and has bot metadata, reconnect to existing bot
+      // If meeting is active and has bot metadata, mark for reconnection
       if (data.status === 'active' && data.metadata?.bot_id) {
-        setRecordingMode('online');
-        setIsRecording(true);
+        const botId = data.metadata.bot_id;
+        setCurrentBotId(botId);  // Restore bot ID
         setBotStatus('checking...');
-        setCurrentBotId(data.metadata.bot_id);  // Restore bot ID
-        toast.info('Reconnecting to existing meeting bot...');
-        checkBotStatus(data.metadata.bot_id);
+        // Defer bot status check until after component mounts
       } else if (data.status === 'completed' && data.metadata?.bot_id) {
         // Meeting is completed but still has bot_id - clean it up
         await updateMeeting(meetingId, {
@@ -650,26 +708,28 @@ export default function MeetingPage() {
 
   // Enhanced bot status checking with real-time updates
   const startBotStatusMonitoring = (botId: string) => {
-    // Start SSE connection for real-time updates
+    // Start polling immediately as primary method
+    console.log(`[MONITOR] Starting bot status monitoring for ${botId}`);
+    checkBotStatusWithPolling(botId);
+    
+    // Also setup SSE for real-time updates (as enhancement)
     const setupSSE = () => {
       try {
         const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/${botId}/events`);
         
         eventSource.onopen = () => {
           console.log('[SSE] Connected to bot status stream');
-          setStatusRetryCount(0);
-          setLastStatusUpdate(Date.now());
         };
         
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            setLastStatusUpdate(Date.now());
             
             if (data.type === 'status_update') {
               const newStatus = data.status;
               console.log(`[SSE] Bot status update: ${newStatus}`);
               setBotStatus(newStatus);
+              setLastStatusUpdate(Date.now());
               
               // Handle status-specific actions
               if (['starting', 'joining', 'waiting', 'in_call', 'recording'].includes(newStatus)) {
@@ -710,41 +770,28 @@ export default function MeetingPage() {
           console.error('[SSE] Connection error:', error);
           eventSource.close();
           setSseConnection(null);
-          
-          // Immediately start polling as fallback
-          console.log('[SSE] Connection failed, immediately switching to polling');
-          checkBotStatusWithPolling(botId);
-          
-          // More aggressive SSE retry with longer backoff
-          if (statusRetryCount < 5) {
-            const retryDelay = Math.min(1000 * Math.pow(1.5, statusRetryCount), 10000);
-            setTimeout(() => {
-              setStatusRetryCount(prev => prev + 1);
-              console.log(`[SSE] Retrying SSE connection (attempt ${statusRetryCount + 1}/5)`);
-              setupSSE();
-            }, retryDelay);
-          } else {
-            console.log('[SSE] Max retries reached, switching to polling permanently');
-            setStatusRetryCount(0); // Reset for future SSE attempts
-            checkBotStatusWithPolling(botId);
-          }
+          // Polling continues in background
         };
         
         setSseConnection(eventSource);
       } catch (error) {
         console.error('[SSE] Failed to setup EventSource:', error);
-        // Fallback to enhanced polling
-        checkBotStatusWithPolling(botId);
+        // Polling continues in background
       }
     };
     
-    setupSSE();
-    
-    // SSE provides real-time updates, no need for polling backup
+    // Setup SSE after a short delay
+    setTimeout(setupSSE, 500);
   };
 
   // Enhanced polling with adaptive intervals
   const checkBotStatusWithPolling = async (botId: string) => {
+    // Stop if bot ID has changed or been cleared
+    if (!currentBotId || currentBotId !== botId) {
+      console.log('[POLLING] Stopping - bot ID changed or cleared');
+      return;
+    }
+    
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/${botId}/status`, {
         headers: {
@@ -755,6 +802,7 @@ export default function MeetingPage() {
       
       if (data.success) {
         const newStatus = data.status;
+        console.log(`[POLLING] Bot ${botId} status: ${newStatus}`);
         setBotStatus(newStatus);
         setLastStatusUpdate(Date.now());
         
@@ -771,6 +819,7 @@ export default function MeetingPage() {
           
           setIsRecording(false);
           setRecordingMode(null);
+          setCurrentBotId(null);
           
           // Stop monitoring
           if (sseConnection) {
@@ -781,6 +830,7 @@ export default function MeetingPage() {
         } else if (['failed'].includes(newStatus)) {
           setIsRecording(false);
           setRecordingMode(null);
+          setCurrentBotId(null);
           await updateMeeting(meetingId, { 
             status: 'completed',
             metadata: { ...meeting?.metadata, bot_id: undefined }
@@ -792,12 +842,8 @@ export default function MeetingPage() {
             setSseConnection(null);
           }
           return;
-        } else if (['starting', 'joining', 'waiting', 'in_call', 'recording', 'stopping', 'completed', 'ended'].includes(newStatus)) {
-          if (newStatus === 'ended') {
-            // Meeting ended but transcript may still be processing
-            setBotStatus('stopping');
-          }
-          // Adaptive polling intervals based on status
+        } else {
+          // Continue polling with adaptive intervals
           let pollInterval;
           switch (newStatus) {
             case 'starting':
@@ -816,18 +862,14 @@ export default function MeetingPage() {
               pollInterval = 2000; // More frequent even when recording
               break;
             case 'stopping':
-              pollInterval = 500; // Very frequent while waiting for final transcript
-              break;
             case 'ended':
               pollInterval = 500; // Very frequent while waiting for transcript
-              break;
-            case 'completed':
-              pollInterval = 500; // Very frequent while waiting for final transcript
               break;
             default:
               pollInterval = 1000;
           }
           
+          // Continue polling
           setTimeout(() => checkBotStatusWithPolling(botId), pollInterval);
         }
       } else {
@@ -835,6 +877,7 @@ export default function MeetingPage() {
         setIsRecording(false);
         setRecordingMode(null);
         setBotStatus('');
+        setCurrentBotId(null);
         await updateMeeting(meetingId, {
           metadata: { ...meeting?.metadata, bot_id: undefined }
         });
@@ -855,6 +898,7 @@ export default function MeetingPage() {
           setIsRecording(false);
           setRecordingMode(null);
           setBotStatus('');
+          setCurrentBotId(null);
           await updateMeeting(meetingId, {
             status: 'completed',
             metadata: { ...meeting?.metadata, bot_id: undefined }
