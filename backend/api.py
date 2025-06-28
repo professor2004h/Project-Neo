@@ -1168,10 +1168,19 @@ async def meeting_bot_webhook(request: Request):
                         logger.info(f"[WEBHOOK] Using service role key for meeting {sandbox_id}")
                         
                         if supabase_url:
-                            # First verify the meeting exists
-                            meeting_check = supabase.table('meetings').select('meeting_id, account_id').eq('meeting_id', sandbox_id).single().execute()
+                            # First verify the meeting exists and belongs to this bot
+                            meeting_check = supabase.table('meetings').select('meeting_id, account_id, metadata').eq('meeting_id', sandbox_id).single().execute()
                             
                             if meeting_check.data:
+                                # Additional security: verify this bot was actually assigned to this meeting
+                                meeting_metadata = meeting_check.data.get('metadata', {})
+                                expected_bot_id = meeting_metadata.get('bot_id')
+                                
+                                if expected_bot_id and expected_bot_id != bot_id:
+                                    logger.warning(f"[WEBHOOK] Security check failed: bot {bot_id} trying to update meeting {sandbox_id} assigned to bot {expected_bot_id}")
+                                    raise Exception(f"Bot {bot_id} not authorized to update meeting {sandbox_id}")
+                                
+                                logger.info(f"[WEBHOOK] Security check passed: bot {bot_id} is authorized for meeting {sandbox_id}")
                                 # Meeting exists, update it with transcript
                                 update_result = supabase.table('meetings').update({
                                     'transcript': session['transcript_text'],
@@ -1505,10 +1514,19 @@ async def _persist_transcript_to_database(session, session_file, bot_id):
         logger.info(f"[WEBHOOK] Using service role key for meeting {sandbox_id}")
         
         if supabase_url:
-            # First verify the meeting exists
-            meeting_check = supabase.table('meetings').select('meeting_id, account_id').eq('meeting_id', sandbox_id).single().execute()
+            # First verify the meeting exists and belongs to this bot
+            meeting_check = supabase.table('meetings').select('meeting_id, account_id, metadata').eq('meeting_id', sandbox_id).single().execute()
             
             if meeting_check.data:
+                # Additional security: verify this bot was actually assigned to this meeting
+                meeting_metadata = meeting_check.data.get('metadata', {})
+                expected_bot_id = meeting_metadata.get('bot_id')
+                
+                if expected_bot_id and expected_bot_id != bot_id:
+                    logger.warning(f"[WEBHOOK] Security check failed: bot {bot_id} trying to update meeting {sandbox_id} assigned to bot {expected_bot_id}")
+                    raise Exception(f"Bot {bot_id} not authorized to update meeting {sandbox_id}")
+                
+                logger.info(f"[WEBHOOK] Security check passed: bot {bot_id} is authorized for meeting {sandbox_id}")
                 # Meeting exists, update it with transcript
                 update_result = supabase.table('meetings').update({
                     'transcript': session['transcript_text'],
