@@ -764,97 +764,130 @@ export default function MeetingPage() {
 
       {/* Recording controls */}
       {meeting.status === 'active' && (
-        <div className="flex-shrink-0 border-t bg-sidebar/50 backdrop-blur">
-          <div className="px-6 py-4 max-h-32 overflow-visible">
+        <div className="flex-shrink-0 border-t bg-gradient-to-r from-background/95 via-background to-background/95 backdrop-blur-sm">
+          <div className="px-6 py-6 max-h-36 overflow-visible">
             <div className="max-w-4xl mx-auto">
               {!isRecording ? (
-                <div className="flex items-center justify-center">
-                  <div className="flex items-center gap-1 bg-background rounded-xl border p-1 shadow-sm">
+                <div className="flex flex-col items-center justify-center space-y-4">
+                  <div className="flex items-center gap-1 bg-card/60 backdrop-blur border border-border/50 rounded-2xl p-1.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
                     <button
                       onClick={() => startRecording('local')}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-accent transition-colors text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                      className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all duration-200 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:scale-[1.02] active:scale-[0.98]"
                     >
-                      <User className="h-4 w-4" />
-                      <span className="text-sm font-medium">In Person</span>
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-900/60 transition-all duration-200 group-hover:scale-110">
+                          <User className="h-5 w-5" />
+                        </div>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 animate-pulse" />
+                      </div>
+                      <span className="text-sm font-semibold">In Person</span>
                     </button>
-                    <div className="w-px h-6 bg-border" />
+                    
+                    <div className="w-px h-8 bg-gradient-to-t from-transparent via-border to-transparent" />
+                    
                     <button
                       onClick={() => startRecording('online')}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-accent transition-colors text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                      className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 hover:scale-[1.02] active:scale-[0.98]"
                     >
-                      <Monitor className="h-4 w-4" />
-                      <span className="text-sm font-medium">Online</span>
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/60 transition-all duration-200 group-hover:scale-110">
+                          <Monitor className="h-5 w-5" />
+                        </div>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 animate-pulse" />
+                      </div>
+                      <span className="text-sm font-semibold">Online</span>
                     </button>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground/80 max-w-lg mx-auto leading-relaxed">
+                      Choose <span className="font-medium text-blue-600 dark:text-blue-400">In Person</span> for real-time speech-to-text or <span className="font-medium text-green-600 dark:text-green-400">Online</span> to join virtual meetings with a bot
+                    </p>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center">
-                  <div className="flex items-center gap-4 bg-background rounded-xl border px-4 py-3 shadow-sm">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-6 bg-card/80 backdrop-blur border border-border/50 rounded-2xl px-6 py-4 shadow-lg shadow-black/5">
+                    {/* Recording indicator and mode */}
+                    <div className="flex items-center gap-4">
                       {recordingMode === 'local' ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <div className="relative">
                             <div className={cn(
-                              "h-2 w-2 rounded-full",
-                              isPaused ? "bg-yellow-500" : "bg-red-500 animate-pulse"
+                              "w-4 h-4 rounded-full transition-all duration-300",
+                              isPaused 
+                                ? "bg-amber-500 shadow-lg shadow-amber-500/30" 
+                                : "bg-red-500 animate-pulse shadow-lg shadow-red-500/40"
                             )} />
+                            {!isPaused && (
+                              <div className="absolute inset-0 w-4 h-4 rounded-full bg-red-500 animate-ping opacity-75" />
+                            )}
                           </div>
-                          <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center">
+                              <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <span className="text-sm font-medium text-foreground/90 tabular-nums">
+                              {isPaused ? 'Recording Paused' : 'Recording...'}
+                            </span>
+                          </div>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <div className="relative">
-                            <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                            <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/40" />
+                            <div className="absolute inset-0 w-4 h-4 rounded-full bg-green-500 animate-ping opacity-75" />
                           </div>
-                          <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center">
+                              <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            </div>
+                            <span className="text-sm font-medium text-foreground/90 tabular-nums">
+                              Bot {botStatus}
+                            </span>
+                          </div>
                         </div>
                       )}
-                      <span className="text-sm font-medium tabular-nums">
-                        {recordingMode === 'local' 
-                          ? (isPaused ? 'Paused' : 'Recording...') 
-                          : `Bot ${botStatus}`
-                        }
-                      </span>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      {/* Pause/Resume buttons for local recording */}
+                    {/* Control buttons */}
+                    <div className="flex items-center gap-3">
+                      {/* Pause/Resume button for local recording */}
                       {recordingMode === 'local' && (
-                        <button
+                        <Button
                           onClick={isPaused ? resumeRecording : pauseRecording}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium transition-colors"
+                          size="sm"
+                          className={cn(
+                            "h-9 px-4 gap-2 font-medium transition-all duration-200 shadow-sm",
+                            isPaused
+                              ? "bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/20 hover:shadow-blue-500/30"
+                              : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20 hover:shadow-amber-500/30"
+                          )}
                         >
                           {isPaused ? (
                             <>
-                              <Play className="h-3 w-3 fill-current" />
+                              <Play className="h-3.5 w-3.5 fill-current" />
                               Resume
                             </>
                           ) : (
                             <>
-                              <Pause className="h-3 w-3 fill-current" />
+                              <Pause className="h-3.5 w-3.5 fill-current" />
                               Pause
                             </>
                           )}
-                        </button>
+                        </Button>
                       )}
                       
-                      <button
+                      <Button
                         onClick={stopRecording}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors"
+                        size="sm"
+                        className="h-9 px-4 gap-2 bg-red-500 hover:bg-red-600 text-white font-medium transition-all duration-200 shadow-sm shadow-red-500/20 hover:shadow-red-500/30"
                       >
-                        <Square className="h-3 w-3 fill-current" />
+                        <Square className="h-3.5 w-3.5 fill-current" />
                         Stop
-                      </button>
+                      </Button>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {!isRecording && (
-                <div className="text-center mt-4">
-                  <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                    Choose <strong>In Person</strong> for real-time speech-to-text or <strong>Online</strong> to join virtual meetings with a bot
-                  </p>
                 </div>
               )}
             </div>
