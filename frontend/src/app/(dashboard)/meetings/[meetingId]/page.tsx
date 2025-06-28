@@ -505,6 +505,8 @@ export default function MeetingPage() {
   };
 
   // Stop recording
+  const [isProcessingTranscript, setIsProcessingTranscript] = useState(false);
+
   const stopRecording = async () => {
     if (recordingMode === 'local') {
       recognition?.stop();
@@ -558,10 +560,12 @@ export default function MeetingPage() {
           // Refresh meeting data from database
           loadMeeting();
           toast.success('Meeting recording completed');
+          setIsProcessingTranscript(true);
         } else if (data.success && data.status === 'stopping') {
           // Bot is stopping, wait for final transcript via polling
           toast.info('Stopping meeting bot, waiting for final transcript...');
           setBotStatus('stopping');
+          setIsProcessingTranscript(true);
           
           // Continue polling for the final result
           setTimeout(() => {
@@ -575,6 +579,7 @@ export default function MeetingPage() {
           // Meeting ended but transcript not ready yet. Keep polling until it arrives.
           toast.info('Meeting ended - waiting for transcript to finalize...');
           setBotStatus('stopping');
+          setIsProcessingTranscript(true);
           // Continue polling for the final result
           setTimeout(() => {
             if (botId) {
@@ -604,6 +609,7 @@ export default function MeetingPage() {
         setBotStatus('completed');
         setCurrentBotId(null);  // Clear current bot ID
         toast.success('Meeting recording completed');
+        setIsProcessingTranscript(true);
       } catch (error) {
         console.error('Error stopping bot:', error);
         // Even on error, clean up the UI state
@@ -947,6 +953,25 @@ export default function MeetingPage() {
     // Navigate to dashboard with meeting attachment
     router.push(`/dashboard?attachMeeting=${meetingId}`);
   };
+
+  // Poll for transcript while processing
+  useEffect(() => {
+    if (!isProcessingTranscript) return;
+    const interval = setInterval(async () => {
+      try {
+        const latest = await getMeeting(meetingId);
+        if (latest.status === 'completed' && latest.transcript) {
+          setMeeting(latest);
+          setTranscript(latest.transcript);
+          setIsProcessingTranscript(false);
+          toast.success('Transcript ready');
+        }
+      } catch (err) {
+        console.error('[PROCESSING] failed to poll', err);
+      }
+    }, 10000); // every 10s
+    return () => clearInterval(interval);
+  }, [isProcessingTranscript, meetingId]);
 
   if (isLoading) {
     return (
@@ -1337,14 +1362,16 @@ export default function MeetingPage() {
                         </Button>
                       )}
                       
-                      <Button
-                        onClick={stopRecording}
-                        size="sm"
-                        className="h-9 px-4 gap-2 bg-red-500 hover:bg-red-600 text-white font-medium transition-all duration-200 shadow-sm shadow-red-500/20 hover:shadow-red-500/30"
-                      >
-                        <Square className="h-3.5 w-3.5 fill-current" />
-                        Stop
-                      </Button>
+                      {!isProcessingTranscript && (
+                        <Button
+                          onClick={stopRecording}
+                          size="sm"
+                          className="h-9 px-4 gap-2 bg-red-500 hover:bg-red-600 text-white font-medium transition-all duration-200 shadow-sm shadow-red-500/20 hover:shadow-red-500/30"
+                        >
+                          <Square className="h-3.5 w-3.5 fill-current" />
+                          Stop
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1402,6 +1429,13 @@ export default function MeetingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {isProcessingTranscript && (
+        <div className="fixed bottom-4 right-4 flex items-center gap-3 bg-card/90 backdrop-blur border border-border/40 rounded-full px-4 py-2 shadow-lg animate-pulse">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm font-medium">Processing transcription… this may take a few minutes</span>
+        </div>
+      )}
     </div>
   );
 } 
