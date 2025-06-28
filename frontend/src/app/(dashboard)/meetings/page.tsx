@@ -449,7 +449,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={() => setShowNewMeetingDialog(true)}
                 size="sm"
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-colors duration-200 focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Meeting
@@ -809,7 +809,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={handleCreateMeeting} 
                 disabled={!newMeetingTitle.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-colors duration-200 focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 Create Meeting
               </Button>
@@ -898,7 +898,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={handleRename} 
                 disabled={!editingItem?.name.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-colors duration-200 focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 Save Changes
               </Button>
