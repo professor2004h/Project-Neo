@@ -74,8 +74,35 @@ export default function MeetingPage() {
   const [wsConnection, setWsConnection] = useState<TranscriptionWebSocket | null>(null);
   const [botStatus, setBotStatus] = useState<string>('');
   
+  // Timestamp tracking for local recordings
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+  const [totalPausedTime, setTotalPausedTime] = useState<number>(0);
+  const [pauseStartTime, setPauseStartTime] = useState<number | null>(null);
+  
   const transcriptRef = useRef<HTMLDivElement>(null);
   const searchHighlightRefs = useRef<(HTMLSpanElement | null)[]>([]);
+
+  // Utility function to format elapsed time as timestamp
+  const formatElapsedTime = (elapsedMs: number): string => {
+    const totalSeconds = Math.floor(elapsedMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    } else {
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+  };
+
+  // Calculate current elapsed time (excluding paused time)
+  const getCurrentElapsedTime = (): number => {
+    if (!recordingStartTime) return 0;
+    const now = Date.now();
+    const currentPausedTime = isPaused && pauseStartTime ? now - pauseStartTime : 0;
+    return now - recordingStartTime - totalPausedTime - currentPausedTime;
+  };
 
   // Load meeting data
   useEffect(() => {
@@ -179,11 +206,16 @@ export default function MeetingPage() {
       }
 
       if (finalTranscript.trim()) {
+        // Calculate timestamp for this chunk
+        const elapsedTime = getCurrentElapsedTime();
+        const timestamp = formatElapsedTime(elapsedTime);
+        const timestampedTranscript = `[${timestamp}] ${finalTranscript.trim()}`;
+        
         // Send final transcript through WebSocket and add to local state
         wsConnection?.sendTranscript(finalTranscript.trim());
         setTranscript((prev) => {
           const cleanPrev = prev.trim(); // Remove trailing whitespace
-          return cleanPrev + (cleanPrev ? '\n' : '') + finalTranscript.trim();
+          return cleanPrev + (cleanPrev ? '\n' : '') + timestampedTranscript;
         });
       }
       
@@ -226,6 +258,9 @@ export default function MeetingPage() {
         await rec.start();
         setIsRecording(true);
         setIsPaused(false);
+        setRecordingStartTime(Date.now());
+        setTotalPausedTime(0);
+        setPauseStartTime(null);
         wsConnection?.updateStatus('active');
         toast.success('Recording started');
       } catch (error) {
@@ -322,6 +357,9 @@ export default function MeetingPage() {
       setIsRecording(false);
       setIsPaused(false);
       setRecordingMode(null);
+      setRecordingStartTime(null);
+      setTotalPausedTime(0);
+      setPauseStartTime(null);
       wsConnection?.updateStatus('completed');
       
       // Save transcript
@@ -405,13 +443,17 @@ export default function MeetingPage() {
     if (recordingMode === 'local' && recognition) {
       recognition.stop();
       setIsPaused(true);
+      setPauseStartTime(Date.now());
       toast.info('Recording paused');
     }
   };
 
   // Resume recording (local only)
   const resumeRecording = () => {
-    if (recordingMode === 'local' && recognition && isPaused) {
+    if (recordingMode === 'local' && recognition && isPaused && pauseStartTime) {
+      const pauseDuration = Date.now() - pauseStartTime;
+      setTotalPausedTime(prev => prev + pauseDuration);
+      setPauseStartTime(null);
       recognition.start();
       setIsPaused(false);
       toast.info('Recording resumed');
