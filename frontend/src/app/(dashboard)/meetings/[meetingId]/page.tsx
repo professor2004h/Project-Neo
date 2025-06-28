@@ -327,14 +327,11 @@ export default function MeetingPage() {
 
   // Continue recording (start a new session on existing transcript)
   const continueRecording = async (mode: 'local' | 'online') => {
-    // Add a session separator to the transcript
-    const sessionSeparator = `\n\n--- New Recording Session (${new Date().toLocaleString()}) ---\n`;
-    setTranscript(prev => prev + sessionSeparator);
+    // No need for manual separators - webhook handles session tracking
     
-    // Update meeting status to active and save the separator
+    // Update meeting status to active
     await updateMeeting(meetingId, { 
-      status: 'active',
-      transcript: transcript + sessionSeparator
+      status: 'active'
     });
     
     // Start recording normally
@@ -552,40 +549,15 @@ export default function MeetingPage() {
 
         const data = await response.json();
         if (data.success && data.content) {
-          try {
-            // Fetch latest transcript from database to ensure we don't overwrite
-            const latestMeeting = await getMeeting(meetingId);
-            const existingTranscript = latestMeeting.transcript || '';
-            const fullTranscript = existingTranscript + '\n\n' + data.content;
-            setTranscript(fullTranscript);
-            
-            await updateMeeting(meetingId, {
-              transcript: fullTranscript,
-              status: 'completed',
-              metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot data
-            });
-            setIsRecording(false);
-            setRecordingMode(null);
-            setBotStatus('completed');
-            setCurrentBotId(null);  // Clear current bot ID
-            toast.success('Meeting recording completed');
-          } catch (error) {
-            console.error('[STOP] Error fetching latest transcript:', error);
-            // Fallback to using local state
-            const fullTranscript = transcript + '\n\n' + data.content;
-            setTranscript(fullTranscript);
-            
-            await updateMeeting(meetingId, {
-              transcript: fullTranscript,
-              status: 'completed',
-              metadata: { ...meeting?.metadata, bot_id: undefined }
-            });
-            setIsRecording(false);
-            setRecordingMode(null);
-            setBotStatus('completed');
-            setCurrentBotId(null);
-            toast.success('Meeting recording completed');
-          }
+          // Webhook will handle transcript appending - just clean up UI
+          setIsRecording(false);
+          setRecordingMode(null);
+          setBotStatus('completed');
+          setCurrentBotId(null);
+          
+          // Refresh meeting data from database
+          loadMeeting();
+          toast.success('Meeting recording completed');
         } else if (data.success && data.status === 'stopping') {
           // Bot is stopping, wait for final transcript via polling
           toast.info('Stopping meeting bot, waiting for final transcript...');
@@ -614,30 +586,9 @@ export default function MeetingPage() {
           // Handle partial success or informational errors
           const errorMessage = data.error || 'Unknown error occurred';
           if (data.transcript) {
-            try {
-              // Fetch latest transcript from database to ensure we don't overwrite
-              const latestMeeting = await getMeeting(meetingId);
-              const existingTranscript = latestMeeting.transcript || '';
-              const fullTranscript = existingTranscript + '\n\n' + data.transcript;
-              setTranscript(fullTranscript);
-              await updateMeeting(meetingId, {
-                transcript: fullTranscript,
-                status: 'completed',
-                metadata: { ...meeting?.metadata, bot_id: undefined }
-              });
-              toast.warning(`Meeting ended with issues: ${errorMessage}`);
-            } catch (error) {
-              console.error('[STOP] Error fetching latest transcript for error case:', error);
-              // Fallback to using local state
-              const fullTranscript = transcript + '\n\n' + data.transcript;
-              setTranscript(fullTranscript);
-              await updateMeeting(meetingId, {
-                transcript: fullTranscript,
-                status: 'completed',
-                metadata: { ...meeting?.metadata, bot_id: undefined }
-              });
-              toast.warning(`Meeting ended with issues: ${errorMessage}`);
-            }
+            // Webhook will handle transcript - just refresh and show warning
+            loadMeeting();
+            toast.warning(`Meeting ended with issues: ${errorMessage}`);
           } else {
             // No transcript available
             await updateMeeting(meetingId, {
@@ -719,44 +670,10 @@ export default function MeetingPage() {
                 setIsRecording(true);
                 setRecordingMode('online');
               } else if (newStatus === 'completed') {
-                // When completed, check if transcript is included
-                if (data.transcript) {
-                  console.log('[SSE] Received transcript with completed status');
-                  
-                  // Fetch latest transcript from database to ensure we don't overwrite
-                  getMeeting(meetingId).then(latestMeeting => {
-                    const existingTranscript = latestMeeting.transcript || '';
-                    const fullTranscript = existingTranscript + '\n\n' + data.transcript;
-                    setTranscript(fullTranscript);
-                    
-                    // Update meeting with transcript
-                    updateMeeting(meetingId, {
-                      transcript: fullTranscript,
-                      status: 'completed',
-                      metadata: { ...meeting?.metadata, bot_id: undefined }
-                    });
-                    
-                    toast.success('Meeting recording completed - transcript updated');
-                  }).catch(error => {
-                    console.error('[SSE] Error fetching latest transcript:', error);
-                    // Fallback to using local state
-                    const fullTranscript = transcript + '\n\n' + data.transcript;
-                    setTranscript(fullTranscript);
-                    updateMeeting(meetingId, {
-                      transcript: fullTranscript,
-                      status: 'completed',
-                      metadata: { ...meeting?.metadata, bot_id: undefined }
-                    });
-                    toast.success('Meeting recording completed - transcript updated');
-                  });
-                } else {
-                  // If no transcript in SSE, poll for it
-                  console.log('[SSE] Completed without transcript, polling for it');
-                  const botId = currentBotId || meeting?.metadata?.bot_id;
-                  if (botId) {
-                    checkBotStatusWithPolling(botId);
-                  }
-                }
+                // Simply refresh the meeting data - webhook handles all transcript logic
+                console.log('[SSE] Meeting completed, refreshing data from database');
+                loadMeeting(); // Refresh from database
+                toast.success('Meeting recording completed');
                 
                 setIsRecording(false);
                 setRecordingMode(null);
@@ -841,51 +758,20 @@ export default function MeetingPage() {
           setRecordingMode('online');
         }
         
-        if (newStatus === 'completed' && data.transcript) {
-          try {
-            // Fetch latest transcript from database to ensure we don't overwrite
-            const latestMeeting = await getMeeting(meetingId);
-            const existingTranscript = latestMeeting.transcript || '';
-            const fullTranscript = existingTranscript + '\n\n' + data.transcript;
-            setTranscript(fullTranscript);
-            
-            await updateMeeting(meetingId, {
-              transcript: fullTranscript,
-              status: 'completed',
-              metadata: { ...meeting?.metadata, bot_id: undefined }
-            });
-            
-            setIsRecording(false);
-            setRecordingMode(null);
-            
-            // Stop monitoring
-            if (sseConnection) {
-              sseConnection.close();
-              setSseConnection(null);
-            }
-            return;
-          } catch (error) {
-            console.error('[POLLING] Error fetching latest transcript:', error);
-            // Fallback to using local state
-            const fullTranscript = transcript + '\n\n' + data.transcript;
-            setTranscript(fullTranscript);
-            
-            await updateMeeting(meetingId, {
-              transcript: fullTranscript,
-              status: 'completed',
-              metadata: { ...meeting?.metadata, bot_id: undefined }
-            });
-            
-            setIsRecording(false);
-            setRecordingMode(null);
-            
-            // Stop monitoring
-            if (sseConnection) {
-              sseConnection.close();
-              setSseConnection(null);
-            }
-            return;
+        if (newStatus === 'completed') {
+          // Simply refresh the meeting data - webhook handles all transcript logic  
+          console.log('[POLLING] Meeting completed, refreshing data from database');
+          loadMeeting(); // Refresh from database
+          
+          setIsRecording(false);
+          setRecordingMode(null);
+          
+          // Stop monitoring
+          if (sseConnection) {
+            sseConnection.close();
+            setSseConnection(null);
           }
+          return;
         } else if (['failed'].includes(newStatus)) {
           setIsRecording(false);
           setRecordingMode(null);
