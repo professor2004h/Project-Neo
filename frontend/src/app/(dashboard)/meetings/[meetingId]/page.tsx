@@ -17,6 +17,7 @@ import {
   Play,
   Square,
   AlertCircle,
+  FileAudio,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +61,7 @@ export default function MeetingPage() {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [transcript, setTranscript] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ index: number; text: string }[]>([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
@@ -113,7 +115,13 @@ export default function MeetingPage() {
         meetingId,
         session.access_token,
         (text) => {
-          setTranscript((prev) => prev + ' ' + text);
+          // Don't add WebSocket text if it's duplicate from speech recognition
+          setTranscript((prev) => {
+            const cleanText = text.trim();
+            if (!cleanText || prev.includes(cleanText)) return prev;
+            const cleanPrev = prev.replace(/\s+$/, '');
+            return cleanPrev + (cleanPrev ? ' ' : '') + cleanText;
+          });
         },
         (status) => {
           if (status === 'completed') {
@@ -159,22 +167,23 @@ export default function MeetingPage() {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript + ' ';
+          finalTranscript += transcript;
         } else {
           interimTranscript += transcript;
         }
       }
 
-      if (finalTranscript) {
-        // Send final transcript through WebSocket
-        wsConnection?.sendTranscript(finalTranscript);
+      if (finalTranscript.trim()) {
+        // Send final transcript through WebSocket and add to local state
+        wsConnection?.sendTranscript(finalTranscript.trim());
+        setTranscript((prev) => {
+          const cleanPrev = prev.replace(/\s+$/, ''); // Remove trailing spaces
+          return cleanPrev + (cleanPrev ? ' ' : '') + finalTranscript.trim();
+        });
       }
-
-      // Update local display with both final and interim
-      const displayText = finalTranscript + interimTranscript;
-      if (displayText) {
-        setTranscript((prev) => prev + displayText);
-      }
+      
+      // Store interim results separately for display only
+      setInterimTranscript(interimTranscript);
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -512,43 +521,59 @@ export default function MeetingPage() {
       </div>
 
       {/* Transcript area */}
-      <ScrollArea className="flex-1 px-6 py-4">
+      <ScrollArea className="flex-1 px-6 py-4 bg-gradient-to-b from-background to-muted/10">
         <div ref={transcriptRef} className="max-w-4xl mx-auto">
-          {transcript ? (
-            <div className="whitespace-pre-wrap font-mono text-sm">
-              {transcript.split('\n').map((line, index) => {
-                const isSearchMatch = searchResults.some((r) => r.index === index);
-                const isCurrentMatch = searchResults[currentSearchIndex]?.index === index;
+          {transcript || interimTranscript ? (
+            <div className="bg-card/50 backdrop-blur border rounded-xl p-6 shadow-sm">
+              <div className="prose dark:prose-invert max-w-none">
+                <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                  {transcript.split('\n').map((line, index) => {
+                    const isSearchMatch = searchResults.some((r) => r.index === index);
+                    const isCurrentMatch = searchResults[currentSearchIndex]?.index === index;
 
-                return (
-                  <div
-                    key={index}
-                    className={cn(
-                      'py-1',
-                      isSearchMatch && 'bg-yellow-100 dark:bg-yellow-900/30',
-                      isCurrentMatch && 'bg-yellow-200 dark:bg-yellow-800/50'
-                    )}
-                  >
-                    <span
-                      ref={(el) => {
-                        if (isCurrentMatch) {
-                          searchHighlightRefs.current[currentSearchIndex] = el;
-                        }
-                      }}
-                    >
-                      {line || '\u00A0'}
+                    return (
+                      <div
+                        key={index}
+                        className={cn(
+                          'py-1 px-2 rounded transition-all duration-200',
+                          isSearchMatch && 'bg-yellow-100 dark:bg-yellow-900/30',
+                          isCurrentMatch && 'bg-yellow-200 dark:bg-yellow-800/50 shadow-sm'
+                        )}
+                      >
+                        <span
+                          ref={(el) => {
+                            if (isCurrentMatch) {
+                              searchHighlightRefs.current[currentSearchIndex] = el;
+                            }
+                          }}
+                        >
+                          {line || '\u00A0'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {interimTranscript && (
+                    <span className="text-muted-foreground italic">
+                      {interimTranscript}
                     </span>
-                  </div>
-                );
-              })}
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              {meeting.status === 'active' ? (
-                <p>Start recording to see the transcript here</p>
-              ) : (
-                <p>No transcript available</p>
-              )}
+            <div className="text-center py-20">
+              <div className="mx-auto w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mb-4">
+                <FileAudio className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">
+                {meeting.status === 'active' ? 'Ready to Record' : 'No Transcript Available'}
+              </h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                {meeting.status === 'active' 
+                  ? 'Start recording to see the real-time transcript appear here. Choose between in-person or online meeting recording.'
+                  : 'This meeting doesn\'t have any recorded transcript yet.'
+                }
+              </p>
             </div>
           )}
         </div>
@@ -556,54 +581,72 @@ export default function MeetingPage() {
 
       {/* Recording controls */}
       {meeting.status === 'active' && (
-        <div className="border-t px-6 py-4 bg-background">
-          {!isRecording ? (
-            <div className="flex items-center justify-center gap-4">
-              <Button
-                onClick={() => startRecording('local')}
-                disabled={isRecording}
-                variant="outline"
-              >
-                <User className="h-4 w-4 mr-2" />
-                Record In-Person
-              </Button>
-              <Button
-                onClick={() => startRecording('online')}
-                disabled={isRecording}
-                variant="outline"
-              >
-                <Monitor className="h-4 w-4 mr-2" />
-                Record Online Meeting
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-sm font-medium">
-                  {recordingMode === 'local' ? 'Recording...' : `Bot ${botStatus}`}
-                </span>
-              </div>
-              <Button
-                onClick={stopRecording}
-                variant="destructive"
-                size="sm"
-              >
-                <Square className="h-4 w-4 mr-2" />
-                Stop Recording
-              </Button>
-            </div>
-          )}
+        <div className="border-t bg-sidebar/50 backdrop-blur">
+          <div className="px-6 py-4">
+            <div className="max-w-4xl mx-auto">
+              {!isRecording ? (
+                <div className="flex items-center justify-center">
+                  <div className="flex items-center gap-1 bg-background rounded-xl border p-1 shadow-sm">
+                    <button
+                      onClick={() => startRecording('local')}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-accent transition-colors text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                      <User className="h-4 w-4" />
+                      <span className="text-sm font-medium">In Person</span>
+                    </button>
+                    <div className="w-px h-6 bg-border" />
+                    <button
+                      onClick={() => startRecording('online')}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-accent transition-colors text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                    >
+                      <Monitor className="h-4 w-4" />
+                      <span className="text-sm font-medium">Online</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center">
+                  <div className="flex items-center gap-4 bg-background rounded-xl border px-4 py-3 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      {recordingMode === 'local' ? (
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+                          </div>
+                          <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                          </div>
+                          <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        </div>
+                      )}
+                      <span className="text-sm font-medium tabular-nums">
+                        {recordingMode === 'local' ? 'Recording...' : `Bot ${botStatus}`}
+                      </span>
+                    </div>
+                    <button
+                      onClick={stopRecording}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors"
+                    >
+                      <Square className="h-3 w-3 fill-current" />
+                      Stop
+                    </button>
+                  </div>
+                </div>
+              )}
 
-          {recordingMode === 'local' && !isRecording && (
-            <Alert className="mt-4 max-w-2xl mx-auto">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                For best results, speak clearly and ensure you're in a quiet environment.
-                The transcript will appear in real-time as you speak.
-              </AlertDescription>
-            </Alert>
-          )}
+              {!isRecording && (
+                <div className="text-center mt-4">
+                  <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                    Choose <strong>In Person</strong> for real-time speech-to-text or <strong>Online</strong> to join virtual meetings with a bot
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

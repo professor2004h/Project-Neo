@@ -56,5 +56,5 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
         <TooltipContent>Open Meetings</TooltipContent>
       </Tooltip>
     </TooltipProvider>
-  );
-};
+      );
+  }; 
