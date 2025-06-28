@@ -296,29 +296,71 @@ export default function MeetingPage() {
     await startRecording(mode);
   };
 
-  // Clean bot status display with minimal indicators
+  // Enhanced bot status display with progress indicators
   const getBotStatusDisplay = (status: string) => {
     switch (status) {
       case 'starting':
-        return <span className="text-blue-600 dark:text-blue-400">Starting bot...</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+            <span>Bot Starting...</span>
+          </div>
+        );
       case 'joining':
-        return <span className="text-amber-600 dark:text-amber-400">Joining meeting...</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="flex space-x-1">
+              <div className="w-1 h-1 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-1 h-1 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-1 h-1 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span>Joining Meeting...</span>
+          </div>
+        );
       case 'waiting':
-        return <span className="text-amber-600 dark:text-amber-400">Waiting for access</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
+            <span>Waiting for Access</span>
+          </div>
+        );
       case 'in_call':
-        return <span className="text-green-600 dark:text-green-400">In meeting</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full" />
+            <span>In Meeting</span>
+          </div>
+        );
       case 'recording':
-        return <span className="text-red-600 dark:text-red-400">Recording active</span>;
-      case 'stopping':
-        return <span className="text-orange-600 dark:text-orange-400">Stopping...</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span>Recording Active</span>
+          </div>
+        );
       case 'completed':
-        return <span className="text-green-600 dark:text-green-400">Complete</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-600 rounded-full" />
+            <span>Recording Complete</span>
+          </div>
+        );
       case 'failed':
-        return <span className="text-red-600 dark:text-red-400">Failed</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-600 rounded-full" />
+            <span>Bot Failed</span>
+          </div>
+        );
       case 'ended':
-        return <span className="text-gray-600 dark:text-gray-400">Ended</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-gray-500 rounded-full" />
+            <span>Meeting Ended</span>
+          </div>
+        );
       default:
-        return <span className="text-muted-foreground">{status}</span>;
+        return `Bot ${status}`;
     }
   };
 
@@ -635,21 +677,16 @@ export default function MeetingPage() {
           
           setIsRecording(false);
           setRecordingMode(null);
-          setBotStatus('completed');
           
           // Stop monitoring
           if (sseConnection) {
             sseConnection.close();
             setSseConnection(null);
           }
-          
-          toast.success('Meeting transcript received and saved');
           return;
-        } else if (newStatus === 'failed') {
-          // Bot failed - stop immediately
+        } else if (['failed', 'ended'].includes(newStatus)) {
           setIsRecording(false);
           setRecordingMode(null);
-          setBotStatus('failed');
           await updateMeeting(meetingId, { 
             status: 'completed',
             metadata: { ...meeting?.metadata, bot_id: undefined }
@@ -660,15 +697,6 @@ export default function MeetingPage() {
             sseConnection.close();
             setSseConnection(null);
           }
-          toast.error('Meeting bot failed');
-          return;
-        } else if (newStatus === 'ended') {
-          // Meeting ended naturally - continue polling for final transcript
-          setBotStatus('ended');
-          setIsRecording(false); // Stop the UI recording state
-          
-          // Continue polling for the "completed" status with transcript
-          setTimeout(() => checkBotStatusWithPolling(botId), 1000);
           return;
         } else if (['starting', 'joining', 'waiting', 'in_call', 'recording', 'stopping'].includes(newStatus)) {
           // Adaptive polling intervals based on status
@@ -876,9 +904,9 @@ export default function MeetingPage() {
                 {meeting.status}
               </Badge>
               {botStatus && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
-                  {getBotStatusDisplay(botStatus)}
-                </div>
+                <Badge variant="outline" className="shadow-sm">
+                  {botStatus}
+                </Badge>
               )}
             </div>
           </div>
@@ -1031,47 +1059,63 @@ export default function MeetingPage() {
                         <p className="text-sm font-medium text-foreground/90 mb-1">Meeting Completed</p>
                         <p className="text-xs text-muted-foreground/80">Start a new recording session to continue adding to this transcript</p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Button
+                      <div className="flex items-center gap-1 bg-card/60 backdrop-blur border border-border/50 rounded-2xl p-1.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
+                        <button
                           onClick={() => continueRecording('local')}
-                          variant="outline"
-                          className="flex items-center gap-2 px-4 py-2 h-auto rounded-lg transition-all duration-200"
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all duration-200 text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <User className="h-4 w-4" />
-                          <span className="font-medium">Continue In Person</span>
-                        </Button>
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-all duration-200 group-hover:scale-110">
+                              <User className="h-5 w-5" />
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">Continue In Person</span>
+                        </button>
                         
-                        <Button
+                        <div className="w-px h-8 bg-gradient-to-t from-transparent via-border to-transparent" />
+                        
+                        <button
                           onClick={() => continueRecording('online')}
-                          variant="outline"
-                          className="flex items-center gap-2 px-4 py-2 h-auto rounded-lg transition-all duration-200"
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <Monitor className="h-4 w-4" />
-                          <span className="font-medium">Continue Online</span>
-                        </Button>
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/60 transition-all duration-200 group-hover:scale-110">
+                              <Monitor className="h-5 w-5" />
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">Continue Online</span>
+                        </button>
                       </div>
                     </>
                   ) : (
                     /* Initial Recording Section */
                     <>
-                      <div className="flex items-center gap-3">
-                        <Button
+                      <div className="flex items-center gap-1 bg-card/60 backdrop-blur border border-border/50 rounded-2xl p-1.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
+                        <button
                           onClick={() => startRecording('local')}
-                          variant="outline"
-                          className="flex items-center gap-2 px-4 py-2 h-auto rounded-lg transition-all duration-200"
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-950/30 transition-all duration-200 text-slate-700 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-200 hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <User className="h-4 w-4" />
-                          <span className="font-medium">In Person</span>
-                        </Button>
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center group-hover:bg-slate-200 dark:group-hover:bg-slate-800/60 transition-all duration-200 group-hover:scale-110">
+                              <User className="h-5 w-5" />
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">In Person</span>
+                        </button>
                         
-                        <Button
+                        <div className="w-px h-8 bg-gradient-to-t from-transparent via-border to-transparent" />
+                        
+                        <button
                           onClick={() => startRecording('online')}
-                          variant="outline"
-                          className="flex items-center gap-2 px-4 py-2 h-auto rounded-lg transition-all duration-200"
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <Monitor className="h-4 w-4" />
-                          <span className="font-medium">Online</span>
-                        </Button>
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/60 transition-all duration-200 group-hover:scale-110">
+                              <Monitor className="h-5 w-5" />
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">Online</span>
+                        </button>
                       </div>
                       
                       <div className="text-center">
@@ -1084,48 +1128,71 @@ export default function MeetingPage() {
                 </div>
               ) : (
                 <div className="flex items-center justify-center">
-                  <div className="flex items-center justify-between w-full max-w-sm bg-card/50 backdrop-blur border border-border/50 rounded-xl px-4 py-3 shadow-sm">
-                    {/* Recording status */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center">
-                          {recordingMode === 'local' ? (
-                            <User className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Monitor className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div className="text-sm">
-                          {recordingMode === 'local' ? (
-                            <span className="font-medium text-foreground">
-                              {isPaused ? 'Paused' : 'Recording'}
-                            </span>
-                          ) : (
-                            <div className="font-medium text-foreground">
-                              {getBotStatusDisplay(botStatus)}
+                  <div className="flex items-center gap-6 bg-card/80 backdrop-blur border border-border/50 rounded-2xl px-6 py-4 shadow-lg shadow-black/5">
+                    {/* Recording indicator and mode */}
+                    <div className="flex items-center gap-4">
+                      {recordingMode === 'local' ? (
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <div className={cn(
+                              "w-4 h-4 rounded-full transition-all duration-300",
+                              isPaused 
+                                ? "bg-amber-500 shadow-lg shadow-amber-500/30" 
+                                : "bg-red-500 animate-pulse shadow-lg shadow-red-500/40"
+                            )} />
+                            {!isPaused && (
+                              <div className="absolute inset-0 w-4 h-4 rounded-full bg-red-500 animate-ping opacity-75" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center">
+                              <User className="h-4 w-4 text-slate-700 dark:text-slate-300" />
                             </div>
-                          )}
+                            <span className="text-sm font-medium text-foreground/90 tabular-nums">
+                              {isPaused ? 'Recording Paused' : 'Recording...'}
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/40" />
+                            <div className="absolute inset-0 w-4 h-4 rounded-full bg-green-500 animate-ping opacity-75" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center">
+                              <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            </div>
+                            <span className="text-sm font-medium text-foreground/90 tabular-nums">
+                              {getBotStatusDisplay(botStatus)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Control buttons */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
+                      {/* Pause/Resume button for local recording */}
                       {recordingMode === 'local' && (
                         <Button
                           onClick={isPaused ? resumeRecording : pauseRecording}
                           size="sm"
-                          variant="outline"
-                          className="h-8 px-3 text-xs"
+                          className={cn(
+                            "h-9 px-4 gap-2 font-medium transition-all duration-200 shadow-sm",
+                            isPaused
+                              ? "bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/20 hover:shadow-blue-500/30"
+                              : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20 hover:shadow-amber-500/30"
+                          )}
                         >
                           {isPaused ? (
                             <>
-                              <Play className="h-3 w-3 mr-1" />
+                              <Play className="h-3.5 w-3.5 fill-current" />
                               Resume
                             </>
                           ) : (
                             <>
-                              <Pause className="h-3 w-3 mr-1" />
+                              <Pause className="h-3.5 w-3.5 fill-current" />
                               Pause
                             </>
                           )}
@@ -1135,10 +1202,9 @@ export default function MeetingPage() {
                       <Button
                         onClick={stopRecording}
                         size="sm"
-                        variant="destructive"
-                        className="h-8 px-3 text-xs"
+                        className="h-9 px-4 gap-2 bg-red-500 hover:bg-red-600 text-white font-medium transition-all duration-200 shadow-sm shadow-red-500/20 hover:shadow-red-500/30"
                       >
-                        <Square className="h-3 w-3 mr-1" />
+                        <Square className="h-3.5 w-3.5 fill-current" />
                         Stop
                       </Button>
                     </div>

@@ -505,10 +505,9 @@ export default function MeetingsPage() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-4 flex-1 min-w-0">
                   <div className="relative">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-950/50 dark:to-amber-900/60 flex items-center justify-center group-hover:scale-110 transition-all duration-200 shadow-sm">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/30 dark:to-amber-900/40 flex items-center justify-center group-hover:scale-105 transition-all duration-200 shadow-sm">
                       <Folder className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                     </div>
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-500 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 animate-pulse" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
@@ -594,32 +593,21 @@ export default function MeetingsPage() {
                 <div className="flex items-center space-x-4 flex-1 min-w-0">
                   <div className="relative">
                     <div className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-all duration-200 shadow-sm",
+                      "w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-all duration-200 shadow-sm",
                       meeting.status === 'active' 
-                        ? "bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950/50 dark:to-green-900/60"
-                        : "bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950/50 dark:to-blue-900/60"
+                        ? "bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/40"
+                        : "bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950/30 dark:to-slate-900/40"
                     )}>
                       <FileAudio className={cn(
                         "h-6 w-6",
                         meeting.status === 'active' 
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-blue-600 dark:text-blue-400"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-slate-600 dark:text-slate-400"
                       )} />
                     </div>
-                    <div className={cn(
-                      "absolute -bottom-1 -right-1 w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200",
-                      meeting.status === 'active' 
-                        ? "bg-green-500 animate-pulse"
-                        : "bg-blue-500 animate-pulse"
-                    )} />
-                    {/* Active bot indicator - matches the one in meeting document page */}
-                    {meeting.status === 'active' && meeting.recording_mode === 'online' && (
-                      <div className="absolute -top-1 -right-1">
-                        <div className="relative">
-                          <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/40" />
-                          <div className="absolute inset-0 w-4 h-4 rounded-full bg-green-500 animate-ping opacity-75" />
-                        </div>
-                      </div>
+                    {/* Subtle active recording indicator */}
+                    {meeting.status === 'active' && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full shadow-sm" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -629,19 +617,16 @@ export default function MeetingsPage() {
                     <p className="text-sm text-muted-foreground/80 mt-1">
                       {formatDistanceToNow(new Date(meeting.created_at), { addSuffix: true })}
                     </p>
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center mt-2">
                       <span className={cn(
                         "text-xs px-3 py-1 rounded-full font-medium border",
                         meeting.status === 'active' 
-                          ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-300 dark:border-green-800'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-700'
                           : meeting.status === 'completed' 
-                          ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800'
-                          : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800'
+                          ? 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-950/30 dark:text-slate-300 dark:border-slate-700'
+                          : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-700'
                       )}>
                         {meeting.status}
-                      </span>
-                      <span className="text-xs text-muted-foreground/60 px-2 py-1 bg-secondary/50 rounded-full">
-                        {meeting.recording_mode === 'online' ? 'Online' : 'Local'}
                       </span>
                     </div>
                   </div>
