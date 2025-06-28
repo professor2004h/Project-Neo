@@ -101,7 +101,7 @@ file_size_limit = "50MiB"
 allowed_mime_types = ["text/plain", "application/json", "text/markdown", "text/css", "text/javascript", "application/javascript", "text/html", "text/xml", "application/xml"]
 
 [auth]
-enabled = true
+enabled = false
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
 site_url = "http://localhost:3000"
@@ -175,13 +175,13 @@ otp_expiry = 3600
 
 # Configure signup confirmation template
 [auth.email.template.confirm]
-subject = "Confirm your signup to OMNI Operator"
-content_path = "./email-template.html"
+subject = "Confirm your signup to Operator"
+content_path = "./supabase/email-template.html"
 
 # Configure password reset template
 [auth.email.template.recovery]
-subject = "Reset your password - OMNI Operator"
-content_path = "./email-reset-template.html"  # You'll need to create this
+subject = "Reset your password - Operator"
+content_path = "./supabase/email-reset-template.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.

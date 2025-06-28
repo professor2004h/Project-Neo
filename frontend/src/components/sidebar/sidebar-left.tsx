@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Bot, Menu, Store } from 'lucide-react';
+import { Bot, Menu, Store, FileAudio } from 'lucide-react';
 
 import { NavAgents } from '@/components/sidebar/nav-agents';
 import { NavUserWithTeams } from '@/components/sidebar/nav-user-with-teams';
@@ -173,6 +173,18 @@ export function SidebarLeft({
             )}
           </SidebarGroup>
         )}
+        <SidebarGroup>
+          <Link href="/meetings">
+            <SidebarMenuButton className={cn({
+              'bg-primary/10 font-medium': pathname === '/meetings' || pathname.startsWith('/meetings/'),
+            })}>
+              <FileAudio className="h-4 w-4 mr-2" />
+              <span className="flex items-center justify-between w-full">
+                Meetings
+              </span>
+            </SidebarMenuButton>
+          </Link>
+        </SidebarGroup>
         <NavAgents />
       </SidebarContent>
       {state !== 'collapsed' && enterpriseDemoEnabled && (

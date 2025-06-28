@@ -64,6 +64,39 @@ export function DashboardContent() {
     }
   }, [searchParams, selectedAgentId, router]);
 
+  // Handle meeting attachment
+  useEffect(() => {
+    const attachMeetingId = searchParams.get('attachMeeting');
+    if (attachMeetingId) {
+      // Load meeting transcript and attach it as a file
+      import('@/lib/api-meetings').then(async ({ getMeeting }) => {
+        try {
+          const meeting = await getMeeting(attachMeetingId);
+          if (meeting.transcript) {
+            // Create a file from the transcript
+            const blob = new Blob([meeting.transcript], { type: 'text/plain' });
+            const file = new File([blob], `${meeting.title}_transcript.txt`, { type: 'text/plain' });
+            
+            // Add file to chat input
+            if (chatInputRef.current) {
+              chatInputRef.current.addExternalFile(file);
+            }
+            
+            // Set initial prompt
+            setInputValue(`I have a meeting transcript from "${meeting.title}". Please help me analyze it.`);
+            
+            // Remove the query parameter
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('attachMeeting');
+            router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+          }
+        } catch (error) {
+          console.error('Error loading meeting:', error);
+        }
+      });
+    }
+  }, [searchParams, router]);
+
   useEffect(() => {
     if (threadQuery.data && initiatedThreadId) {
       const thread = threadQuery.data;
