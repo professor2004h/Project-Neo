@@ -649,8 +649,9 @@ export default function MeetingPage() {
                 } else {
                   // If no transcript in SSE, poll for it
                   console.log('[SSE] Completed without transcript, polling for it');
-                  if (currentBotId || meeting?.metadata?.bot_id) {
-                    checkBotStatusWithPolling(currentBotId || meeting?.metadata?.bot_id!);
+                  const botIdToUse = currentBotId || meeting?.metadata?.bot_id;
+                  if (botIdToUse) {
+                    checkBotStatusWithPolling(botIdToUse);
                   }
                 }
                 
