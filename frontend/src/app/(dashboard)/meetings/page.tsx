@@ -411,7 +411,7 @@ export default function MeetingsPage() {
                   <button
                     onClick={() => navigateToBreadcrumb(index)}
                     className={cn(
-                      "px-2 py-1 rounded-md transition-all duration-200 hover:scale-105",
+                      "px-2 py-1 rounded-md transition-all duration-200 hover:bg-accent/80",
                       index === breadcrumbs.length - 1
                         ? "text-foreground font-medium bg-primary/10"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
@@ -429,7 +429,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={() => navigateToBreadcrumb(0)} 
                 variant="outline"
-                className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+                className="shadow-sm hover:shadow-md transition-all duration-200 hover:bg-accent/80"
               >
                 <FolderOpen className="h-4 w-4 mr-2" />
                 Go to Root
@@ -467,7 +467,7 @@ export default function MeetingsPage() {
             placeholder="Search meetings and folders..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-11 bg-card/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.02] placeholder:text-muted-foreground/60"
+            className="pl-10 h-11 bg-card/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 placeholder:text-muted-foreground/60"
           />
           {isSearching && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -484,7 +484,7 @@ export default function MeetingsPage() {
               {searchResults.map((result) => (
                 <div
                   key={result.meeting_id}
-                  className="group p-4 bg-background/50 backdrop-blur border border-border/30 rounded-lg hover:bg-accent/50 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+                  className="group p-4 bg-background/50 backdrop-blur border border-border/30 rounded-lg hover:bg-accent/50 cursor-pointer transition-all duration-200 hover:shadow-md"
                   onClick={() => router.push(`/meetings/${result.meeting_id}`)}
                 >
                   <div className="font-medium text-foreground group-hover:text-primary transition-colors">
@@ -520,7 +520,7 @@ export default function MeetingsPage() {
               onDragLeave={(e) => handleDragLeave(e, folder.folder_id)}
               onDrop={(e) => handleDrop(e, folder.folder_id)}
               className={cn(
-                "group bg-gradient-to-br from-card/60 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-5 hover:bg-gradient-to-br hover:from-accent/30 hover:to-accent/10 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5",
+                "group bg-gradient-to-br from-card/60 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-5 hover:bg-gradient-to-br hover:from-accent/30 hover:to-accent/10 cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-black/5",
                 dragOverTarget === folder.folder_id && "bg-gradient-to-br from-blue-50/80 to-blue-100/60 dark:from-blue-950/60 dark:to-blue-900/40 border-blue-300 dark:border-blue-600 shadow-lg shadow-blue-500/20",
                 draggedItem?.id === folder.folder_id && "opacity-50 scale-95"
               )}
@@ -537,21 +537,12 @@ export default function MeetingsPage() {
                     <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                       {folder.name}
                     </h3>
-                    <div className="flex items-center gap-3 mt-1">
-                      <p className="text-sm text-muted-foreground/80">
-                        {formatDistanceToNow(new Date(folder.created_at), { addSuffix: true })}
-                      </p>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs font-medium text-muted-foreground/70">
-                          {getMeetingCountForFolder(folder.folder_id)}
-                        </span>
-                        <span className="text-xs text-muted-foreground/60">
-                          {getMeetingCountForFolder(folder.folder_id) === 1 ? 'meeting' : 'meetings'}
-                        </span>
-                      </div>
-                    </div>
+                    <p className="text-sm text-muted-foreground/80 mt-1">
+                      {formatDistanceToNow(new Date(folder.created_at), { addSuffix: true })}
+                    </p>
                   </div>
                 </div>
+                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                     <Button 
@@ -607,6 +598,18 @@ export default function MeetingsPage() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+              </div>
+              
+              {/* Meeting count on bottom row */}
+              <div className="mt-4 pt-3 border-t border-border/30">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-medium text-muted-foreground/70">
+                    {getMeetingCountForFolder(folder.folder_id)}
+                  </span>
+                  <span className="text-xs text-muted-foreground/60">
+                    {getMeetingCountForFolder(folder.folder_id) === 1 ? 'meeting' : 'meetings'}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -761,7 +764,7 @@ export default function MeetingsPage() {
             </p>
             <Button 
               onClick={() => setShowNewMeetingDialog(true)}
-              className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+              className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-200"
             >
               <Plus className="h-4 w-4 mr-2" />
               Create First Meeting
