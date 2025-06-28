@@ -68,7 +68,7 @@ export default function MeetingPage() {
   const params = useParams();
   const router = useRouter();
   const meetingId = params.meetingId as string;
-  const { user } = useAuth(); // Get current user for security
+  const { user, session } = useAuth(); // Get current user and session for security
   
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -421,6 +421,7 @@ export default function MeetingPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           meeting_url: meetingUrl,
@@ -468,6 +469,7 @@ export default function MeetingPage() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`,
             },
             body: JSON.stringify({
               meeting_url: meetingUrl,
@@ -541,6 +543,7 @@ export default function MeetingPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify({
             sandbox_id: meetingId,
@@ -758,7 +761,11 @@ export default function MeetingPage() {
   // Enhanced polling with adaptive intervals
   const checkBotStatusWithPolling = async (botId: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/${botId}/status`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/${botId}/status`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
       const data = await response.json();
       
       if (data.success) {
