@@ -13,7 +13,7 @@ from utils.logger import logger, structlog
 import time
 import os
 from collections import OrderedDict
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from pydantic import BaseModel
 import uuid
@@ -159,123 +159,155 @@ app.include_router(email_api.router, prefix="/api")
 # Add meetings API endpoints
 from fastapi import WebSocket, WebSocketDisconnect
 from services.meetings import meetings_service
+from utils.auth_utils import get_current_user_id_from_jwt
+from pydantic import BaseModel
+
+class CreateMeetingRequest(BaseModel):
+    title: str = "Untitled Meeting"
+    folder_id: Optional[str] = None
+    recording_mode: str = "local"
+
+class CreateFolderRequest(BaseModel):
+    name: str
+    parent_folder_id: Optional[str] = None
+
+class ShareMeetingRequest(BaseModel):
+    shared_with_account_id: str
+    permission_level: str = "view"
 
 @app.post("/api/meetings")
-async def create_meeting(request: Request):
+async def create_meeting(
+    request: CreateMeetingRequest, 
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Create a new meeting."""
-    user = await agent_api.get_current_user(request)
-    data = await request.json()
-    
     meeting = await meetings_service.create_meeting(
-        account_id=user["id"],
-        title=data.get("title", "Untitled Meeting"),
-        folder_id=data.get("folder_id"),
-        recording_mode=data.get("recording_mode", "local")
+        account_id=user_id,
+        title=request.title,
+        folder_id=request.folder_id,
+        recording_mode=request.recording_mode
     )
-    
     return meeting
 
 @app.get("/api/meetings")
-async def get_meetings(request: Request, folder_id: str = None):
+async def get_meetings(
+    folder_id: Optional[str] = None,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Get all meetings for the current user."""
-    user = await agent_api.get_current_user(request)
-    meetings = await meetings_service.get_meetings(user["id"], folder_id)
+    meetings = await meetings_service.get_meetings(user_id, folder_id)
     return {"meetings": meetings}
 
 @app.get("/api/meetings/{meeting_id}")
-async def get_meeting(meeting_id: str, request: Request):
+async def get_meeting(
+    meeting_id: str, 
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Get a specific meeting."""
-    user = await agent_api.get_current_user(request)
     meeting = await meetings_service.get_meeting(meeting_id)
     return meeting
 
 @app.put("/api/meetings/{meeting_id}")
-async def update_meeting(meeting_id: str, request: Request):
+async def update_meeting(
+    meeting_id: str, 
+    updates: dict,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Update a meeting."""
-    user = await agent_api.get_current_user(request)
-    data = await request.json()
-    meeting = await meetings_service.update_meeting(meeting_id, data)
+    meeting = await meetings_service.update_meeting(meeting_id, updates)
     return meeting
 
 @app.delete("/api/meetings/{meeting_id}")
-async def delete_meeting(meeting_id: str, request: Request):
+async def delete_meeting(
+    meeting_id: str, 
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Delete a meeting."""
-    user = await agent_api.get_current_user(request)
     await meetings_service.delete_meeting(meeting_id)
     return {"success": True}
 
 # Folder endpoints
 @app.post("/api/meeting-folders")
-async def create_folder(request: Request):
+async def create_folder(
+    request: CreateFolderRequest,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Create a new meeting folder."""
-    user = await agent_api.get_current_user(request)
-    data = await request.json()
-    
     folder = await meetings_service.create_folder(
-        account_id=user["id"],
-        name=data.get("name", "New Folder"),
-        parent_folder_id=data.get("parent_folder_id")
+        account_id=user_id,
+        name=request.name,
+        parent_folder_id=request.parent_folder_id
     )
-    
     return folder
 
 @app.get("/api/meeting-folders")
-async def get_folders(request: Request, parent_folder_id: str = None):
+async def get_folders(
+    parent_folder_id: Optional[str] = None,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Get all folders for the current user."""
-    user = await agent_api.get_current_user(request)
-    folders = await meetings_service.get_folders(user["id"], parent_folder_id)
+    folders = await meetings_service.get_folders(user_id, parent_folder_id)
     return {"folders": folders}
 
 @app.put("/api/meeting-folders/{folder_id}")
-async def update_folder(folder_id: str, request: Request):
+async def update_folder(
+    folder_id: str, 
+    updates: dict,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Update a folder."""
-    user = await agent_api.get_current_user(request)
-    data = await request.json()
-    folder = await meetings_service.update_folder(folder_id, data)
+    folder = await meetings_service.update_folder(folder_id, updates)
     return folder
 
 @app.delete("/api/meeting-folders/{folder_id}")
-async def delete_folder(folder_id: str, request: Request):
+async def delete_folder(
+    folder_id: str, 
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Delete a folder."""
-    user = await agent_api.get_current_user(request)
     await meetings_service.delete_folder(folder_id)
     return {"success": True}
 
 # Search endpoint
 @app.get("/api/meetings/search")
-async def search_meetings(request: Request, q: str, limit: int = 50):
+async def search_meetings(
+    q: str, 
+    limit: int = 50,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Search meetings."""
-    user = await agent_api.get_current_user(request)
-    results = await meetings_service.search_meetings(user["id"], q, limit)
+    results = await meetings_service.search_meetings(user_id, q, limit)
     return {"results": results}
 
 # Sharing endpoints
 @app.post("/api/meetings/{meeting_id}/share")
-async def share_meeting(meeting_id: str, request: Request):
+async def share_meeting(
+    meeting_id: str, 
+    request: ShareMeetingRequest,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Share a meeting with another user."""
-    user = await agent_api.get_current_user(request)
-    data = await request.json()
-    
     share = await meetings_service.share_meeting(
         meeting_id=meeting_id,
-        shared_with_account_id=data.get("shared_with_account_id"),
-        permission_level=data.get("permission_level", "view")
+        shared_with_account_id=request.shared_with_account_id,
+        permission_level=request.permission_level
     )
-    
     return share
 
 @app.delete("/api/meetings/{meeting_id}/share/{shared_with_account_id}")
-async def unshare_meeting(meeting_id: str, shared_with_account_id: str, request: Request):
+async def unshare_meeting(
+    meeting_id: str, 
+    shared_with_account_id: str, 
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
     """Remove meeting share."""
-    user = await agent_api.get_current_user(request)
     await meetings_service.unshare_meeting(meeting_id, shared_with_account_id)
     return {"success": True}
 
 @app.get("/api/meetings/shared")
-async def get_shared_meetings(request: Request):
+async def get_shared_meetings(user_id: str = Depends(get_current_user_id_from_jwt)):
     """Get all meetings shared with the current user."""
-    user = await agent_api.get_current_user(request)
-    meetings = await meetings_service.get_shared_meetings(user["id"])
+    meetings = await meetings_service.get_shared_meetings(user_id)
     return {"meetings": meetings}
 
 # WebSocket endpoint for real-time transcription
