@@ -663,6 +663,13 @@ export default function MeetingPage() {
                 setIsRecording(false);
                 setRecordingMode(null);
                 setCurrentBotId(null);
+                // Persist meeting completion so UI allows new recordings
+                updateMeeting(meetingId, {
+                  status: 'completed',
+                  metadata: { ...(meeting?.metadata || {}), bot_id: undefined },
+                }).catch((e) => console.error('Failed to update meeting after end', e));
+
+                setBotStatus(newStatus);
                 eventSource.close();
                 setSseConnection(null);
               }
