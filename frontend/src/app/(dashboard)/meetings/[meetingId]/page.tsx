@@ -1166,6 +1166,34 @@ export default function MeetingPage() {
           {transcript || interimTranscript ? (
             <div className="bg-card/50 backdrop-blur border rounded-xl p-6 shadow-sm">
               <div className="prose dark:prose-invert max-w-none">
+                {/* Meeting Header with Timestamp */}
+                <div className="mb-6 p-4 bg-muted/30 rounded-lg border-l-4 border-primary/50">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-base font-semibold text-foreground mb-2">{meeting.title}</h3>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Recording Started:</span>
+                          <span>{format(new Date(meeting.created_at), 'EEEE, MMMM d, yyyy \'at\' h:mm a')}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Mode:</span>
+                          <span className="capitalize">{meeting.recording_mode || 'local'}</span>
+                          {meeting.recording_mode === 'online' && (
+                            <Badge variant="outline" className="ml-1 text-xs">Beta</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge 
+                      variant={meeting.status === 'active' ? 'default' : 'secondary'}
+                      className="ml-4"
+                    >
+                      {meeting.status}
+                    </Badge>
+                  </div>
+                </div>
+
                 <div className="whitespace-pre-wrap text-sm leading-relaxed">
                   {transcript.split('\n').map((line, index) => {
                     const isSearchMatch = searchResults.some((r) => r.index === index);
