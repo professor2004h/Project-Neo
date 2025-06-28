@@ -515,9 +515,9 @@ export default function MeetingPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-screen overflow-hidden">
       {/* Header */}
-      <div className="border-b px-6 py-4 flex items-center justify-between">
+      <div className="flex-shrink-0 border-b px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -570,7 +570,7 @@ export default function MeetingPage() {
       </div>
 
       {/* Search bar */}
-      <div className="px-6 py-3 border-b">
+      <div className="flex-shrink-0 px-6 py-3 border-b">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -602,8 +602,9 @@ export default function MeetingPage() {
       </div>
 
       {/* Transcript area */}
-      <ScrollArea className="flex-1 px-6 py-4 bg-gradient-to-b from-background to-muted/10">
-        <div ref={transcriptRef} className="max-w-4xl mx-auto">
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <ScrollArea className="h-full px-6 py-4 bg-gradient-to-b from-background to-muted/10">
+          <div ref={transcriptRef} className="max-w-4xl mx-auto">
           {transcript || interimTranscript ? (
             <div className="bg-card/50 backdrop-blur border rounded-xl p-6 shadow-sm">
               <div className="prose dark:prose-invert max-w-none">
@@ -658,12 +659,13 @@ export default function MeetingPage() {
             </div>
           )}
         </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
 
       {/* Recording controls */}
       {meeting.status === 'active' && (
-        <div className="border-t bg-sidebar/50 backdrop-blur">
-          <div className="px-6 py-4">
+        <div className="flex-shrink-0 border-t bg-sidebar/50 backdrop-blur">
+          <div className="px-6 py-4 max-h-32 overflow-visible">
             <div className="max-w-4xl mx-auto">
               {!isRecording ? (
                 <div className="flex items-center justify-center">
