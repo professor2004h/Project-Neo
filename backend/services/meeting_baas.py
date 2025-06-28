@@ -49,7 +49,7 @@ class MeetingBaaSService:
         payload = {
             'meeting_url': meeting_url,
             'bot_name': bot_name,
-            'recording_mode': 'speaker_view',  # Required field
+            'recording_mode': 'audio_only',  # Required field
             'reserved': False,  # Join immediately
             'speech_to_text': {
                 'provider': 'Default'  # Required speech-to-text config

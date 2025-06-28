@@ -91,23 +91,16 @@ export default function MeetingPage() {
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
   const [totalPausedTime, setTotalPausedTime] = useState<number>(0);
   const [pauseStartTime, setPauseStartTime] = useState<number | null>(null);
-  const [lastTimestampMinute, setLastTimestampMinute] = useState<number>(-1);
-  
+
   const transcriptRef = useRef<HTMLDivElement>(null);
   const searchHighlightRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
-  // Utility function to format elapsed time as timestamp
-  const formatElapsedTime = (elapsedMs: number): string => {
-    const totalSeconds = Math.floor(elapsedMs / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    } else {
-      return `${minutes.toString().padStart(2, '0')}`;
+  // Auto-scroll to bottom when transcript updates
+  useEffect(() => {
+    if (transcriptRef.current && (isRecording || interimTranscript)) {
+      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
     }
-  };
+  }, [transcript, interimTranscript, isRecording]);
 
   // Calculate current elapsed time (excluding paused time)
   const getCurrentElapsedTime = (): number => {
@@ -219,24 +212,11 @@ export default function MeetingPage() {
       }
 
       if (finalTranscript.trim()) {
-        // Calculate timestamp for this chunk
-        const elapsedTime = getCurrentElapsedTime();
-        const totalMinutes = Math.floor(elapsedTime / (1000 * 60));
-        
-        let timestampedTranscript = finalTranscript.trim();
-        
-        // Only add timestamp if minute has changed
-        if (totalMinutes !== lastTimestampMinute) {
-          const timestamp = formatElapsedTime(elapsedTime);
-          timestampedTranscript = `[${timestamp}] ${finalTranscript.trim()}`;
-          setLastTimestampMinute(totalMinutes);
-        }
-        
         // Send final transcript through WebSocket and add to local state
         wsConnection?.sendTranscript(finalTranscript.trim());
         setTranscript((prev) => {
           const cleanPrev = prev.trim(); // Remove trailing whitespace
-          return cleanPrev + (cleanPrev ? '\n' : '') + timestampedTranscript;
+          return cleanPrev + (cleanPrev ? '\n' : '') + finalTranscript.trim();
         });
       }
       
@@ -282,7 +262,6 @@ export default function MeetingPage() {
         setRecordingStartTime(Date.now());
         setTotalPausedTime(0);
         setPauseStartTime(null);
-        setLastTimestampMinute(-1);
         wsConnection?.updateStatus('active');
         
         // If meeting was completed, reactivate it
@@ -315,6 +294,74 @@ export default function MeetingPage() {
     
     // Start recording normally
     await startRecording(mode);
+  };
+
+  // Enhanced bot status display with progress indicators
+  const getBotStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'starting':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+            <span>Bot Starting...</span>
+          </div>
+        );
+      case 'joining':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="flex space-x-1">
+              <div className="w-1 h-1 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-1 h-1 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-1 h-1 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span>Joining Meeting...</span>
+          </div>
+        );
+      case 'waiting':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
+            <span>Waiting for Access</span>
+          </div>
+        );
+      case 'in_call':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full" />
+            <span>In Meeting</span>
+          </div>
+        );
+      case 'recording':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span>Recording Active</span>
+          </div>
+        );
+      case 'completed':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-600 rounded-full" />
+            <span>Recording Complete</span>
+          </div>
+        );
+      case 'failed':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-600 rounded-full" />
+            <span>Bot Failed</span>
+          </div>
+        );
+      case 'ended':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-gray-500 rounded-full" />
+            <span>Meeting Ended</span>
+          </div>
+        );
+      default:
+        return `Bot ${status}`;
+    }
   };
 
   // Handle starting online recording with URL
@@ -413,7 +460,6 @@ export default function MeetingPage() {
       setRecordingStartTime(null);
       setTotalPausedTime(0);
       setPauseStartTime(null);
-      setLastTimestampMinute(-1);
       wsConnection?.updateStatus('completed');
       
       // Save transcript
@@ -514,22 +560,98 @@ export default function MeetingPage() {
     }
   };
 
-  // Check bot status
-  const checkBotStatus = async (botId: string) => {
+  // Real-time bot status with SSE and enhanced polling
+  const [sseConnection, setSseConnection] = useState<EventSource | null>(null);
+  const [statusRetryCount, setStatusRetryCount] = useState(0);
+  const [lastStatusUpdate, setLastStatusUpdate] = useState<number>(Date.now());
+
+  // Enhanced bot status checking with real-time updates
+  const startBotStatusMonitoring = (botId: string) => {
+    // Start SSE connection for real-time updates
+    const setupSSE = () => {
+      try {
+        const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/${botId}/events`);
+        
+        eventSource.onopen = () => {
+          console.log('[SSE] Connected to bot status stream');
+          setStatusRetryCount(0);
+        };
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            setLastStatusUpdate(Date.now());
+            
+            if (data.type === 'status_update') {
+              const newStatus = data.status;
+              console.log(`[SSE] Bot status update: ${newStatus}`);
+              setBotStatus(newStatus);
+              
+              // Handle status-specific actions
+              if (['starting', 'joining', 'waiting', 'in_call', 'recording'].includes(newStatus)) {
+                setIsRecording(true);
+                setRecordingMode('online');
+              } else if (['completed', 'ended', 'failed'].includes(newStatus)) {
+                setIsRecording(false);
+                setRecordingMode(null);
+                eventSource.close();
+                setSseConnection(null);
+              }
+            }
+          } catch (parseError) {
+            console.error('[SSE] Error parsing message:', parseError);
+          }
+        };
+        
+        eventSource.onerror = (error) => {
+          console.error('[SSE] Connection error:', error);
+          eventSource.close();
+          setSseConnection(null);
+          
+          // Fallback to polling with retry logic
+          if (statusRetryCount < 3) {
+            setTimeout(() => {
+              setStatusRetryCount(prev => prev + 1);
+              setupSSE();
+            }, Math.min(1000 * Math.pow(2, statusRetryCount), 5000));
+          } else {
+            // Switch to enhanced polling mode
+            checkBotStatusWithPolling(botId);
+          }
+        };
+        
+        setSseConnection(eventSource);
+      } catch (error) {
+        console.error('[SSE] Failed to setup EventSource:', error);
+        // Fallback to enhanced polling
+        checkBotStatusWithPolling(botId);
+      }
+    };
+    
+    setupSSE();
+    
+    // Also start polling as backup (less frequent than SSE)
+    checkBotStatusWithPolling(botId);
+  };
+
+  // Enhanced polling with adaptive intervals
+  const checkBotStatusWithPolling = async (botId: string) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/${botId}/status`);
       const data = await response.json();
       
       if (data.success) {
-        setBotStatus(data.status);
+        const newStatus = data.status;
+        setBotStatus(newStatus);
+        setLastStatusUpdate(Date.now());
         
         // If we just reconnected and bot is still active, continue recording
-        if (['starting', 'in_call', 'recording'].includes(data.status)) {
+        if (['starting', 'joining', 'waiting', 'in_call', 'recording'].includes(newStatus)) {
           setIsRecording(true);
           setRecordingMode('online');
         }
         
-        if (data.status === 'completed' && data.transcript) {
+        if (newStatus === 'completed' && data.transcript) {
           // Update transcript
           const fullTranscript = transcript + '\n\n' + data.transcript;
           setTranscript(fullTranscript);
@@ -537,22 +659,54 @@ export default function MeetingPage() {
           await updateMeeting(meetingId, {
             transcript: fullTranscript,
             status: 'completed',
-            metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot_id when completed
+            metadata: { ...meeting?.metadata, bot_id: undefined }
           });
           
           setIsRecording(false);
           setRecordingMode(null);
-        } else if (['failed', 'ended'].includes(data.status)) {
+          
+          // Stop monitoring
+          if (sseConnection) {
+            sseConnection.close();
+            setSseConnection(null);
+          }
+          return;
+        } else if (['failed', 'ended'].includes(newStatus)) {
           setIsRecording(false);
           setRecordingMode(null);
           await updateMeeting(meetingId, { 
             status: 'completed',
-            metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot_id when failed
+            metadata: { ...meeting?.metadata, bot_id: undefined }
           });
-        } else if (['starting', 'in_call', 'recording'].includes(data.status)) {
-          // Continue polling for active bot - more frequent during startup
-          const pollInterval = data.status === 'starting' ? 1000 : 2000; // 1s for starting, 2s for active states
-          setTimeout(() => checkBotStatus(botId), pollInterval);
+          
+          // Stop monitoring
+          if (sseConnection) {
+            sseConnection.close();
+            setSseConnection(null);
+          }
+          return;
+        } else if (['starting', 'joining', 'waiting', 'in_call', 'recording'].includes(newStatus)) {
+          // Adaptive polling intervals based on status
+          let pollInterval;
+          switch (newStatus) {
+            case 'starting':
+            case 'joining':
+              pollInterval = 500; // Very frequent during critical joining phase
+              break;
+            case 'waiting':
+              pollInterval = 1000; // Frequent while waiting
+              break;
+            case 'in_call':
+              pollInterval = 2000; // Moderate once in call
+              break;
+            case 'recording':
+              pollInterval = 5000; // Less frequent once recording
+              break;
+            default:
+              pollInterval = 2000;
+          }
+          
+          setTimeout(() => checkBotStatusWithPolling(botId), pollInterval);
         }
       } else {
         // Bot not found or error - clear bot data
@@ -562,22 +716,58 @@ export default function MeetingPage() {
         await updateMeeting(meetingId, {
           metadata: { ...meeting?.metadata, bot_id: undefined }
         });
+        
+        if (sseConnection) {
+          sseConnection.close();
+          setSseConnection(null);
+        }
       }
     } catch (error) {
       console.error('Error checking bot status:', error);
-      // On repeated errors, clean up the bot state
-      // This handles cases where the bot was manually removed from the meeting
-      if (isRecording && recordingMode === 'online') {
-        setIsRecording(false);
-        setRecordingMode(null);
-        setBotStatus('');
-        await updateMeeting(meetingId, {
-          status: 'completed',
-          metadata: { ...meeting?.metadata, bot_id: undefined }
-        });
-        toast.info('Bot session ended - meeting status has been updated');
+      
+      // Check if we've lost connection for too long
+      const timeSinceLastUpdate = Date.now() - lastStatusUpdate;
+      if (timeSinceLastUpdate > 30000) { // 30 seconds without update
+        // Clean up the bot state
+        if (isRecording && recordingMode === 'online') {
+          setIsRecording(false);
+          setRecordingMode(null);
+          setBotStatus('');
+          await updateMeeting(meetingId, {
+            status: 'completed',
+            metadata: { ...meeting?.metadata, bot_id: undefined }
+          });
+          toast.info('Bot session ended - meeting status has been updated');
+        }
+        
+        if (sseConnection) {
+          sseConnection.close();
+          setSseConnection(null);
+        }
+      } else {
+        // Retry with exponential backoff
+        const retryDelay = Math.min(1000 * Math.pow(2, statusRetryCount), 10000);
+        setTimeout(() => {
+          setStatusRetryCount(prev => prev + 1);
+          checkBotStatusWithPolling(botId);
+        }, retryDelay);
       }
     }
+  };
+
+  // Cleanup SSE connection on unmount
+  useEffect(() => {
+    return () => {
+      if (sseConnection) {
+        sseConnection.close();
+        setSseConnection(null);
+      }
+    };
+  }, [sseConnection]);
+
+  // Legacy function for backward compatibility
+  const checkBotStatus = (botId: string) => {
+    startBotStatusMonitoring(botId);
   };
 
   // Search functionality
@@ -780,8 +970,8 @@ export default function MeetingPage() {
 
       {/* Transcript area */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <ScrollArea className="h-full px-6 py-4 bg-gradient-to-b from-background to-muted/10">
-          <div ref={transcriptRef} className="max-w-4xl mx-auto">
+        <ScrollArea className="h-full px-6 py-4 bg-gradient-to-b from-background to-muted/10" ref={transcriptRef}>
+          <div className="max-w-4xl mx-auto">
           {transcript || interimTranscript ? (
             <div className="bg-card/50 backdrop-blur border rounded-xl p-6 shadow-sm">
               <div className="prose dark:prose-invert max-w-none">
@@ -812,9 +1002,9 @@ export default function MeetingPage() {
                     );
                   })}
                   {interimTranscript && (
-                    <span className="text-muted-foreground italic">
+                    <div className="text-muted-foreground italic mt-2">
                       {interimTranscript}
-                    </span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -958,7 +1148,7 @@ export default function MeetingPage() {
                               <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
                             </div>
                             <span className="text-sm font-medium text-foreground/90 tabular-nums">
-                              Bot {botStatus}
+                              {getBotStatusDisplay(botStatus)}
                             </span>
                           </div>
                         </div>
