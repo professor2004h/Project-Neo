@@ -69,6 +69,7 @@ export default function MeetingPage() {
   // Recording states
   const [recordingMode, setRecordingMode] = useState<'local' | 'online' | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
   const [wsConnection, setWsConnection] = useState<TranscriptionWebSocket | null>(null);
   const [botStatus, setBotStatus] = useState<string>('');
@@ -203,14 +204,14 @@ export default function MeetingPage() {
     };
 
     recognition.onend = () => {
-      if (isRecording) {
-        // Restart if still recording
+      if (isRecording && !isPaused) {
+        // Restart if still recording and not paused
         recognition.start();
       }
     };
 
     return recognition;
-  }, [wsConnection, isRecording]);
+  }, [wsConnection, isRecording, isPaused]);
 
   // Start recording
   const startRecording = async (mode: 'local' | 'online') => {
