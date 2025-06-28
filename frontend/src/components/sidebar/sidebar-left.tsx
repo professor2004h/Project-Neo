@@ -181,6 +181,9 @@ export function SidebarLeft({
               <FileAudio className="h-4 w-4 mr-2" />
               <span className="flex items-center justify-between w-full">
                 Meetings
+                <Badge variant="new">
+                  New
+                </Badge>
               </span>
             </SidebarMenuButton>
           </Link>
