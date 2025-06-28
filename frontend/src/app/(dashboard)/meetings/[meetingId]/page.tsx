@@ -119,8 +119,8 @@ export default function MeetingPage() {
           setTranscript((prev) => {
             const cleanText = text.trim();
             if (!cleanText || prev.includes(cleanText)) return prev;
-            const cleanPrev = prev.replace(/\s+$/, '');
-            return cleanPrev + (cleanPrev ? ' ' : '') + cleanText;
+            const cleanPrev = prev.trim();
+            return cleanPrev + (cleanPrev ? '\n' : '') + cleanText;
           });
         },
         (status) => {
@@ -177,8 +177,8 @@ export default function MeetingPage() {
         // Send final transcript through WebSocket and add to local state
         wsConnection?.sendTranscript(finalTranscript.trim());
         setTranscript((prev) => {
-          const cleanPrev = prev.replace(/\s+$/, ''); // Remove trailing spaces
-          return cleanPrev + (cleanPrev ? ' ' : '') + finalTranscript.trim();
+          const cleanPrev = prev.trim(); // Remove trailing whitespace
+          return cleanPrev + (cleanPrev ? '\n' : '') + finalTranscript.trim();
         });
       }
       
@@ -233,7 +233,7 @@ export default function MeetingPage() {
 
       try {
         // Start meeting bot
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/meeting-bot/start`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/start`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -285,7 +285,7 @@ export default function MeetingPage() {
       toast.success('Recording stopped and saved');
     } else if (recordingMode === 'online' && meeting?.metadata?.bot_id) {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/meeting-bot/${meeting.metadata.bot_id}/stop`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/${meeting.metadata.bot_id}/stop`, {
           method: 'POST',
         });
 
@@ -314,7 +314,7 @@ export default function MeetingPage() {
   // Check bot status
   const checkBotStatus = async (botId: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/meeting-bot/${botId}/status`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/${botId}/status`);
       const data = await response.json();
       
       if (data.success) {

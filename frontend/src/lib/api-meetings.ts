@@ -242,6 +242,33 @@ export const getFolders = async (parent_folder_id?: string): Promise<MeetingFold
   return data.folders;
 };
 
+// Get all folders (including nested ones) for move operations
+export const getAllFolders = async (): Promise<MeetingFolder[]> => {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    throw new Error('You must be logged in to view folders');
+  }
+
+  const url = new URL(`${API_URL}/meeting-folders`);
+  url.searchParams.append('all', 'true'); // Get all folders regardless of parent
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+
+  if (!response.ok) {
+    handleApiError(new Error('Failed to fetch all folders'), { operation: 'fetch all folders', resource: 'folders' });
+    throw new Error('Failed to fetch all folders');
+  }
+
+  const data = await response.json();
+  return data.folders;
+};
+
 export const updateFolder = async (
   folder_id: string,
   updates: Partial<MeetingFolder>

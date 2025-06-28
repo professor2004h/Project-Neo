@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Folder, FileAudio, MoreHorizontal, Edit2, Trash2, Download, Share2 } from 'lucide-react';
+import { Plus, Search, Folder, FileAudio, MoreHorizontal, Edit2, Trash2, Download, Share2, FolderOpen, Move } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -10,6 +10,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
@@ -26,6 +29,7 @@ import { useRouter } from 'next/navigation';
 import {
   getMeetings,
   getFolders,
+  getAllFolders,
   createMeeting,
   createFolder,
   deleteMeeting,
@@ -38,11 +42,13 @@ import {
   type SearchResult,
 } from '@/lib/api-meetings';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function MeetingsPage() {
   const router = useRouter();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [folders, setFolders] = useState<MeetingFolder[]>([]);
+  const [allFolders, setAllFolders] = useState<MeetingFolder[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -56,10 +62,15 @@ export default function MeetingsPage() {
   const [newMeetingTitle, setNewMeetingTitle] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
   const [editingItem, setEditingItem] = useState<{ type: 'meeting' | 'folder'; id: string; name: string } | null>(null);
+  
+  // Drag and drop states
+  const [draggedItem, setDraggedItem] = useState<{ type: 'meeting' | 'folder'; id: string } | null>(null);
+  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
   // Load meetings and folders
   useEffect(() => {
     loadData();
+    loadAllFolders();
   }, [currentFolderId]);
 
   const loadData = async () => {
@@ -76,6 +87,15 @@ export default function MeetingsPage() {
       toast.error('Failed to load meetings');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadAllFolders = async () => {
+    try {
+      const allFoldersData = await getAllFolders();
+      setAllFolders(allFoldersData);
+    } catch (error) {
+      console.error('Error loading all folders:', error);
     }
   };
 
@@ -193,6 +213,130 @@ export default function MeetingsPage() {
     URL.revokeObjectURL(url);
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, type: 'meeting' | 'folder', id: string) => {
+    setDraggedItem({ type, id });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetFolderId?: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverTarget(targetFolderId || 'root');
+  };
+
+  const handleDragLeave = () => {
+    setDragOverTarget(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetFolderId?: string) => {
+    e.preventDefault();
+    setDragOverTarget(null);
+
+    if (!draggedItem) return;
+
+    // Don't allow dropping onto self
+    if (draggedItem.id === targetFolderId) return;
+
+    // Don't allow dropping folder into its own child
+    if (draggedItem.type === 'folder' && targetFolderId) {
+      const isChildFolder = allFolders.some(f => 
+        f.folder_id === targetFolderId && 
+        isDescendantFolder(f, draggedItem.id, allFolders)
+      );
+      if (isChildFolder) {
+        toast.error("Can't move folder into its own subfolder");
+        return;
+      }
+    }
+
+    try {
+      if (draggedItem.type === 'meeting') {
+        await updateMeeting(draggedItem.id, { folder_id: targetFolderId });
+        toast.success('Meeting moved successfully');
+      } else {
+        await updateFolder(draggedItem.id, { parent_folder_id: targetFolderId });
+        toast.success('Folder moved successfully');
+        loadAllFolders(); // Reload all folders since hierarchy changed
+      }
+      loadData();
+    } catch (error) {
+      console.error('Error moving item:', error);
+      toast.error('Failed to move item');
+    }
+
+    setDraggedItem(null);
+  };
+
+  // Helper function to check if a folder is a descendant of another
+  const isDescendantFolder = (folder: MeetingFolder, ancestorId: string, allFolders: MeetingFolder[]): boolean => {
+    if (!folder.parent_folder_id) return false;
+    if (folder.parent_folder_id === ancestorId) return true;
+    
+    const parent = allFolders.find(f => f.folder_id === folder.parent_folder_id);
+    return parent ? isDescendantFolder(parent, ancestorId, allFolders) : false;
+  };
+
+  // Move item to folder
+  const handleMoveToFolder = async (itemType: 'meeting' | 'folder', itemId: string, targetFolderId?: string) => {
+    try {
+      if (itemType === 'meeting') {
+        await updateMeeting(itemId, { folder_id: targetFolderId });
+        toast.success('Meeting moved successfully');
+      } else {
+        await updateFolder(itemId, { parent_folder_id: targetFolderId });
+        toast.success('Folder moved successfully');
+        loadAllFolders();
+      }
+      loadData();
+    } catch (error) {
+      console.error('Error moving item:', error);
+      toast.error('Failed to move item');
+    }
+  };
+
+  // Build folder tree for context menu
+  const buildFolderTree = (folders: MeetingFolder[], parentId?: string): MeetingFolder[] => {
+    return folders
+      .filter(folder => folder.parent_folder_id === parentId)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  const renderFolderMenuItem = (folder: MeetingFolder, itemType: 'meeting' | 'folder', itemId: string, depth = 0) => {
+    const children = buildFolderTree(allFolders, folder.folder_id);
+    const hasChildren = children.length > 0;
+    
+    if (hasChildren) {
+      return (
+        <DropdownMenuSub key={folder.folder_id}>
+          <DropdownMenuSubTrigger className={cn("pl-2", depth > 0 && "pl-4")}>
+            <Folder className="h-4 w-4 mr-2" />
+            {folder.name}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem onClick={() => handleMoveToFolder(itemType, itemId, folder.folder_id)}>
+              <FolderOpen className="h-4 w-4 mr-2" />
+              Move to "{folder.name}"
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {children.map(child => renderFolderMenuItem(child, itemType, itemId, depth + 1))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      );
+    } else {
+      return (
+        <DropdownMenuItem 
+          key={folder.folder_id}
+          onClick={() => handleMoveToFolder(itemType, itemId, folder.folder_id)}
+          className={cn("pl-2", depth > 0 && "pl-4")}
+        >
+          <Folder className="h-4 w-4 mr-2" />
+          {folder.name}
+        </DropdownMenuItem>
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex-1 p-8">
@@ -276,12 +420,29 @@ export default function MeetingsPage() {
         )}
 
         {/* Folders and Meetings Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div 
+          className={cn(
+            "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-32 rounded-lg transition-colors",
+            dragOverTarget === 'root' && "bg-blue-50 border-2 border-dashed border-blue-300 dark:bg-blue-950 dark:border-blue-600"
+          )}
+          onDragOver={(e) => handleDragOver(e)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e)}
+        >
           {/* Folders */}
           {folders.map((folder) => (
             <div
               key={folder.folder_id}
-              className="border rounded-lg p-4 hover:bg-accent/50 cursor-pointer transition-colors group"
+              draggable
+              onDragStart={(e) => handleDragStart(e, 'folder', folder.folder_id)}
+              onDragOver={(e) => handleDragOver(e, folder.folder_id)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, folder.folder_id)}
+              className={cn(
+                "border rounded-lg p-4 hover:bg-accent/50 cursor-pointer transition-colors group",
+                dragOverTarget === folder.folder_id && "bg-blue-50 border-blue-300 dark:bg-blue-950 dark:border-blue-600",
+                draggedItem?.id === folder.folder_id && "opacity-50"
+              )}
               onClick={() => navigateToFolder(folder)}
             >
               <div className="flex items-start justify-between">
@@ -308,6 +469,25 @@ export default function MeetingsPage() {
                       <Edit2 className="h-4 w-4 mr-2" />
                       Rename
                     </DropdownMenuItem>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Move className="h-4 w-4 mr-2" />
+                        Move to Folder
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveToFolder('folder', folder.folder_id, undefined);
+                        }}>
+                          <FolderOpen className="h-4 w-4 mr-2" />
+                          Move to Root
+                        </DropdownMenuItem>
+                        {buildFolderTree(allFolders).length > 0 && <DropdownMenuSeparator />}
+                        {buildFolderTree(allFolders)
+                          .filter(f => f.folder_id !== folder.folder_id)
+                          .map(f => renderFolderMenuItem(f, 'folder', folder.folder_id))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-destructive"
@@ -329,7 +509,12 @@ export default function MeetingsPage() {
           {meetings.map((meeting) => (
             <div
               key={meeting.meeting_id}
-              className="border rounded-lg p-4 hover:bg-accent/50 cursor-pointer transition-colors group"
+              draggable
+              onDragStart={(e) => handleDragStart(e, 'meeting', meeting.meeting_id)}
+              className={cn(
+                "border rounded-lg p-4 hover:bg-accent/50 cursor-pointer transition-colors group",
+                draggedItem?.id === meeting.meeting_id && "opacity-50"
+              )}
               onClick={() => router.push(`/meetings/${meeting.meeting_id}`)}
             >
               <div className="flex items-start justify-between">
@@ -368,6 +553,23 @@ export default function MeetingsPage() {
                       <Edit2 className="h-4 w-4 mr-2" />
                       Rename
                     </DropdownMenuItem>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Move className="h-4 w-4 mr-2" />
+                        Move to Folder
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveToFolder('meeting', meeting.meeting_id, undefined);
+                        }}>
+                          <FolderOpen className="h-4 w-4 mr-2" />
+                          Move to Root
+                        </DropdownMenuItem>
+                        {buildFolderTree(allFolders).length > 0 && <DropdownMenuSeparator />}
+                        {buildFolderTree(allFolders).map(f => renderFolderMenuItem(f, 'meeting', meeting.meeting_id))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
                       downloadTranscript(meeting);
