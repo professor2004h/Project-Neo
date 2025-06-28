@@ -43,12 +43,14 @@ import {
 } from '@/lib/api-meetings';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
 
 export default function MeetingsPage() {
   const router = useRouter();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [folders, setFolders] = useState<MeetingFolder[]>([]);
   const [allFolders, setAllFolders] = useState<MeetingFolder[]>([]);
+  const [allMeetings, setAllMeetings] = useState<Meeting[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -71,6 +73,7 @@ export default function MeetingsPage() {
   useEffect(() => {
     loadData();
     loadAllFolders();
+    loadAllMeetings();
   }, [currentFolderId]);
 
   const loadData = async () => {
@@ -97,6 +100,27 @@ export default function MeetingsPage() {
     } catch (error) {
       console.error('Error loading all folders:', error);
     }
+  };
+
+  const loadAllMeetings = async () => {
+    try {
+      const allMeetingsData = await getMeetings();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000/api'}/meetings?include_all=true`, {
+        headers: {
+          Authorization: `Bearer ${(await createClient().auth.getSession()).data.session?.access_token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAllMeetings(data.meetings);
+      }
+    } catch (error) {
+      console.error('Error loading all meetings:', error);
+    }
+  };
+
+  const getMeetingCountForFolder = (folderId: string): number => {
+    return allMeetings.filter(meeting => meeting.folder_id === folderId).length;
   };
 
   // Search functionality
@@ -416,7 +440,7 @@ export default function MeetingsPage() {
                 onClick={() => setShowNewFolderDialog(true)} 
                 variant="ghost"
                 size="sm"
-                className="hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-all duration-200 hover:scale-105"
+                className="hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-all duration-200 hover:scale-105 focus:scale-105 focus:bg-amber-50 dark:focus:bg-amber-950/30"
               >
                 <Folder className="h-4 w-4 mr-2" />
                 New Folder
@@ -425,7 +449,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={() => setShowNewMeetingDialog(true)}
                 size="sm"
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 focus:scale-105 focus:shadow-md"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Meeting
@@ -513,9 +537,19 @@ export default function MeetingsPage() {
                     <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                       {folder.name}
                     </h3>
-                    <p className="text-sm text-muted-foreground/80 mt-1">
-                      {formatDistanceToNow(new Date(folder.created_at), { addSuffix: true })}
-                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-sm text-muted-foreground/80">
+                        {formatDistanceToNow(new Date(folder.created_at), { addSuffix: true })}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-medium text-muted-foreground/70">
+                          {getMeetingCountForFolder(folder.folder_id)}
+                        </span>
+                        <span className="text-xs text-muted-foreground/60">
+                          {getMeetingCountForFolder(folder.folder_id) === 1 ? 'meeting' : 'meetings'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <DropdownMenu>
@@ -772,7 +806,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={handleCreateMeeting} 
                 disabled={!newMeetingTitle.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:scale-105"
               >
                 Create Meeting
               </Button>
@@ -817,7 +851,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={handleCreateFolder} 
                 disabled={!newFolderName.trim()}
-                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:scale-105"
               >
                 Create Folder
               </Button>
@@ -861,7 +895,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={handleRename} 
                 disabled={!editingItem?.name.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:scale-105"
               >
                 Save Changes
               </Button>

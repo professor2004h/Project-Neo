@@ -1408,7 +1408,7 @@ export default function MeetingPage() {
             <Button 
               onClick={handleStartOnlineRecording} 
               disabled={!meetingUrl.trim()}
-              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:scale-105"
             >
               <Monitor className="h-4 w-4 mr-2" />
               Start Bot Recording
