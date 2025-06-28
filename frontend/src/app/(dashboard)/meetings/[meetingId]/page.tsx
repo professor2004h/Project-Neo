@@ -493,6 +493,19 @@ export default function MeetingPage() {
             metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot data
           });
           toast.success('Meeting recording completed and transcript saved');
+        } else if (data.success && data.status === 'stopping') {
+          // Bot is stopping, wait for final transcript via polling
+          toast.info('Stopping meeting bot, waiting for final transcript...');
+          setBotStatus('stopping');
+          
+          // Continue polling for the final result
+          setTimeout(() => {
+            if (meeting?.metadata?.bot_id) {
+              checkBotStatusWithPolling(meeting.metadata.bot_id);
+            }
+          }, 2000);
+          
+          return; // Don't set recording to false yet
         } else if (data.success) {
           // Meeting ended successfully but no transcript
           await updateMeeting(meetingId, {
@@ -685,7 +698,7 @@ export default function MeetingPage() {
             setSseConnection(null);
           }
           return;
-        } else if (['starting', 'joining', 'waiting', 'in_call', 'recording'].includes(newStatus)) {
+        } else if (['starting', 'joining', 'waiting', 'in_call', 'recording', 'stopping'].includes(newStatus)) {
           // Adaptive polling intervals based on status
           let pollInterval;
           switch (newStatus) {
@@ -701,6 +714,9 @@ export default function MeetingPage() {
               break;
             case 'recording':
               pollInterval = 5000; // Less frequent once recording
+              break;
+            case 'stopping':
+              pollInterval = 1000; // Frequent while waiting for final transcript
               break;
             default:
               pollInterval = 2000;

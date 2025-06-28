@@ -675,53 +675,36 @@ async def stop_meeting_bot(bot_id: str, request: Request):
                 session_data = json.load(f)
             
             # If meeting completed via webhook, use that data
-            if session_data.get('status') == 'completed' and session_data.get('transcript'):
-                transcript_list = session_data.get('transcript', [])
+            if session_data.get('status') == 'completed' and (session_data.get('transcript_text') or session_data.get('transcript')):
+                # Use pre-processed transcript text if available
+                transcript_content = session_data.get('transcript_text')
                 
-                # Convert transcript list to text
-                if isinstance(transcript_list, list):
-                    transcript_content = '\n'.join([
-                        f"{item.get('speaker', 'Unknown')}: {item.get('text', '')}"
-                        for item in transcript_list
-                        if isinstance(item, dict) and item.get('text')
-                    ])
-                elif isinstance(transcript_list, str):
-                    transcript_content = transcript_list
+                # Fallback to processing raw transcript if needed
+                if not transcript_content:
+                    transcript_list = session_data.get('transcript', [])
+                    
+                    # Convert transcript list to text
+                    if isinstance(transcript_list, list):
+                        transcript_content = '\n'.join([
+                            f"{item.get('speaker', 'Unknown')}: {item.get('text', '')}"
+                            for item in transcript_list
+                            if isinstance(item, dict) and item.get('text')
+                        ])
+                    elif isinstance(transcript_list, str):
+                        transcript_content = transcript_list
+                
+                # Ensure we have some content
+                if not transcript_content or not transcript_content.strip():
+                    transcript_content = "[No speech detected during meeting]"
                 
                 logger.info(f"[STOP] Using webhook transcript for {bot_id}, length: {len(transcript_content) if transcript_content else 0}")
         
-        # If no transcript from webhook, try to stop bot via API
-        # But don't fail if API is unavailable
-        if not transcript_content:
-            try:
-                from services.meeting_baas import meeting_baas_service
-                result = await meeting_baas_service.stop_meeting_bot(bot_id)
-                
-                if result.get('success'):
-                    transcript_content = result.get('transcript', '')
-                    logger.info(f"[STOP] Got transcript from API for {bot_id}, length: {len(transcript_content) if transcript_content else 0}")
-                else:
-                    logger.warning(f"[STOP] API stop unsuccessful for {bot_id}: {result.get('error', 'Unknown error')}")
-            except Exception as api_error:
-                logger.warning(f"[STOP] API call failed for {bot_id}: {str(api_error)}")
-        
-        # Check if meeting completed successfully (even if transcript is empty)
-        # Consider 'ended', 'failed', or any status with recent activity as completed
-        meeting_completed = (
-            session_data.get('status') in ['completed', 'ended', 'failed'] or
-            (session_data.get('last_updated', 0) > 0 and 
-             time.time() - session_data.get('last_updated', 0) < 300)  # Activity within 5 minutes
-        )
-        
-        if meeting_completed or transcript_content:
+        # If already completed via webhook, return the transcript
+        if transcript_content:
             # Create transcript file
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"meeting_transcript_{timestamp}.txt"
-            
-            # Handle empty transcript
-            if not transcript_content:
-                transcript_content = "[No speech detected during meeting]"
             
             # Format the transcript nicely
             content = f"Meeting Transcript\n"
@@ -746,7 +729,7 @@ async def stop_meeting_bot(bot_id: str, request: Request):
             content += f"Participants: {', '.join(speakers)}\n\n"
             content += f"Full Transcript:\n{transcript_content}"
             
-            # Clean up session
+            # Clean up session now that we have the final transcript
             if os.path.exists(session_file):
                 os.remove(session_file)
                 logger.info(f"[STOP] Cleaned up session file for {bot_id}")
@@ -758,6 +741,83 @@ async def stop_meeting_bot(bot_id: str, request: Request):
                 "action_items": [],  # MeetingBaaS doesn't provide action items in webhook
                 "participants": speakers,
                 "duration": int(session_data.get('completed_at', 0) - session_data.get('started_at', 0)) if session_data.get('completed_at') and session_data.get('started_at') else 0,
+                "filename": filename,
+                "content": content
+            })
+        
+        # If not completed via webhook, stop the bot and mark as stopping
+        # Don't clean up session yet - wait for the final "complete" webhook
+        try:
+            from services.meeting_baas import meeting_baas_service
+            result = await meeting_baas_service.stop_meeting_bot(bot_id)
+            
+            if result.get('success'):
+                logger.info(f"[STOP] Successfully requested bot stop for {bot_id}")
+                
+                # Mark session as stopping - don't clean up yet
+                if session_data:
+                    session_data['status'] = 'stopping'
+                    session_data['stop_requested_at'] = time.time()
+                    session_data['last_updated'] = time.time()
+                    
+                    with open(session_file, 'w') as f:
+                        json.dump(session_data, f)
+                
+                return JSONResponse({
+                    "success": True,
+                    "message": "Bot stop requested. Final transcript will be available shortly.",
+                    "status": "stopping",
+                    "transcript": "",
+                    "participants": session_data.get('speakers', []) if session_data else [],
+                    "duration": 0
+                })
+            else:
+                logger.warning(f"[STOP] API stop unsuccessful for {bot_id}: {result.get('error', 'Unknown error')}")
+                # Fall through to manual completion handling below
+                
+        except Exception as api_error:
+            logger.warning(f"[STOP] API call failed for {bot_id}: {str(api_error)}")
+            # Fall through to manual completion handling below
+        
+        # If API stop failed, treat as manually completed (fallback)
+        # Only do this if we have recent session activity indicating the meeting actually happened
+        if session_data and (
+            session_data.get('status') in ['ended', 'failed'] or
+            (session_data.get('last_updated', 0) > 0 and 
+             time.time() - session_data.get('last_updated', 0) < 300)  # Activity within 5 minutes
+        ):
+            # Create transcript file with placeholder
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"meeting_transcript_{timestamp}.txt"
+            transcript_content = "[No speech detected during meeting]"
+            
+            # Format the transcript nicely
+            content = f"Meeting Transcript\n"
+            content += f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            content += f"Bot ID: {bot_id}\n"
+            content += f"Meeting URL: {session_data.get('meeting_url', 'Unknown')}\n"
+            
+            if session_data.get('started_at'):
+                started = datetime.fromtimestamp(session_data['started_at'])
+                content += f"Started: {started.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            
+            speakers = session_data.get('speakers', ['No speakers detected'])
+            content += f"Participants: {', '.join(speakers)}\n\n"
+            content += f"Full Transcript:\n{transcript_content}"
+            
+            # Clean up session
+            if os.path.exists(session_file):
+                os.remove(session_file)
+                logger.info(f"[STOP] Cleaned up session file for {bot_id}")
+            
+            return JSONResponse({
+                "success": True,
+                "transcript": transcript_content,
+                "summary": "",
+                "action_items": [],
+                "participants": speakers,
+                "duration": int(time.time() - session_data.get('started_at', time.time())) if session_data.get('started_at') else 0,
                 "filename": filename,
                 "content": content
             })
@@ -893,7 +953,29 @@ async def meeting_bot_webhook(request: Request):
                 session['speakers'] = event_data.get('speakers', [])
                 session['transcript'] = event_data.get('transcript', [])
                 
-                logger.info(f"[WEBHOOK] Meeting {bot_id} completed - transcript ready")
+                # Convert transcript format for easier processing
+                if session['transcript']:
+                    transcript_text_parts = []
+                    for item in session['transcript']:
+                        if isinstance(item, dict):
+                            speaker = item.get('speaker', 'Unknown')
+                            words = item.get('words', [])
+                            if words:
+                                # Combine all words from this speaker's segment
+                                text = ' '.join([word.get('word', '') for word in words if isinstance(word, dict)])
+                                if text.strip():
+                                    transcript_text_parts.append(f"{speaker}: {text}")
+                    
+                    if transcript_text_parts:
+                        session['transcript_text'] = '\n'.join(transcript_text_parts)
+                        logger.info(f"[WEBHOOK] Meeting {bot_id} completed - transcript ready ({len(transcript_text_parts)} segments)")
+                    else:
+                        session['transcript_text'] = "[No speech detected during meeting]"
+                        logger.info(f"[WEBHOOK] Meeting {bot_id} completed - no speech detected")
+                else:
+                    session['transcript_text'] = "[No speech detected during meeting]"
+                    logger.info(f"[WEBHOOK] Meeting {bot_id} completed - empty transcript")
+                
                 logger.info(f"[WEBHOOK] Speakers: {session['speakers']}")
                 
             elif event_type == 'failed':
@@ -919,6 +1001,37 @@ async def meeting_bot_webhook(request: Request):
             
         else:
             logger.warning(f"[WEBHOOK] No session file found for bot {bot_id}, event: {event_type}")
+            
+        # Clean up old sessions that may be stuck in "stopping" state
+        # This prevents orphaned sessions if webhooks are missed
+        try:
+            sessions_dir = '/tmp/meeting_bot_sessions'
+            if os.path.exists(sessions_dir):
+                current_time = time.time()
+                for filename in os.listdir(sessions_dir):
+                    if filename.endswith('.json'):
+                        filepath = os.path.join(sessions_dir, filename)
+                        try:
+                            with open(filepath, 'r') as f:
+                                session = json.load(f)
+                            
+                            # Clean up sessions stuck in "stopping" state for > 5 minutes
+                            if (session.get('status') == 'stopping' and 
+                                session.get('stop_requested_at', 0) > 0 and
+                                current_time - session.get('stop_requested_at', 0) > 300):
+                                
+                                os.remove(filepath)
+                                logger.info(f"[WEBHOOK] Cleaned up orphaned stopping session: {filename}")
+                                
+                        except Exception:
+                            # Remove corrupted session files
+                            try:
+                                os.remove(filepath)
+                                logger.info(f"[WEBHOOK] Removed corrupted session file: {filename}")
+                            except Exception:
+                                pass
+        except Exception as cleanup_error:
+            logger.warning(f"[WEBHOOK] Session cleanup failed: {str(cleanup_error)}")
             
         return JSONResponse({"success": True, "message": "Webhook processed"})
         
