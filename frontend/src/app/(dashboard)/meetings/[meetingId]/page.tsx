@@ -518,8 +518,9 @@ export default function MeetingPage() {
             metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot_id when failed
           });
         } else if (['starting', 'in_call', 'recording'].includes(data.status)) {
-          // Continue polling for active bot
-          setTimeout(() => checkBotStatus(botId), 5000);
+          // Continue polling for active bot - more frequent during startup
+          const pollInterval = data.status === 'starting' ? 1000 : 2000; // 1s for starting, 2s for active states
+          setTimeout(() => checkBotStatus(botId), pollInterval);
         }
       } else {
         // Bot not found or error - clear bot data

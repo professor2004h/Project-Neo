@@ -612,6 +612,15 @@ export default function MeetingsPage() {
                         ? "bg-green-500 animate-pulse"
                         : "bg-blue-500 animate-pulse"
                     )} />
+                    {/* Active bot indicator - matches the one in meeting document page */}
+                    {meeting.status === 'active' && meeting.recording_mode === 'online' && (
+                      <div className="absolute -top-1 -right-1">
+                        <div className="relative">
+                          <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/40" />
+                          <div className="absolute inset-0 w-4 h-4 rounded-full bg-green-500 animate-ping opacity-75" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
