@@ -91,6 +91,7 @@ export default function MeetingPage() {
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
   const [totalPausedTime, setTotalPausedTime] = useState<number>(0);
   const [pauseStartTime, setPauseStartTime] = useState<number | null>(null);
+  const [lastTimestampMinute, setLastTimestampMinute] = useState<number>(-1);
   
   const transcriptRef = useRef<HTMLDivElement>(null);
   const searchHighlightRefs = useRef<(HTMLSpanElement | null)[]>([]);
@@ -100,12 +101,11 @@ export default function MeetingPage() {
     const totalSeconds = Math.floor(elapsedMs / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
 
     if (hours > 0) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     } else {
-      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      return `${minutes.toString().padStart(2, '0')}`;
     }
   };
 
@@ -221,8 +221,16 @@ export default function MeetingPage() {
       if (finalTranscript.trim()) {
         // Calculate timestamp for this chunk
         const elapsedTime = getCurrentElapsedTime();
-        const timestamp = formatElapsedTime(elapsedTime);
-        const timestampedTranscript = `[${timestamp}] ${finalTranscript.trim()}`;
+        const totalMinutes = Math.floor(elapsedTime / (1000 * 60));
+        
+        let timestampedTranscript = finalTranscript.trim();
+        
+        // Only add timestamp if minute has changed
+        if (totalMinutes !== lastTimestampMinute) {
+          const timestamp = formatElapsedTime(elapsedTime);
+          timestampedTranscript = `[${timestamp}] ${finalTranscript.trim()}`;
+          setLastTimestampMinute(totalMinutes);
+        }
         
         // Send final transcript through WebSocket and add to local state
         wsConnection?.sendTranscript(finalTranscript.trim());
@@ -274,6 +282,7 @@ export default function MeetingPage() {
         setRecordingStartTime(Date.now());
         setTotalPausedTime(0);
         setPauseStartTime(null);
+        setLastTimestampMinute(-1);
         wsConnection?.updateStatus('active');
         toast.success('Recording started');
       } catch (error) {
@@ -382,6 +391,7 @@ export default function MeetingPage() {
       setRecordingStartTime(null);
       setTotalPausedTime(0);
       setPauseStartTime(null);
+      setLastTimestampMinute(-1);
       wsConnection?.updateStatus('completed');
       
       // Save transcript
