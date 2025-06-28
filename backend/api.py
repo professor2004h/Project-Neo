@@ -202,6 +202,24 @@ async def get_meetings(
         meetings = await meetings_service.get_meetings(user_id, folder_id)
     return {"meetings": meetings}
 
+# Search endpoint - MUST come before {meeting_id} routes
+@app.get("/api/meetings/search")
+async def search_meetings(
+    q: str, 
+    limit: int = 50,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    """Search meetings."""
+    results = await meetings_service.search_meetings(user_id, q, limit)
+    return {"results": results}
+
+# Sharing endpoints - MUST come before {meeting_id} routes  
+@app.get("/api/meetings/shared")
+async def get_shared_meetings(user_id: str = Depends(get_current_user_id_from_jwt)):
+    """Get all meetings shared with the current user."""
+    meetings = await meetings_service.get_shared_meetings(user_id)
+    return {"meetings": meetings}
+
 @app.get("/api/meetings/{meeting_id}")
 async def get_meeting(
     meeting_id: str, 
@@ -272,17 +290,6 @@ async def delete_folder(
     await meetings_service.delete_folder(folder_id)
     return {"success": True}
 
-# Search endpoint
-@app.get("/api/meetings/search")
-async def search_meetings(
-    q: str, 
-    limit: int = 50,
-    user_id: str = Depends(get_current_user_id_from_jwt)
-):
-    """Search meetings."""
-    results = await meetings_service.search_meetings(user_id, q, limit)
-    return {"results": results}
-
 # Sharing endpoints
 @app.post("/api/meetings/{meeting_id}/share")
 async def share_meeting(
@@ -307,12 +314,6 @@ async def unshare_meeting(
     """Remove meeting share."""
     await meetings_service.unshare_meeting(meeting_id, shared_with_account_id)
     return {"success": True}
-
-@app.get("/api/meetings/shared")
-async def get_shared_meetings(user_id: str = Depends(get_current_user_id_from_jwt)):
-    """Get all meetings shared with the current user."""
-    meetings = await meetings_service.get_shared_meetings(user_id)
-    return {"meetings": meetings}
 
 # WebSocket endpoint for real-time transcription
 @app.websocket("/api/meetings/{meeting_id}/transcribe")
