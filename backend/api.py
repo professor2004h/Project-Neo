@@ -654,12 +654,25 @@ async def get_meeting_bot_status(bot_id: str):
                     elif isinstance(transcript_list, str):
                         transcript_content = transcript_list
                 
+                # Safe duration calculation with type conversion
+                completed_at = session.get('completed_at', 0)
+                started_at = session.get('started_at', 0)
+                duration = 0
+                
+                try:
+                    completed_at = float(completed_at) if completed_at else 0
+                    started_at = float(started_at) if started_at else 0
+                    if completed_at > 0 and started_at > 0:
+                        duration = int(completed_at - started_at)
+                except (ValueError, TypeError):
+                    duration = 0
+                
                 return JSONResponse({
                     "success": True,
                     "status": status,
                     "transcript": transcript_content,
                     "participants": session.get('speakers', []),
-                    "duration": int(session.get('completed_at', 0) - session.get('started_at', 0)) if session.get('completed_at') and session.get('started_at') else 0
+                    "duration": duration
                 })
         
         # Return session data if available, webhooks provide real-time updates
@@ -669,12 +682,25 @@ async def get_meeting_bot_status(bot_id: str):
             
             final_status = session.get('status', 'unknown')
             
+            # Safe duration calculation with type conversion
+            completed_at = session.get('completed_at', 0)
+            started_at = session.get('started_at', 0)
+            duration = 0
+            
+            try:
+                completed_at = float(completed_at) if completed_at else 0
+                started_at = float(started_at) if started_at else 0
+                if completed_at > 0 and started_at > 0:
+                    duration = int(completed_at - started_at)
+            except (ValueError, TypeError):
+                duration = 0
+            
             return JSONResponse({
                 "success": True,
                 "status": final_status,
                 "transcript": session.get('transcript_text', ''),
                 "participants": session.get('speakers', []),
-                "duration": int(session.get('completed_at', 0) - session.get('started_at', 0)) if session.get('completed_at') and session.get('started_at') else 0
+                "duration": duration
             })
         else:
             # No session file found
@@ -776,6 +802,11 @@ async def stop_meeting_bot(bot_id: str, request: Request):
             if session_data.get('awaiting_transcript') and session_data.get('status') == 'ended':
                 # Recently ended but awaiting transcript - don't clean up yet
                 ended_time = session_data.get('ended_at', 0)
+                try:
+                    ended_time = float(ended_time) if ended_time else 0
+                except (ValueError, TypeError):
+                    ended_time = 0
+                    
                 if ended_time > 0 and time.time() - ended_time < 600:  # Less than 10 minutes
                     should_clean_session = False
                     logger.info(f"[STOP] Preserving session for {bot_id} - still awaiting transcript")
@@ -784,13 +815,26 @@ async def stop_meeting_bot(bot_id: str, request: Request):
                 os.remove(session_file)
                 logger.info(f"[STOP] Cleaned up session file for {bot_id}")
             
+            # Safe duration calculation
+            completed_at = session_data.get('completed_at', 0)
+            started_at = session_data.get('started_at', 0)
+            duration = 0
+            
+            try:
+                completed_at = float(completed_at) if completed_at else 0
+                started_at = float(started_at) if started_at else 0
+                if completed_at > 0 and started_at > 0:
+                    duration = int(completed_at - started_at)
+            except (ValueError, TypeError):
+                duration = 0
+            
             return JSONResponse({
                 "success": True,
                 "transcript": transcript_content,
                 "summary": "",  # MeetingBaaS doesn't provide summary in webhook
                 "action_items": [],  # MeetingBaaS doesn't provide action items in webhook
                 "participants": speakers,
-                "duration": int(session_data.get('completed_at', 0) - session_data.get('started_at', 0)) if session_data.get('completed_at') and session_data.get('started_at') else 0,
+                "duration": duration,
                 "filename": filename,
                 "content": content
             })
@@ -861,6 +905,11 @@ async def stop_meeting_bot(bot_id: str, request: Request):
             if session_data.get('awaiting_transcript') and session_data.get('status') == 'ended':
                 # Recently ended but awaiting transcript - don't clean up yet
                 ended_time = session_data.get('ended_at', 0)
+                try:
+                    ended_time = float(ended_time) if ended_time else 0
+                except (ValueError, TypeError):
+                    ended_time = 0
+                    
                 if ended_time > 0 and time.time() - ended_time < 600:  # Less than 10 minutes
                     should_clean_session = False
                     logger.info(f"[STOP] Preserving session for {bot_id} - still awaiting transcript (fallback case)")
@@ -869,13 +918,24 @@ async def stop_meeting_bot(bot_id: str, request: Request):
                 os.remove(session_file)
                 logger.info(f"[STOP] Cleaned up session file for {bot_id}")
             
+            # Safe current duration calculation
+            current_duration = 0
+            if session_data and session_data.get('started_at'):
+                started_at = session_data.get('started_at', 0)
+                try:
+                    started_at = float(started_at) if started_at else 0
+                    if started_at > 0:
+                        current_duration = int(time.time() - started_at)
+                except (ValueError, TypeError):
+                    current_duration = 0
+            
             return JSONResponse({
                 "success": True,
                 "transcript": transcript_content,
                 "summary": "",
                 "action_items": [],
                 "participants": speakers,
-                "duration": int(time.time() - session_data.get('started_at', time.time())) if session_data.get('started_at') else 0,
+                "duration": current_duration,
                 "filename": filename,
                 "content": content
             })
@@ -1199,20 +1259,35 @@ async def meeting_bot_webhook(request: Request):
                             # BUT preserve sessions awaiting transcript for up to 10 minutes
                             should_cleanup = False
                             
+                            # Ensure timestamp values are numeric for comparison
+                            stop_requested_at = session.get('stop_requested_at', 0)
+                            ended_at = session.get('ended_at', 0)
+                            
+                            # Convert string timestamps to float
+                            try:
+                                stop_requested_at = float(stop_requested_at) if stop_requested_at else 0
+                            except (ValueError, TypeError):
+                                stop_requested_at = 0
+                                
+                            try:
+                                ended_at = float(ended_at) if ended_at else 0
+                            except (ValueError, TypeError):
+                                ended_at = 0
+                            
                             if (session.get('status') == 'stopping' and 
-                                session.get('stop_requested_at', 0) > 0 and
-                                current_time - session.get('stop_requested_at', 0) > 300):
+                                stop_requested_at > 0 and
+                                current_time - stop_requested_at > 300):
                                 should_cleanup = True
                             
                             # Also clean up old "ended" sessions ONLY if they're not awaiting transcript
                             # or if they've been waiting for transcript for more than 10 minutes
                             elif (session.get('status') == 'ended' and 
-                                  session.get('ended_at', 0) > 0 and
-                                  current_time - session.get('ended_at', 0) > 600):  # 10 minutes
+                                  ended_at > 0 and
+                                  current_time - ended_at > 600):  # 10 minutes
                                 if not session.get('awaiting_transcript'):
                                     should_cleanup = True
                                 else:
-                                    logger.info(f"[WEBHOOK] Preserving session {filename} - still awaiting transcript after {(current_time - session.get('ended_at', 0))/60:.1f} minutes")
+                                    logger.info(f"[WEBHOOK] Preserving session {filename} - still awaiting transcript after {(current_time - ended_at)/60:.1f} minutes")
                             
                             if should_cleanup:
                                 
@@ -1359,7 +1434,13 @@ async def get_active_sessions(sandbox_id: str = None):
                         session = json.load(f)
                     
                     # Only return sessions from last 24 hours
-                    if current_time - session.get('started_at', 0) < 86400:
+                    started_at = session.get('started_at', 0)
+                    try:
+                        started_at = float(started_at) if started_at else 0
+                    except (ValueError, TypeError):
+                        started_at = 0
+                    
+                    if current_time - started_at < 86400:
                         if not sandbox_id or session.get('sandbox_id') == sandbox_id:
                             active_sessions.append(session)
                 except:
