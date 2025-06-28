@@ -225,6 +225,7 @@ export default function MeetingPage() {
       try {
         await rec.start();
         setIsRecording(true);
+        setIsPaused(false);
         wsConnection?.updateStatus('active');
         toast.success('Recording started');
       } catch (error) {
@@ -319,6 +320,7 @@ export default function MeetingPage() {
     if (recordingMode === 'local') {
       recognition?.stop();
       setIsRecording(false);
+      setIsPaused(false);
       setRecordingMode(null);
       wsConnection?.updateStatus('completed');
       
@@ -395,6 +397,24 @@ export default function MeetingPage() {
         setBotStatus('');
         toast.error('Failed to stop meeting bot');
       }
+    }
+  };
+
+  // Pause recording (local only)
+  const pauseRecording = () => {
+    if (recordingMode === 'local' && recognition) {
+      recognition.stop();
+      setIsPaused(true);
+      toast.info('Recording paused');
+    }
+  };
+
+  // Resume recording (local only)
+  const resumeRecording = () => {
+    if (recordingMode === 'local' && recognition && isPaused) {
+      recognition.start();
+      setIsPaused(false);
+      toast.info('Recording resumed');
     }
   };
 
@@ -732,7 +752,10 @@ export default function MeetingPage() {
                       {recordingMode === 'local' ? (
                         <div className="flex items-center gap-2">
                           <div className="relative">
-                            <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+                            <div className={cn(
+                              "h-2 w-2 rounded-full",
+                              isPaused ? "bg-yellow-500" : "bg-red-500 animate-pulse"
+                            )} />
                           </div>
                           <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         </div>
@@ -745,16 +768,42 @@ export default function MeetingPage() {
                         </div>
                       )}
                       <span className="text-sm font-medium tabular-nums">
-                        {recordingMode === 'local' ? 'Recording...' : `Bot ${botStatus}`}
+                        {recordingMode === 'local' 
+                          ? (isPaused ? 'Paused' : 'Recording...') 
+                          : `Bot ${botStatus}`
+                        }
                       </span>
                     </div>
-                    <button
-                      onClick={stopRecording}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors"
-                    >
-                      <Square className="h-3 w-3 fill-current" />
-                      Stop
-                    </button>
+                    
+                    <div className="flex items-center gap-2">
+                      {/* Pause/Resume buttons for local recording */}
+                      {recordingMode === 'local' && (
+                        <button
+                          onClick={isPaused ? resumeRecording : pauseRecording}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium transition-colors"
+                        >
+                          {isPaused ? (
+                            <>
+                              <Play className="h-3 w-3 fill-current" />
+                              Resume
+                            </>
+                          ) : (
+                            <>
+                              <Pause className="h-3 w-3 fill-current" />
+                              Pause
+                            </>
+                          )}
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={stopRecording}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors"
+                      >
+                        <Square className="h-3 w-3 fill-current" />
+                        Stop
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

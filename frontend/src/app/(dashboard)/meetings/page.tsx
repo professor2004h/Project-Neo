@@ -497,7 +497,7 @@ export default function MeetingsPage() {
                       <DropdownMenuSubContent>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          handleMoveToFolder('folder', folder.folder_id, undefined);
+                          handleMoveToFolder('folder', folder.folder_id, null);
                         }}>
                           <FolderOpen className="h-4 w-4 mr-2" />
                           Move to Root
@@ -589,7 +589,7 @@ export default function MeetingsPage() {
                       <DropdownMenuSubContent>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          handleMoveToFolder('meeting', meeting.meeting_id, undefined);
+                          handleMoveToFolder('meeting', meeting.meeting_id, null);
                         }}>
                           <FolderOpen className="h-4 w-4 mr-2" />
                           Move to Root

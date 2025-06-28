@@ -57,6 +57,9 @@ class MeetingsService:
         
         if folder_id is not None:
             query = query.eq('folder_id', folder_id)
+        else:
+            # For root folder, only show meetings with no folder_id
+            query = query.is_('folder_id', 'null')
             
         try:
             result = await query.order('created_at', desc=True).execute()
