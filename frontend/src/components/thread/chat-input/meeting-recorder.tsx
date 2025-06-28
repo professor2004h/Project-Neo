@@ -35,7 +35,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   const handleClick = () => {
     // Open meetings in a new tab to preserve current chat context
     window.open('/meetings', '_blank');
-    toast.info('Opening meetings in a new tab. Create a meeting and use "Talk to Operator" to attach the transcript.');
+    toast.info('Opening meetings in a new tab. Create a meeting and use "Open in Chat" to attach the transcript.');
   };
 
   return (

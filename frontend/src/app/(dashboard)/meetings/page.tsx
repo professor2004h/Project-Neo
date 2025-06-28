@@ -681,7 +681,7 @@ export default function MeetingsPage() {
                       startChatWithMeeting(meeting.meeting_id);
                     }}>
                       <MessageSquare className="h-4 w-4 mr-2" />
-                      Talk to Operator
+                      Open inChat
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={(e) => {
