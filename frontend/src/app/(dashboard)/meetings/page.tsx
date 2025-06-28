@@ -41,7 +41,7 @@ import {
   type MeetingFolder,
   type SearchResult,
 } from '@/lib/api-meetings';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 
@@ -537,9 +537,6 @@ export default function MeetingsPage() {
                     <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                       {folder.name}
                     </h3>
-                    <p className="text-sm text-muted-foreground/80 mt-1">
-                      {formatDistanceToNow(new Date(folder.created_at), { addSuffix: true })}
-                    </p>
                   </div>
                 </div>
                 
@@ -652,7 +649,7 @@ export default function MeetingsPage() {
                       {meeting.title}
                     </h3>
                     <p className="text-sm text-muted-foreground/80 mt-1">
-                      {formatDistanceToNow(new Date(meeting.created_at), { addSuffix: true })}
+                      {format(new Date(meeting.created_at), 'MMM d, yyyy h:mm a')}
                     </p>
                     <div className="flex items-center mt-2">
                       <span className={cn(

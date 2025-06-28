@@ -34,7 +34,7 @@ import {
   type Meeting,
 } from '@/lib/api-meetings';
 import { createClient } from '@/lib/supabase/client';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -1070,7 +1070,7 @@ export default function MeetingPage() {
             </h1>
             <div className="flex items-center gap-2 text-sm mt-2">
               <span className="text-muted-foreground/80">
-                {formatDistanceToNow(new Date(meeting.created_at), { addSuffix: true })}
+                {format(new Date(meeting.created_at), 'MMM d, yyyy h:mm a')}
               </span>
               <Badge 
                 variant={meeting.status === 'active' ? 'default' : 'secondary'}
@@ -1296,7 +1296,12 @@ export default function MeetingPage() {
                               <Monitor className="h-5 w-5" />
                             </div>
                           </div>
-                          <span className="text-sm font-semibold">Continue Online</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold">Continue Online</span>
+                            <Badge variant="beta" className="bg-blue-600/20 text-blue-600 border-blue-400/30 dark:text-blue-300">
+                              Beta
+                            </Badge>
+                          </div>
                         </button>
                       </div>
                     </>
@@ -1327,7 +1332,12 @@ export default function MeetingPage() {
                               <Monitor className="h-5 w-5" />
                             </div>
                           </div>
-                          <span className="text-sm font-semibold">Online</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold">Online</span>
+                            <Badge variant="beta" className="bg-blue-600/20 text-blue-600 border-blue-400/30 dark:text-blue-300">
+                              Beta
+                            </Badge>
+                          </div>
                         </button>
                       </div>
                       
@@ -1474,7 +1484,12 @@ export default function MeetingPage() {
               className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500/20"
             >
               <Monitor className="h-4 w-4 mr-2" />
-              Start Bot Recording
+              <span className="flex items-center gap-2">
+                Start Bot Recording
+                <Badge variant="beta" className="bg-blue-600/20 text-blue-200 border-blue-400/30">
+                  Beta
+                </Badge>
+              </span>
             </Button>
           </DialogFooter>
         </DialogContent>
