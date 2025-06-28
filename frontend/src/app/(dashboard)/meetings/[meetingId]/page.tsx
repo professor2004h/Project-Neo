@@ -88,8 +88,12 @@ export default function MeetingPage() {
       setMeeting(data);
       setTranscript(data.transcript || '');
       
-      // If meeting is active and online, check bot status
-      if (data.status === 'active' && data.recording_mode === 'online' && data.metadata?.bot_id) {
+      // If meeting is active and has bot metadata, reconnect to existing bot
+      if (data.status === 'active' && data.metadata?.bot_id) {
+        setRecordingMode('online');
+        setIsRecording(true);
+        setBotStatus('checking...');
+        toast.info('Reconnecting to existing meeting bot...');
         checkBotStatus(data.metadata.bot_id);
       }
     } catch (error) {
@@ -249,9 +253,10 @@ export default function MeetingPage() {
           setBotStatus(data.status);
           setIsRecording(true);
           
-          // Update meeting metadata with bot info
+          // Update meeting metadata with bot info and recording mode
           await updateMeeting(meetingId, {
             metadata: { bot_id: data.bot_id, meeting_url: meetingUrl },
+            recording_mode: 'online',
             status: 'active',
           });
 
@@ -264,7 +269,46 @@ export default function MeetingPage() {
         }
       } catch (error) {
         console.error('Error starting online recording:', error);
-        toast.error('Failed to start meeting bot');
+        
+        // If error is "AlreadyStarted", try to find existing bot
+        if (error.message.includes('AlreadyStarted')) {
+          try {
+            // Try to get existing bot for this meeting URL
+            const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/find`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                meeting_url: meetingUrl,
+                sandbox_id: meetingId,
+              }),
+            });
+
+            const statusData = await statusResponse.json();
+            if (statusData.success && statusData.bot_id) {
+              setBotStatus(statusData.status || 'in_call');
+              setIsRecording(true);
+              
+              // Update meeting metadata with existing bot info
+              await updateMeeting(meetingId, {
+                metadata: { bot_id: statusData.bot_id, meeting_url: meetingUrl },
+                recording_mode: 'online',
+                status: 'active',
+              });
+
+              toast.success('Reconnected to existing meeting bot!');
+              checkBotStatus(statusData.bot_id);
+            } else {
+              toast.error('Bot already exists but could not reconnect');
+            }
+          } catch (findError) {
+            console.error('Error finding existing bot:', findError);
+            toast.error('Bot already running for this meeting URL. Please try again.');
+          }
+        } else {
+          toast.error('Failed to start meeting bot');
+        }
       }
     }
   };
@@ -274,6 +318,7 @@ export default function MeetingPage() {
     if (recordingMode === 'local') {
       recognition?.stop();
       setIsRecording(false);
+      setRecordingMode(null);
       wsConnection?.updateStatus('completed');
       
       // Save transcript
@@ -298,14 +343,26 @@ export default function MeetingPage() {
           await updateMeeting(meetingId, {
             transcript: fullTranscript,
             status: 'completed',
+            metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot data
+          });
+        } else {
+          // Even if no transcript, clear bot data
+          await updateMeeting(meetingId, {
+            status: 'completed',
+            metadata: { ...meeting?.metadata, bot_id: undefined }
           });
         }
         
         setIsRecording(false);
+        setRecordingMode(null);
         setBotStatus('completed');
         toast.success('Meeting recording completed');
       } catch (error) {
         console.error('Error stopping bot:', error);
+        // Even on error, clean up the UI state
+        setIsRecording(false);
+        setRecordingMode(null);
+        setBotStatus('');
         toast.error('Failed to stop meeting bot');
       }
     }
@@ -320,6 +377,12 @@ export default function MeetingPage() {
       if (data.success) {
         setBotStatus(data.status);
         
+        // If we just reconnected and bot is still active, continue recording
+        if (['starting', 'in_call', 'recording'].includes(data.status)) {
+          setIsRecording(true);
+          setRecordingMode('online');
+        }
+        
         if (data.status === 'completed' && data.transcript) {
           // Update transcript
           const fullTranscript = transcript + '\n\n' + data.transcript;
@@ -328,19 +391,37 @@ export default function MeetingPage() {
           await updateMeeting(meetingId, {
             transcript: fullTranscript,
             status: 'completed',
+            metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot_id when completed
           });
           
           setIsRecording(false);
+          setRecordingMode(null);
         } else if (['failed', 'ended'].includes(data.status)) {
           setIsRecording(false);
-          await updateMeeting(meetingId, { status: 'completed' });
-        } else if (isRecording) {
-          // Continue polling
+          setRecordingMode(null);
+          await updateMeeting(meetingId, { 
+            status: 'completed',
+            metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot_id when failed
+          });
+        } else if (['starting', 'in_call', 'recording'].includes(data.status)) {
+          // Continue polling for active bot
           setTimeout(() => checkBotStatus(botId), 5000);
         }
+      } else {
+        // Bot not found or error - clear bot data
+        setIsRecording(false);
+        setRecordingMode(null);
+        setBotStatus('');
+        await updateMeeting(meetingId, {
+          metadata: { ...meeting?.metadata, bot_id: undefined }
+        });
       }
     } catch (error) {
       console.error('Error checking bot status:', error);
+      // On error, assume bot is no longer active
+      setIsRecording(false);
+      setRecordingMode(null);
+      setBotStatus('');
     }
   };
 

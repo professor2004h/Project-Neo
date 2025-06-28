@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Folder, FileAudio, MoreHorizontal, Edit2, Trash2, Download, Share2, FolderOpen, Move } from 'lucide-react';
+import { Plus, Search, Folder, FileAudio, MoreHorizontal, Edit2, Trash2, Download, Share2, FolderOpen, Move, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -211,6 +211,11 @@ export default function MeetingsPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  // Start chat with meeting transcript
+  const startChatWithMeeting = (meetingId: string) => {
+    router.push(`/dashboard?attachMeeting=${meetingId}`);
   };
 
   // Drag and drop handlers
@@ -584,6 +589,13 @@ export default function MeetingsPage() {
                     }}>
                       <Share2 className="h-4 w-4 mr-2" />
                       Share
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      startChatWithMeeting(meeting.meeting_id);
+                    }}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Talk to Operator
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
