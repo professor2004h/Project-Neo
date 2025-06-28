@@ -25,7 +25,7 @@ class MeetingBaaSService:
         self.api_key = os.getenv('MEETINGBAAS_API_KEY')
         self.base_url = 'https://api.meetingbaas.com'
         
-    async def start_meeting_bot(self, meeting_url: str, bot_name: str = "Transcription Bot", webhook_url: str = None) -> Dict[str, Any]:
+    async def start_meeting_bot(self, meeting_url: str, bot_name: str = "Omni Operator", webhook_url: str = None) -> Dict[str, Any]:
         """
         Start a meeting bot to join and transcribe the meeting.
         
