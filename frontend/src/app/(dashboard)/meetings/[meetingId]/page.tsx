@@ -1177,7 +1177,7 @@ ${transcript}`;
             placeholder="Search within transcript..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-24 h-10 bg-card/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.02] placeholder:text-muted-foreground/60"
+            className="pl-10 pr-24 h-10 bg-card/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-colors duration-200 placeholder:text-muted-foreground/60"
           />
           {searchResults.length > 0 && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs">
@@ -1512,7 +1512,7 @@ ${transcript}`;
                 onChange={(e) => setMeetingUrl(e.target.value)}
                 placeholder="https://zoom.us/j/123456789 or https://meet.google.com/abc-defg-hij"
                 onKeyDown={(e) => e.key === 'Enter' && handleStartOnlineRecording()}
-                className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.01] placeholder:text-muted-foreground/60"
+                className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-colors duration-200 placeholder:text-muted-foreground/60"
               />
             </div>
           </div>

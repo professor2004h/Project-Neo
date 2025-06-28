@@ -495,7 +495,7 @@ ${meeting.transcript}`;
             placeholder="Search meetings and folders..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-11 bg-card/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 placeholder:text-muted-foreground/60"
+            className="pl-10 h-11 bg-card/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-colors duration-200 placeholder:text-muted-foreground/60"
           />
           {isSearching && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -819,7 +819,7 @@ ${meeting.transcript}`;
                   onChange={(e) => setNewMeetingTitle(e.target.value)}
                   placeholder="e.g., Team Standup, Client Call, Product Review..."
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateMeeting()}
-                  className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.01] placeholder:text-muted-foreground/60"
+                  className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-colors duration-200 placeholder:text-muted-foreground/60"
                 />
               </div>
             </div>
@@ -864,7 +864,7 @@ ${meeting.transcript}`;
                   onChange={(e) => setNewFolderName(e.target.value)}
                   placeholder="e.g., Weekly Meetings, Q4 Reviews, Team Calls..."
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-                  className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.01] placeholder:text-muted-foreground/60"
+                  className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-colors duration-200 placeholder:text-muted-foreground/60"
                 />
               </div>
             </div>
@@ -908,7 +908,7 @@ ${meeting.transcript}`;
                   value={editingItem?.name || ''}
                   onChange={(e) => editingItem && setEditingItem({ ...editingItem, name: e.target.value })}
                   onKeyDown={(e) => e.key === 'Enter' && handleRename()}
-                  className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-all duration-200 focus:scale-[1.01]"
+                  className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-colors duration-200"
                 />
               </div>
             </div>
