@@ -332,10 +332,16 @@ export default function MeetingPage() {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/meeting-bot/${meeting.metadata.bot_id}/stop`, {
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sandbox_id: meetingId,
+          }),
         });
 
         const data = await response.json();
-        if (data.content) {
+        if (data.success && data.content) {
           // Update transcript with bot's transcript
           const fullTranscript = transcript + '\n\n' + data.content;
           setTranscript(fullTranscript);
@@ -345,12 +351,35 @@ export default function MeetingPage() {
             status: 'completed',
             metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot data
           });
-        } else {
-          // Even if no transcript, clear bot data
+          toast.success('Meeting recording completed and transcript saved');
+        } else if (data.success) {
+          // Meeting ended successfully but no transcript
           await updateMeeting(meetingId, {
             status: 'completed',
             metadata: { ...meeting?.metadata, bot_id: undefined }
           });
+          toast.info('Meeting ended - no transcript was generated');
+        } else {
+          // Handle partial success or informational errors
+          const errorMessage = data.error || 'Unknown error occurred';
+          if (data.transcript) {
+            // We got some transcript data despite the error
+            const fullTranscript = transcript + '\n\n' + data.transcript;
+            setTranscript(fullTranscript);
+            await updateMeeting(meetingId, {
+              transcript: fullTranscript,
+              status: 'completed',
+              metadata: { ...meeting?.metadata, bot_id: undefined }
+            });
+            toast.warning(`Meeting ended with issues: ${errorMessage}`);
+          } else {
+            // No transcript available
+            await updateMeeting(meetingId, {
+              status: 'completed',
+              metadata: { ...meeting?.metadata, bot_id: undefined }
+            });
+            toast.error(`Failed to get transcript: ${errorMessage}`);
+          }
         }
         
         setIsRecording(false);
@@ -418,10 +447,18 @@ export default function MeetingPage() {
       }
     } catch (error) {
       console.error('Error checking bot status:', error);
-      // On error, assume bot is no longer active
-      setIsRecording(false);
-      setRecordingMode(null);
-      setBotStatus('');
+      // On repeated errors, clean up the bot state
+      // This handles cases where the bot was manually removed from the meeting
+      if (isRecording && recordingMode === 'online') {
+        setIsRecording(false);
+        setRecordingMode(null);
+        setBotStatus('');
+        await updateMeeting(meetingId, {
+          status: 'completed',
+          metadata: { ...meeting?.metadata, bot_id: undefined }
+        });
+        toast.info('Bot session ended - meeting status has been updated');
+      }
     }
   };
 

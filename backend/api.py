@@ -593,63 +593,52 @@ async def get_meeting_bot_status(bot_id: str):
                 })
         
         # If not completed locally, try to get live status from API
+        # But don't fail if API is unavailable - always return some status
+        api_status = None
         try:
             from services.meeting_baas import meeting_baas_service
             result = await meeting_baas_service.get_bot_status(bot_id)
             
             if result.get('success'):
-                status = result.get('status')
-                
-                # Update stored session
-                if os.path.exists(session_file):
-                    with open(session_file, 'r') as f:
-                        session = json.load(f)
-                    
-                    session['status'] = status
-                    session['last_updated'] = time.time()
-                    
-                    with open(session_file, 'w') as f:
-                        json.dump(session, f)
-                
-                logger.info(f"[STATUS] Using API status for {bot_id}: {status}")
-                return JSONResponse({
-                    "success": True,
-                    "status": status,
-                    "transcript": result.get('transcript', ''),
-                    "participants": result.get('participants', []),
-                    "duration": result.get('duration', 0)
-                })
+                api_status = result.get('status')
+                logger.info(f"[STATUS] Got API status for {bot_id}: {api_status}")
             else:
-                logger.error(f"[STATUS] API failed for {bot_id}: {result.get('error')}")
-                # If API fails but we have session data, return session status
-                if os.path.exists(session_file):
-                    with open(session_file, 'r') as f:
-                        session = json.load(f)
-                    return JSONResponse({
-                        "success": True,
-                        "status": session.get('status', 'unknown'),
-                        "transcript": '',
-                        "participants": session.get('speakers', []),
-                        "duration": 0
-                    })
-                else:
-                    return JSONResponse({"error": result.get('error')}, status_code=400)
-                    
+                logger.warning(f"[STATUS] API call unsuccessful for {bot_id}: {result.get('error', 'Unknown error')}")
+                
         except Exception as api_error:
-            logger.error(f"[STATUS] API call failed for {bot_id}: {str(api_error)}")
-            # If API fails but we have session data, return session status
-            if os.path.exists(session_file):
-                with open(session_file, 'r') as f:
-                    session = json.load(f)
-                return JSONResponse({
-                    "success": True,
-                    "status": session.get('status', 'unknown'),
-                    "transcript": '',
-                    "participants": session.get('speakers', []),
-                    "duration": 0
-                })
-            else:
-                return JSONResponse({"error": str(api_error)}, status_code=500)
+            logger.warning(f"[STATUS] API call failed for {bot_id}: {str(api_error)}")
+        
+        # Always return a status, preferring session data or defaulting to 'unknown'
+        if os.path.exists(session_file):
+            with open(session_file, 'r') as f:
+                session = json.load(f)
+            
+            # Use API status if available and session isn't completed
+            final_status = session.get('status', 'unknown')
+            if api_status and final_status not in ['completed', 'ended', 'failed']:
+                final_status = api_status
+                # Update session with API status
+                session['status'] = api_status
+                session['last_updated'] = time.time()
+                with open(session_file, 'w') as f:
+                    json.dump(session, f)
+            
+            return JSONResponse({
+                "success": True,
+                "status": final_status,
+                "transcript": '',
+                "participants": session.get('speakers', []),
+                "duration": 0
+            })
+        else:
+            # No session file - return API status or unknown
+            return JSONResponse({
+                "success": True,
+                "status": api_status or 'unknown',
+                "transcript": '',
+                "participants": [],
+                "duration": 0
+            })
             
     except Exception as e:
         logger.error(f"[STATUS] Error getting status for {bot_id}: {str(e)}")
@@ -659,8 +648,14 @@ async def get_meeting_bot_status(bot_id: str):
 async def stop_meeting_bot(bot_id: str, request: Request):
     """Stop meeting bot and get final transcript"""
     try:
-        data = await request.json()
-        sandbox_id = data.get('sandbox_id')
+        # Handle both JSON and empty request bodies
+        try:
+            data = await request.json()
+            sandbox_id = data.get('sandbox_id')
+        except:
+            # No JSON body provided - this is fine
+            data = {}
+            sandbox_id = None
         
         # First check if we already have the transcript from webhook
         import json
@@ -691,6 +686,7 @@ async def stop_meeting_bot(bot_id: str, request: Request):
                 logger.info(f"[STOP] Using webhook transcript for {bot_id}, length: {len(transcript_content) if transcript_content else 0}")
         
         # If no transcript from webhook, try to stop bot via API
+        # But don't fail if API is unavailable
         if not transcript_content:
             try:
                 from services.meeting_baas import meeting_baas_service
@@ -700,12 +696,17 @@ async def stop_meeting_bot(bot_id: str, request: Request):
                     transcript_content = result.get('transcript', '')
                     logger.info(f"[STOP] Got transcript from API for {bot_id}, length: {len(transcript_content) if transcript_content else 0}")
                 else:
-                    logger.error(f"[STOP] API stop failed for {bot_id}: {result.get('error')}")
+                    logger.warning(f"[STOP] API stop unsuccessful for {bot_id}: {result.get('error', 'Unknown error')}")
             except Exception as api_error:
-                logger.error(f"[STOP] API call failed for {bot_id}: {str(api_error)}")
+                logger.warning(f"[STOP] API call failed for {bot_id}: {str(api_error)}")
         
         # Check if meeting completed successfully (even if transcript is empty)
-        meeting_completed = session_data.get('status') == 'completed' or session_data.get('status') == 'ended'
+        # Consider 'ended', 'failed', or any status with recent activity as completed
+        meeting_completed = (
+            session_data.get('status') in ['completed', 'ended', 'failed'] or
+            (session_data.get('last_updated', 0) > 0 and 
+             time.time() - session_data.get('last_updated', 0) < 300)  # Activity within 5 minutes
+        )
         
         if meeting_completed or transcript_content:
             # Create transcript file
@@ -756,8 +757,34 @@ async def stop_meeting_bot(bot_id: str, request: Request):
                 "content": content
             })
         else:
-            logger.error(f"[STOP] Meeting not completed yet for {bot_id}")
-            return JSONResponse({"error": "Meeting is still in progress or failed - please wait for completion"}, status_code=400)
+            # Meeting hasn't completed properly - provide helpful information
+            status = session_data.get('status', 'unknown')
+            last_updated = session_data.get('last_updated', 0)
+            
+            logger.warning(f"[STOP] Meeting not ready for {bot_id}, status: {status}")
+            
+            # Return partial information if available
+            message = f"Meeting status: {status}. "
+            if status == 'unknown':
+                message += "The bot may have disconnected unexpectedly. Try waiting a moment and refreshing."
+            elif status in ['starting', 'joining', 'waiting']:
+                message += "The bot is still trying to join the meeting."
+            elif status in ['in_call', 'recording']:
+                message += "The meeting is still in progress. Please end the meeting first."
+            else:
+                message += "The meeting may have ended without generating a transcript."
+            
+            # If we have some session data, return it anyway
+            if session_data:
+                return JSONResponse({
+                    "success": False,
+                    "error": message,
+                    "status": status,
+                    "transcript": session_data.get('partial_transcript', ''),
+                    "last_updated": last_updated
+                })
+            else:
+                return JSONResponse({"error": message}, status_code=400)
             
     except Exception as e:
         logger.error(f"[STOP] Error stopping bot {bot_id}: {str(e)}")
