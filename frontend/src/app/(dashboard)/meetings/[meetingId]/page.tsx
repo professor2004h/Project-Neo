@@ -284,6 +284,12 @@ export default function MeetingPage() {
         setPauseStartTime(null);
         setLastTimestampMinute(-1);
         wsConnection?.updateStatus('active');
+        
+        // If meeting was completed, reactivate it
+        if (meeting?.status === 'completed') {
+          await updateMeeting(meetingId, { status: 'active' });
+        }
+        
         toast.success('Recording started');
       } catch (error) {
         console.error('Error starting recording:', error);
@@ -293,6 +299,22 @@ export default function MeetingPage() {
       // For online mode, show meeting URL input dialog
       setShowMeetingUrlDialog(true);
     }
+  };
+
+  // Continue recording (start a new session on existing transcript)
+  const continueRecording = async (mode: 'local' | 'online') => {
+    // Add a session separator to the transcript
+    const sessionSeparator = `\n\n--- New Recording Session (${new Date().toLocaleString()}) ---\n`;
+    setTranscript(prev => prev + sessionSeparator);
+    
+    // Update meeting status to active and save the separator
+    await updateMeeting(meetingId, { 
+      status: 'active',
+      transcript: transcript + sessionSeparator
+    });
+    
+    // Start recording normally
+    await startRecording(mode);
   };
 
   // Handle starting online recording with URL
@@ -818,45 +840,85 @@ export default function MeetingPage() {
       </div>
 
       {/* Recording controls */}
-      {meeting.status === 'active' && (
+      {(meeting.status === 'active' || (meeting.status === 'completed' && transcript)) && (
         <div className="flex-shrink-0 border-t bg-gradient-to-r from-background/95 via-background to-background/95 backdrop-blur-sm">
           <div className="px-6 py-6 max-h-36 overflow-visible">
             <div className="max-w-4xl mx-auto">
               {!isRecording ? (
                 <div className="flex flex-col items-center justify-center space-y-4">
-                  <div className="flex items-center gap-1 bg-card/60 backdrop-blur border border-border/50 rounded-2xl p-1.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
-                    <button
-                      onClick={() => startRecording('local')}
-                      className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-950/30 transition-all duration-200 text-slate-700 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-200 hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center group-hover:bg-slate-200 dark:group-hover:bg-slate-800/60 transition-all duration-200 group-hover:scale-110">
-                          <User className="h-5 w-5" />
-                        </div>
+                  {meeting.status === 'completed' ? (
+                    /* Continue Recording Section */
+                    <>
+                      <div className="text-center mb-3">
+                        <p className="text-sm font-medium text-foreground/90 mb-1">Meeting Completed</p>
+                        <p className="text-xs text-muted-foreground/80">Start a new recording session to continue adding to this transcript</p>
                       </div>
-                      <span className="text-sm font-semibold">In Person</span>
-                    </button>
-                    
-                    <div className="w-px h-8 bg-gradient-to-t from-transparent via-border to-transparent" />
-                    
-                    <button
-                      onClick={() => startRecording('online')}
-                      className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/60 transition-all duration-200 group-hover:scale-110">
-                          <Monitor className="h-5 w-5" />
-                        </div>
+                      <div className="flex items-center gap-1 bg-card/60 backdrop-blur border border-border/50 rounded-2xl p-1.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
+                        <button
+                          onClick={() => continueRecording('local')}
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all duration-200 text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-all duration-200 group-hover:scale-110">
+                              <User className="h-5 w-5" />
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">Continue In Person</span>
+                        </button>
+                        
+                        <div className="w-px h-8 bg-gradient-to-t from-transparent via-border to-transparent" />
+                        
+                        <button
+                          onClick={() => continueRecording('online')}
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/60 transition-all duration-200 group-hover:scale-110">
+                              <Monitor className="h-5 w-5" />
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">Continue Online</span>
+                        </button>
                       </div>
-                      <span className="text-sm font-semibold">Online</span>
-                    </button>
-                  </div>
-                  
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground/80 max-w-lg mx-auto leading-relaxed">
-                      Choose <span className="font-medium text-blue-600 dark:text-blue-400">In Person</span> for real-time speech-to-text or <span className="font-medium text-green-600 dark:text-green-400">Online</span> to join virtual meetings with a bot
-                    </p>
-                  </div>
+                    </>
+                  ) : (
+                    /* Initial Recording Section */
+                    <>
+                      <div className="flex items-center gap-1 bg-card/60 backdrop-blur border border-border/50 rounded-2xl p-1.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
+                        <button
+                          onClick={() => startRecording('local')}
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-950/30 transition-all duration-200 text-slate-700 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-200 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center group-hover:bg-slate-200 dark:group-hover:bg-slate-800/60 transition-all duration-200 group-hover:scale-110">
+                              <User className="h-5 w-5" />
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">In Person</span>
+                        </button>
+                        
+                        <div className="w-px h-8 bg-gradient-to-t from-transparent via-border to-transparent" />
+                        
+                        <button
+                          onClick={() => startRecording('online')}
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/60 transition-all duration-200 group-hover:scale-110">
+                              <Monitor className="h-5 w-5" />
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">Online</span>
+                        </button>
+                      </div>
+                      
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground/80 max-w-lg mx-auto leading-relaxed">
+                          Choose <span className="font-medium text-blue-600 dark:text-blue-400">In Person</span> for real-time speech-to-text or <span className="font-medium text-green-600 dark:text-green-400">Online</span> to join virtual meetings with a bot
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center justify-center">
