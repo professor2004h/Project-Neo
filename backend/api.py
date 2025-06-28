@@ -1181,9 +1181,24 @@ async def meeting_bot_webhook(request: Request):
                                     raise Exception(f"Bot {bot_id} not authorized to update meeting {sandbox_id}")
                                 
                                 logger.info(f"[WEBHOOK] Security check passed: bot {bot_id} is authorized for meeting {sandbox_id}")
-                                # Meeting exists, update it with transcript
+                                
+                                # Get existing transcript to append to (not overwrite)
+                                existing_transcript = meeting_check.data.get('transcript', '') or ''
+                                new_transcript_content = session['transcript_text']
+                                
+                                # Append new transcript to existing content
+                                if existing_transcript.strip():
+                                    # Add separator and new content
+                                    combined_transcript = existing_transcript + '\n\n' + new_transcript_content
+                                else:
+                                    # First transcript for this meeting
+                                    combined_transcript = new_transcript_content
+                                
+                                logger.info(f"[WEBHOOK] Appending transcript: existing={len(existing_transcript)} + new={len(new_transcript_content)} = total={len(combined_transcript)}")
+                                
+                                # Meeting exists, update it with APPENDED transcript
                                 update_result = supabase.table('meetings').update({
-                                    'transcript': session['transcript_text'],
+                                    'transcript': combined_transcript,
                                     'status': 'completed',
                                     'metadata': {
                                         'bot_id': None,  # Clear bot_id
@@ -1527,9 +1542,24 @@ async def _persist_transcript_to_database(session, session_file, bot_id):
                     raise Exception(f"Bot {bot_id} not authorized to update meeting {sandbox_id}")
                 
                 logger.info(f"[WEBHOOK] Security check passed: bot {bot_id} is authorized for meeting {sandbox_id}")
-                # Meeting exists, update it with transcript
+                
+                # Get existing transcript to append to (not overwrite)
+                existing_transcript = meeting_check.data.get('transcript', '') or ''
+                new_transcript_content = session['transcript_text']
+                
+                # Append new transcript to existing content
+                if existing_transcript.strip():
+                    # Add separator and new content
+                    combined_transcript = existing_transcript + '\n\n' + new_transcript_content
+                else:
+                    # First transcript for this meeting
+                    combined_transcript = new_transcript_content
+                
+                logger.info(f"[WEBHOOK] Appending transcript: existing={len(existing_transcript)} + new={len(new_transcript_content)} = total={len(combined_transcript)}")
+                
+                # Meeting exists, update it with APPENDED transcript
                 update_result = supabase.table('meetings').update({
-                    'transcript': session['transcript_text'],
+                    'transcript': combined_transcript,
                     'status': 'completed',
                     'metadata': {
                         'bot_id': None,  # Clear bot_id

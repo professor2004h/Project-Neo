@@ -552,20 +552,40 @@ export default function MeetingPage() {
 
         const data = await response.json();
         if (data.success && data.content) {
-          // Update transcript with bot's transcript
-          const fullTranscript = transcript + '\n\n' + data.content;
-          setTranscript(fullTranscript);
-          
-          await updateMeeting(meetingId, {
-            transcript: fullTranscript,
-            status: 'completed',
-            metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot data
-          });
-          setIsRecording(false);
-          setRecordingMode(null);
-          setBotStatus('completed');
-          setCurrentBotId(null);  // Clear current bot ID
-          toast.success('Meeting recording completed');
+          try {
+            // Fetch latest transcript from database to ensure we don't overwrite
+            const latestMeeting = await getMeeting(meetingId);
+            const existingTranscript = latestMeeting.transcript || '';
+            const fullTranscript = existingTranscript + '\n\n' + data.content;
+            setTranscript(fullTranscript);
+            
+            await updateMeeting(meetingId, {
+              transcript: fullTranscript,
+              status: 'completed',
+              metadata: { ...meeting?.metadata, bot_id: undefined } // Clear bot data
+            });
+            setIsRecording(false);
+            setRecordingMode(null);
+            setBotStatus('completed');
+            setCurrentBotId(null);  // Clear current bot ID
+            toast.success('Meeting recording completed');
+          } catch (error) {
+            console.error('[STOP] Error fetching latest transcript:', error);
+            // Fallback to using local state
+            const fullTranscript = transcript + '\n\n' + data.content;
+            setTranscript(fullTranscript);
+            
+            await updateMeeting(meetingId, {
+              transcript: fullTranscript,
+              status: 'completed',
+              metadata: { ...meeting?.metadata, bot_id: undefined }
+            });
+            setIsRecording(false);
+            setRecordingMode(null);
+            setBotStatus('completed');
+            setCurrentBotId(null);
+            toast.success('Meeting recording completed');
+          }
         } else if (data.success && data.status === 'stopping') {
           // Bot is stopping, wait for final transcript via polling
           toast.info('Stopping meeting bot, waiting for final transcript...');
@@ -594,15 +614,30 @@ export default function MeetingPage() {
           // Handle partial success or informational errors
           const errorMessage = data.error || 'Unknown error occurred';
           if (data.transcript) {
-            // We got some transcript data despite the error
-            const fullTranscript = transcript + '\n\n' + data.transcript;
-            setTranscript(fullTranscript);
-            await updateMeeting(meetingId, {
-              transcript: fullTranscript,
-              status: 'completed',
-              metadata: { ...meeting?.metadata, bot_id: undefined }
-            });
-            toast.warning(`Meeting ended with issues: ${errorMessage}`);
+            try {
+              // Fetch latest transcript from database to ensure we don't overwrite
+              const latestMeeting = await getMeeting(meetingId);
+              const existingTranscript = latestMeeting.transcript || '';
+              const fullTranscript = existingTranscript + '\n\n' + data.transcript;
+              setTranscript(fullTranscript);
+              await updateMeeting(meetingId, {
+                transcript: fullTranscript,
+                status: 'completed',
+                metadata: { ...meeting?.metadata, bot_id: undefined }
+              });
+              toast.warning(`Meeting ended with issues: ${errorMessage}`);
+            } catch (error) {
+              console.error('[STOP] Error fetching latest transcript for error case:', error);
+              // Fallback to using local state
+              const fullTranscript = transcript + '\n\n' + data.transcript;
+              setTranscript(fullTranscript);
+              await updateMeeting(meetingId, {
+                transcript: fullTranscript,
+                status: 'completed',
+                metadata: { ...meeting?.metadata, bot_id: undefined }
+              });
+              toast.warning(`Meeting ended with issues: ${errorMessage}`);
+            }
           } else {
             // No transcript available
             await updateMeeting(meetingId, {
@@ -687,17 +722,33 @@ export default function MeetingPage() {
                 // When completed, check if transcript is included
                 if (data.transcript) {
                   console.log('[SSE] Received transcript with completed status');
-                  const fullTranscript = transcript + '\n\n' + data.transcript;
-                  setTranscript(fullTranscript);
                   
-                  // Update meeting with transcript
-                  updateMeeting(meetingId, {
-                    transcript: fullTranscript,
-                    status: 'completed',
-                    metadata: { ...meeting?.metadata, bot_id: undefined }
+                  // Fetch latest transcript from database to ensure we don't overwrite
+                  getMeeting(meetingId).then(latestMeeting => {
+                    const existingTranscript = latestMeeting.transcript || '';
+                    const fullTranscript = existingTranscript + '\n\n' + data.transcript;
+                    setTranscript(fullTranscript);
+                    
+                    // Update meeting with transcript
+                    updateMeeting(meetingId, {
+                      transcript: fullTranscript,
+                      status: 'completed',
+                      metadata: { ...meeting?.metadata, bot_id: undefined }
+                    });
+                    
+                    toast.success('Meeting recording completed - transcript updated');
+                  }).catch(error => {
+                    console.error('[SSE] Error fetching latest transcript:', error);
+                    // Fallback to using local state
+                    const fullTranscript = transcript + '\n\n' + data.transcript;
+                    setTranscript(fullTranscript);
+                    updateMeeting(meetingId, {
+                      transcript: fullTranscript,
+                      status: 'completed',
+                      metadata: { ...meeting?.metadata, bot_id: undefined }
+                    });
+                    toast.success('Meeting recording completed - transcript updated');
                   });
-                  
-                  toast.success('Meeting recording completed - transcript updated');
                 } else {
                   // If no transcript in SSE, poll for it
                   console.log('[SSE] Completed without transcript, polling for it');
@@ -789,25 +840,50 @@ export default function MeetingPage() {
         }
         
         if (newStatus === 'completed' && data.transcript) {
-          // Update transcript
-          const fullTranscript = transcript + '\n\n' + data.transcript;
-          setTranscript(fullTranscript);
-          
-          await updateMeeting(meetingId, {
-            transcript: fullTranscript,
-            status: 'completed',
-            metadata: { ...meeting?.metadata, bot_id: undefined }
-          });
-          
-          setIsRecording(false);
-          setRecordingMode(null);
-          
-          // Stop monitoring
-          if (sseConnection) {
-            sseConnection.close();
-            setSseConnection(null);
+          try {
+            // Fetch latest transcript from database to ensure we don't overwrite
+            const latestMeeting = await getMeeting(meetingId);
+            const existingTranscript = latestMeeting.transcript || '';
+            const fullTranscript = existingTranscript + '\n\n' + data.transcript;
+            setTranscript(fullTranscript);
+            
+            await updateMeeting(meetingId, {
+              transcript: fullTranscript,
+              status: 'completed',
+              metadata: { ...meeting?.metadata, bot_id: undefined }
+            });
+            
+            setIsRecording(false);
+            setRecordingMode(null);
+            
+            // Stop monitoring
+            if (sseConnection) {
+              sseConnection.close();
+              setSseConnection(null);
+            }
+            return;
+          } catch (error) {
+            console.error('[POLLING] Error fetching latest transcript:', error);
+            // Fallback to using local state
+            const fullTranscript = transcript + '\n\n' + data.transcript;
+            setTranscript(fullTranscript);
+            
+            await updateMeeting(meetingId, {
+              transcript: fullTranscript,
+              status: 'completed',
+              metadata: { ...meeting?.metadata, bot_id: undefined }
+            });
+            
+            setIsRecording(false);
+            setRecordingMode(null);
+            
+            // Stop monitoring
+            if (sseConnection) {
+              sseConnection.close();
+              setSseConnection(null);
+            }
+            return;
           }
-          return;
         } else if (['failed'].includes(newStatus)) {
           setIsRecording(false);
           setRecordingMode(null);
