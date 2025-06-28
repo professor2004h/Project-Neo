@@ -144,6 +144,8 @@ class MeetingBaaSService:
                     timeout=aiohttp.ClientTimeout(total=10)  # 10 second timeout
                 ) as response:
                     
+                    response_text = await response.text()
+                    
                     if response.status == 200:
                         try:
                             result = await response.json()
@@ -160,6 +162,16 @@ class MeetingBaaSService:
                                 'success': False,
                                 'error': f'Failed to parse response JSON: {str(json_error)}'
                             }
+                    elif response.status == 401:
+                        # Log API key details for debugging (without exposing full key)
+                        key_preview = f"{self.api_key[:10]}..." if self.api_key else "None"
+                        print(f"[MEETING BAAS] 401 Unauthorized for bot {bot_id}. API key: {key_preview}")
+                        print(f"[MEETING BAAS] Response: {response_text}")
+                        return {
+                            'success': False,
+                            'error': f'API returned 401: {response_text}',
+                            'status_code': 401
+                        }
                     elif response.status == 404:
                         return {
                             'success': False,
@@ -167,10 +179,10 @@ class MeetingBaaSService:
                             'status_code': 404
                         }
                     else:
-                        error_text = await response.text()
+                        print(f"[MEETING BAAS] Unexpected status {response.status} for bot {bot_id}: {response_text}")
                         return {
                             'success': False,
-                            'error': f'API returned {response.status}: {error_text}',
+                            'error': f'API returned {response.status}: {response_text}',
                             'status_code': response.status
                         }
         except asyncio.TimeoutError:
@@ -187,6 +199,79 @@ class MeetingBaaSService:
             return {
                 'success': False,
                 'error': f'Unexpected error: {str(unexpected_error)}'
+            }
+    
+    async def get_bot_transcript(self, bot_id: str) -> Dict[str, Any]:
+        """
+        Get the transcript for a completed meeting bot.
+        
+        Args:
+            bot_id: ID of the bot to get transcript for
+            
+        Returns:
+            Dictionary with transcript data
+        """
+        
+        if not self.api_key:
+            return {
+                'success': False,
+                'error': 'MEETINGBAAS_API_KEY environment variable not set'
+            }
+        
+        headers = {
+            'x-meeting-baas-api-key': self.api_key,
+            'Content-Type': 'application/json'
+        }
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f'{self.base_url}/bots/{bot_id}/transcript',
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=15)  # Longer timeout for transcript
+                ) as response:
+                    
+                    response_text = await response.text()
+                    
+                    if response.status == 200:
+                        try:
+                            result = await response.json()
+                            return {
+                                'success': True,
+                                'transcript': result.get('transcript', []),
+                                'speakers': result.get('speakers', []),
+                                'duration': result.get('duration_seconds', 0),
+                                'recording_url': result.get('recording_url')
+                            }
+                        except Exception as json_error:
+                            return {
+                                'success': False,
+                                'error': f'Failed to parse transcript JSON: {str(json_error)}'
+                            }
+                    elif response.status == 401:
+                        key_preview = f"{self.api_key[:10]}..." if self.api_key else "None"
+                        print(f"[MEETING BAAS] 401 Unauthorized getting transcript for bot {bot_id}. API key: {key_preview}")
+                        return {
+                            'success': False,
+                            'error': f'API returned 401: {response_text}',
+                            'status_code': 401
+                        }
+                    elif response.status == 404:
+                        return {
+                            'success': False,
+                            'error': f'Transcript for bot {bot_id} not found',
+                            'status_code': 404
+                        }
+                    else:
+                        return {
+                            'success': False,
+                            'error': f'API returned {response.status}: {response_text}',
+                            'status_code': response.status
+                        }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Error getting transcript: {str(e)}'
             }
     
     async def stop_meeting_bot(self, bot_id: str) -> Dict[str, Any]:

@@ -429,6 +429,7 @@ async def bot_status_events(bot_id: str):
     logger.info(f"[SSE] New connection for bot {bot_id}")
     
     async def event_publisher():
+        """Event publisher coroutine that handles the SSE stream"""
         queue = asyncio.Queue()
         
         try:
@@ -463,20 +464,35 @@ async def bot_status_events(bot_id: str):
                 except Exception as file_error:
                     logger.error(f"[SSE] Error reading session for {bot_id}: {file_error}")
             
-            # Stream real-time updates
+            # Stream real-time updates with improved heartbeat
+            last_heartbeat = time.time()
             while True:
                 try:
+                    # Wait for message or timeout for heartbeat
                     message = await asyncio.wait_for(queue.get(), timeout=30.0)
                     yield message
+                    last_heartbeat = time.time()
                     logger.debug(f"[SSE] Sent message to bot {bot_id} client")
+                    
                 except asyncio.TimeoutError:
-                    # Send heartbeat to keep connection alive
-                    heartbeat = json.dumps({"type": "heartbeat", "timestamp": time.time()})
-                    yield f"data: {heartbeat}\n\n"
-                    logger.debug(f"[SSE] Sent heartbeat for bot {bot_id}")
+                    # Send heartbeat every 30 seconds to keep connection alive
+                    current_time = time.time()
+                    if current_time - last_heartbeat >= 30:
+                        heartbeat = json.dumps({
+                            "type": "heartbeat", 
+                            "timestamp": current_time,
+                            "bot_id": bot_id
+                        })
+                        yield f"data: {heartbeat}\n\n"
+                        last_heartbeat = current_time
+                        logger.debug(f"[SSE] Sent heartbeat for bot {bot_id}")
+                        
+                except Exception as e:
+                    logger.warning(f"[SSE] Connection error for bot {bot_id}: {str(e)}")
+                    break
                     
         except Exception as e:
-            logger.error(f"[SSE] Client for bot {bot_id} disconnected with error: {e}")
+            logger.error(f"[SSE] Publisher error for bot {bot_id}: {str(e)}")
         finally:
             # Clean up connection
             try:
@@ -488,7 +504,7 @@ async def bot_status_events(bot_id: str):
                 logger.info(f"[SSE] Cleaned up connection for bot {bot_id}")
             except Exception as cleanup_error:
                 logger.error(f"[SSE] Error cleaning up for bot {bot_id}: {cleanup_error}")
-    
+
     return StreamingResponse(
         event_publisher(),
         media_type="text/event-stream",
@@ -496,25 +512,26 @@ async def bot_status_events(bot_id: str):
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Cache-Control",
-            "Access-Control-Allow-Methods": "GET, OPTIONS",
-            "X-Accel-Buffering": "no",  # Disable proxy buffering for real-time streaming
+            "Access-Control-Allow-Credentials": "true",
         }
     )
 
 # Meeting Bot Management Endpoints
 @app.post("/api/meeting-bot/start")
-async def start_meeting_bot(request: Request):
-    """Start a meeting bot for the given URL"""
+async def start_meeting_bot(request: Request, user_id: str = Depends(get_current_user_id_from_jwt)):
+    """Start a meeting bot for online recording"""
     try:
         logger.info("[MEETING BOT] Starting meeting bot request")
         
         data = await request.json()
         meeting_url = data.get('meeting_url')
         sandbox_id = data.get('sandbox_id')
-        user_id = data.get('user_id')
+        provided_user_id = data.get('user_id')  # From request body
         
-        logger.info(f"[MEETING BOT] Request data: meeting_url={meeting_url}, sandbox_id={sandbox_id}, user_id={user_id}")
+        # Use authenticated user_id from JWT over provided one for security
+        actual_user_id = user_id if user_id else provided_user_id
+        
+        logger.info(f"[MEETING BOT] Request data: meeting_url={meeting_url}, sandbox_id={sandbox_id}, user_id={actual_user_id}")
         
         if not meeting_url:
             logger.error("[MEETING BOT] Missing meeting_url in request")
@@ -541,7 +558,7 @@ async def start_meeting_bot(request: Request):
         logger.info(f"[MEETING BOT] Using webhook URL: {webhook_url}")
         
         try:
-            result = await meeting_baas_service.start_meeting_bot(meeting_url, "AI Transcription Bot", webhook_url)
+            result = await meeting_baas_service.start_meeting_bot(meeting_url, "Omni", webhook_url)
             logger.info(f"[MEETING BOT] Service result: {result}")
         except Exception as service_error:
             logger.error(f"[MEETING BOT] Service execution failed: {str(service_error)}")
@@ -555,7 +572,7 @@ async def start_meeting_bot(request: Request):
                 'bot_id': bot_id,
                 'meeting_url': meeting_url,
                 'sandbox_id': sandbox_id,
-                'user_id': user_id,  # Store user ID for webhook auth
+                'user_id': actual_user_id,  # Store user ID for webhook auth
                 'status': 'starting',
                 'started_at': time.time(),
                 'last_updated': time.time()
@@ -923,9 +940,21 @@ async def meeting_bot_webhook(request: Request):
         api_key_header = request.headers.get('x-meeting-baas-api-key')
         expected_api_key = os.getenv('MEETINGBAAS_API_KEY')
         
-        if not api_key_header or api_key_header != expected_api_key:
-            print(f"[WEBHOOK] Unauthorized webhook attempt. Expected key: {expected_api_key[:10]}...")
+        if not api_key_header:
+            logger.warning(f"[WEBHOOK] No API key header provided in webhook request")
+            return JSONResponse({"error": "Missing API key"}, status_code=401)
+        
+        if not expected_api_key:
+            logger.error(f"[WEBHOOK] MEETINGBAAS_API_KEY environment variable not set")
+            return JSONResponse({"error": "Server configuration error"}, status_code=500)
+        
+        if api_key_header != expected_api_key:
+            provided_preview = f"{api_key_header[:10]}..." if api_key_header else "None"
+            expected_preview = f"{expected_api_key[:10]}..." if expected_api_key else "None"
+            logger.warning(f"[WEBHOOK] API key mismatch. Provided: {provided_preview}, Expected: {expected_preview}")
             return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        
+        logger.debug(f"[WEBHOOK] API key validated successfully")
         
         data = await request.json()
         event_type = data.get('event')  # MeetingBaaS uses 'event', not 'type'
@@ -1011,6 +1040,58 @@ async def meeting_bot_webhook(request: Request):
                 elif status_code == 'call_ended':
                     session['status'] = 'ended'
                     session['ended_at'] = created_at or time.time()
+                    
+                    # FALLBACK: Try to get transcript when call ends without 'complete' event
+                    # This handles cases where MeetingBaaS doesn't send a proper complete webhook
+                    logger.info(f"[WEBHOOK] Call ended for {bot_id}, checking for transcript")
+                    
+                    # Wait a brief moment for any pending complete events
+                    await asyncio.sleep(2)
+                    
+                    # Check if we got a complete event while waiting
+                    if session.get('status') != 'completed':
+                        logger.warning(f"[WEBHOOK] No complete event received for {bot_id}, attempting fallback transcript retrieval")
+                        
+                        try:
+                            from services.meeting_baas import meeting_baas_service
+                            
+                            # Try to get the bot data which might include transcript
+                            bot_result = await meeting_baas_service.get_bot_status(bot_id)
+                            if bot_result.get('success') and bot_result.get('transcript'):
+                                logger.info(f"[WEBHOOK] Retrieved transcript via status call for {bot_id}")
+                                
+                                # Mark as completed and process like a complete event
+                                session['status'] = 'completed'
+                                session['transcript_ready'] = True
+                                session['completed_at'] = time.time()
+                                session['transcript'] = bot_result.get('transcript', [])
+                                session['speakers'] = bot_result.get('speakers', [])
+                                
+                                # Convert transcript format
+                                transcript_text_parts = []
+                                if session['transcript']:
+                                    for item in session['transcript']:
+                                        if isinstance(item, dict):
+                                            speaker = item.get('speaker', 'Unknown')
+                                            text = item.get('text', '')
+                                            if text.strip():
+                                                transcript_text_parts.append(f"{speaker}: {text}")
+                                
+                                if transcript_text_parts:
+                                    session['transcript_text'] = '\n'.join(transcript_text_parts)
+                                    logger.info(f"[WEBHOOK] Processed fallback transcript for {bot_id} ({len(transcript_text_parts)} segments)")
+                                    # Persist to database immediately
+                                    await _persist_transcript_to_database(session, session_file, bot_id)
+                                else:
+                                    session['transcript_text'] = "[No speech detected during meeting]"
+                                    
+                            else:
+                                logger.warning(f"[WEBHOOK] No transcript available via status call for {bot_id}")
+                                session['transcript_text'] = "[Meeting ended but no transcript available]"
+                                
+                        except Exception as transcript_error:
+                            logger.error(f"[WEBHOOK] Failed to retrieve fallback transcript for {bot_id}: {str(transcript_error)}")
+                            session['transcript_text'] = "[Meeting ended but transcript retrieval failed]"
                 elif status_code in ['bot_rejected', 'bot_removed', 'waiting_room_timeout']:
                     session['status'] = 'failed'
                     session['error'] = status_code
@@ -1344,6 +1425,77 @@ async def periodic_session_cleanup():
         
         # Run cleanup every hour
         await asyncio.sleep(3600)
+
+async def _persist_transcript_to_database(session, session_file, bot_id):
+    """
+    Persist the transcript to the database.
+    
+    Args:
+        session: The session data
+        session_file: The path to the session file
+        bot_id: The ID of the bot
+    """
+    try:
+        # Validate that the meeting exists and get owner info
+        from datetime import datetime
+        from supabase import create_client as create_supabase_client, Client
+        
+        sandbox_id = session.get('sandbox_id')
+        if not sandbox_id:
+            logger.error(f"[WEBHOOK] No sandbox_id in session for bot {bot_id}")
+            return
+        
+        supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+        
+        # Prefer user auth token over service role for security
+        user_token = session.get('user_auth_token')
+        if user_token:
+            # Use the user's own auth token - much more secure
+            supabase: Client = create_supabase_client(supabase_url, user_token)
+            logger.info(f"[WEBHOOK] Using user auth token for meeting {sandbox_id}")
+        else:
+            # Fallback to service role if no user token available
+            supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+            if not supabase_key:
+                raise Exception("No authentication method available for database update")
+            supabase: Client = create_supabase_client(supabase_url, supabase_key)
+            logger.warning(f"[WEBHOOK] Using service role fallback for meeting {sandbox_id}")
+        
+        if supabase_url:
+            # First verify the meeting exists
+            meeting_check = supabase.table('meetings').select('meeting_id, account_id').eq('meeting_id', sandbox_id).single().execute()
+            
+            if meeting_check.data:
+                # Meeting exists, update it with transcript
+                update_result = supabase.table('meetings').update({
+                    'transcript': session['transcript_text'],
+                    'status': 'completed',
+                    'metadata': {
+                        'bot_id': None,  # Clear bot_id
+                        'completed_at': datetime.now().isoformat(),
+                        'speakers': session.get('speakers', []),
+                        'webhook_processed': True,  # Mark as processed by webhook
+                        'auth_method': 'user_token' if user_token else 'service_role'  # Track auth method
+                    },
+                    'updated_at': datetime.now().isoformat()
+                }).eq('meeting_id', sandbox_id).execute()
+                
+                auth_method = 'user_token' if user_token else 'service_role'
+                logger.info(f"[WEBHOOK] Updated meeting {sandbox_id} with transcript using {auth_method} (owner: {meeting_check.data.get('account_id')})")
+            else:
+                logger.error(f"[WEBHOOK] Meeting {sandbox_id} not found in database - skipping update")
+                logger.error(f"[WEBHOOK] Transcript saved in session file: {session_file}")
+        else:
+            logger.warning(f"[WEBHOOK] Supabase URL not configured, transcript only in session")
+            logger.warning(f"[WEBHOOK] Transcript saved in session file: {session_file}")
+            logger.warning(f"[WEBHOOK] To manually recover, read file and update meeting {sandbox_id}")
+            
+    except Exception as db_error:
+        logger.error(f"[WEBHOOK] Failed to persist transcript to database: {str(db_error)}")
+        # Log session file path for manual recovery
+        logger.error(f"[WEBHOOK] Transcript saved in session file: {session_file}")
+        logger.error(f"[WEBHOOK] To manually recover, read file and update meeting {sandbox_id}")
+        # Continue anyway - transcript is still in session file
 
 if __name__ == "__main__":
     import uvicorn
