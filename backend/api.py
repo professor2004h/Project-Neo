@@ -770,8 +770,17 @@ async def stop_meeting_bot(bot_id: str, request: Request):
             content += f"Participants: {', '.join(speakers)}\n\n"
             content += f"Full Transcript:\n{transcript_content}"
             
-            # Clean up session now that we have the final transcript
-            if os.path.exists(session_file):
+            # Only clean up session if we have the final transcript or it's been a while
+            # Don't clean up if we're still awaiting transcript from a webhook
+            should_clean_session = True
+            if session_data.get('awaiting_transcript') and session_data.get('status') == 'ended':
+                # Recently ended but awaiting transcript - don't clean up yet
+                ended_time = session_data.get('ended_at', 0)
+                if ended_time > 0 and time.time() - ended_time < 600:  # Less than 10 minutes
+                    should_clean_session = False
+                    logger.info(f"[STOP] Preserving session for {bot_id} - still awaiting transcript")
+            
+            if should_clean_session and os.path.exists(session_file):
                 os.remove(session_file)
                 logger.info(f"[STOP] Cleaned up session file for {bot_id}")
             
@@ -847,8 +856,16 @@ async def stop_meeting_bot(bot_id: str, request: Request):
             content += f"Participants: {', '.join(speakers)}\n\n"
             content += f"Full Transcript:\n{transcript_content}"
             
-            # Clean up session
-            if os.path.exists(session_file):
+            # Only clean up session if not awaiting transcript
+            should_clean_session = True
+            if session_data.get('awaiting_transcript') and session_data.get('status') == 'ended':
+                # Recently ended but awaiting transcript - don't clean up yet
+                ended_time = session_data.get('ended_at', 0)
+                if ended_time > 0 and time.time() - ended_time < 600:  # Less than 10 minutes
+                    should_clean_session = False
+                    logger.info(f"[STOP] Preserving session for {bot_id} - still awaiting transcript (fallback case)")
+            
+            if should_clean_session and os.path.exists(session_file):
                 os.remove(session_file)
                 logger.info(f"[STOP] Cleaned up session file for {bot_id}")
             
@@ -1021,17 +1038,11 @@ async def meeting_bot_webhook(request: Request):
                     # This handles cases where MeetingBaaS doesn't send a proper complete webhook
                     logger.info(f"[WEBHOOK] Call ended for {bot_id}, checking for transcript")
                     
-                    # Wait a brief moment for any pending complete events
-                    await asyncio.sleep(2)
-                    
-                    # Check if we got a complete event while waiting
-                    if session.get('status') != 'completed':
-                        logger.warning(f"[WEBHOOK] No complete event received for {bot_id}, attempting fallback transcript retrieval")
-                        
-                        # Since webhooks are the primary data source, just mark as ended
-                        # The complete webhook with transcript should arrive separately
-                        logger.warning(f"[WEBHOOK] Call ended for {bot_id} without complete event - waiting for transcript webhook")
-                        session['transcript_text'] = "[Meeting ended - waiting for transcript]"
+                    # Don't wait here - the complete event will arrive later
+                    # Keep session alive to receive the transcript
+                    logger.info(f"[WEBHOOK] Call ended for {bot_id} - session preserved for incoming transcript")
+                    session['transcript_text'] = "[Meeting ended - waiting for transcript]"
+                    session['awaiting_transcript'] = True  # Flag to indicate we're waiting
                 elif status_code in ['bot_rejected', 'bot_removed', 'waiting_room_timeout']:
                     session['status'] = 'failed'
                     session['error'] = status_code
@@ -1047,6 +1058,7 @@ async def meeting_bot_webhook(request: Request):
                 session['status'] = 'completed'
                 session['transcript_ready'] = True
                 session['completed_at'] = time.time()
+                session['awaiting_transcript'] = False  # Clear the waiting flag
                 
                 # Store meeting data using MeetingBaaS format
                 session['recording_url'] = event_data.get('mp4')  # Note: 'mp4', not 'mp4Url'
@@ -1123,6 +1135,11 @@ async def meeting_bot_webhook(request: Request):
                                 
                                 auth_method = 'user_token' if user_token else 'service_role'
                                 logger.info(f"[WEBHOOK] Updated meeting {sandbox_id} with transcript using {auth_method} (owner: {meeting_check.data.get('account_id')})")
+                                
+                                # Clean up session file now that transcript is safely stored in database
+                                if os.path.exists(session_file):
+                                    os.remove(session_file)
+                                    logger.info(f"[WEBHOOK] Cleaned up session file for {bot_id} - transcript saved to database")
                             else:
                                 logger.error(f"[WEBHOOK] Meeting {sandbox_id} not found in database - skipping update")
                                 logger.error(f"[WEBHOOK] Transcript saved in session file: {session_file}")
@@ -1179,9 +1196,25 @@ async def meeting_bot_webhook(request: Request):
                                 session = json.load(f)
                             
                             # Clean up sessions stuck in "stopping" state for > 5 minutes
+                            # BUT preserve sessions awaiting transcript for up to 10 minutes
+                            should_cleanup = False
+                            
                             if (session.get('status') == 'stopping' and 
                                 session.get('stop_requested_at', 0) > 0 and
                                 current_time - session.get('stop_requested_at', 0) > 300):
+                                should_cleanup = True
+                            
+                            # Also clean up old "ended" sessions ONLY if they're not awaiting transcript
+                            # or if they've been waiting for transcript for more than 10 minutes
+                            elif (session.get('status') == 'ended' and 
+                                  session.get('ended_at', 0) > 0 and
+                                  current_time - session.get('ended_at', 0) > 600):  # 10 minutes
+                                if not session.get('awaiting_transcript'):
+                                    should_cleanup = True
+                                else:
+                                    logger.info(f"[WEBHOOK] Preserving session {filename} - still awaiting transcript after {(current_time - session.get('ended_at', 0))/60:.1f} minutes")
+                            
+                            if should_cleanup:
                                 
                                 os.remove(filepath)
                                 logger.info(f"[WEBHOOK] Cleaned up orphaned stopping session: {filename}")
