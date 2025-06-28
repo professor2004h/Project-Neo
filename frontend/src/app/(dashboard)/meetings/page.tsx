@@ -449,7 +449,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={() => setShowNewMeetingDialog(true)}
                 size="sm"
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-colors duration-200 focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Meeting
@@ -529,7 +529,7 @@ export default function MeetingsPage() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-4 flex-1 min-w-0">
                   <div className="relative">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/30 dark:to-amber-900/40 flex items-center justify-center group-hover:scale-105 transition-all duration-200 shadow-sm">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/30 dark:to-amber-900/40 flex items-center justify-center transition-all duration-200 shadow-sm group-hover:shadow-md">
                       <Folder className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                     </div>
                   </div>
@@ -621,7 +621,7 @@ export default function MeetingsPage() {
               draggable
               onDragStart={(e) => handleDragStart(e, 'meeting', meeting.meeting_id)}
               className={cn(
-                "group bg-gradient-to-br from-card/60 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-5 hover:bg-gradient-to-br hover:from-accent/30 hover:to-accent/10 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5",
+                "group bg-gradient-to-br from-card/60 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-5 hover:bg-gradient-to-br hover:from-accent/30 hover:to-accent/10 cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-black/5",
                 draggedItem?.id === meeting.meeting_id && "opacity-50 scale-95"
               )}
               onClick={() => router.push(`/meetings/${meeting.meeting_id}`)}
@@ -630,7 +630,7 @@ export default function MeetingsPage() {
                 <div className="flex items-center space-x-4 flex-1 min-w-0">
                   <div className="relative">
                     <div className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-all duration-200 shadow-sm",
+                      "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm group-hover:shadow-md",
                       meeting.status === 'active' 
                         ? "bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/40"
                         : "bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950/30 dark:to-slate-900/40"
@@ -764,7 +764,7 @@ export default function MeetingsPage() {
             </p>
             <Button 
               onClick={() => setShowNewMeetingDialog(true)}
-              className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-200"
+              className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-md hover:shadow-lg transition-all duration-200"
             >
               <Plus className="h-4 w-4 mr-2" />
               Create First Meeting
@@ -809,7 +809,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={handleCreateMeeting} 
                 disabled={!newMeetingTitle.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-colors duration-200 focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 Create Meeting
               </Button>
@@ -898,7 +898,7 @@ export default function MeetingsPage() {
               <Button 
                 onClick={handleRename} 
                 disabled={!editingItem?.name.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-colors duration-200 focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 Save Changes
               </Button>

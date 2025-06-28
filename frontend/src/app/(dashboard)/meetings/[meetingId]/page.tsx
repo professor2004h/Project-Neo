@@ -1059,7 +1059,7 @@ export default function MeetingPage() {
             variant="ghost"
             size="sm"
             onClick={() => router.push('/meetings')}
-            className="hover:bg-accent/80 transition-all duration-200 hover:scale-105"
+            className="hover:bg-accent/80 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -1093,7 +1093,7 @@ export default function MeetingPage() {
               size="sm"
               onClick={downloadTranscript}
               disabled={!transcript}
-              className="hover:bg-blue-50 dark:hover:bg-blue-950/30 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-all duration-200 hover:scale-105 disabled:opacity-50"
+              className="hover:bg-blue-50 dark:hover:bg-blue-950/30 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50"
             >
               <Download className="h-4 w-4 mr-2" />
               Download
@@ -1103,7 +1103,7 @@ export default function MeetingPage() {
               variant="ghost"
               size="sm"
               onClick={() => toast.info('Sharing coming soon')}
-              className="hover:bg-purple-50 dark:hover:bg-purple-950/30 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 transition-all duration-200 hover:scale-105"
+              className="hover:bg-purple-50 dark:hover:bg-purple-950/30 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 transition-all duration-200 shadow-sm hover:shadow-md"
             >
               <Share2 className="h-4 w-4 mr-2" />
               Share
@@ -1113,7 +1113,7 @@ export default function MeetingPage() {
             size="sm"
             onClick={startChatWithTranscript}
             disabled={!transcript}
-            className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50"
+            className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50"
           >
             <MessageSquare className="h-4 w-4 mr-2" />
             Talk to Operator
@@ -1141,14 +1141,14 @@ export default function MeetingPage() {
               <div className="flex bg-background/80 backdrop-blur rounded-md border border-border/30 shadow-sm">
                 <button
                   onClick={() => navigateSearch('prev')}
-                  className="p-1.5 hover:bg-accent/80 rounded-l-md transition-all duration-200 hover:scale-110 text-muted-foreground hover:text-foreground"
+                  className="p-1.5 hover:bg-accent/80 rounded-l-md transition-all duration-200 shadow-sm hover:shadow-md text-muted-foreground hover:text-foreground"
                   aria-label="Previous result"
                 >
                   ↑
                 </button>
                 <button
                   onClick={() => navigateSearch('next')}
-                  className="p-1.5 hover:bg-accent/80 rounded-r-md transition-all duration-200 hover:scale-110 text-muted-foreground hover:text-foreground"
+                  className="p-1.5 hover:bg-accent/80 rounded-r-md transition-all duration-200 shadow-sm hover:shadow-md text-muted-foreground hover:text-foreground"
                   aria-label="Next result"
                 >
                   ↓
@@ -1275,10 +1275,10 @@ export default function MeetingPage() {
                       <div className="flex items-center gap-1 bg-card/60 backdrop-blur border border-border/50 rounded-2xl p-1.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
                         <button
                           onClick={() => continueRecording('local')}
-                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all duration-200 text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:scale-[1.02] active:scale-[0.98]"
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all duration-200 text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 shadow-sm hover:shadow-md active:shadow-sm"
                         >
                           <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-all duration-200 group-hover:scale-110">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center transition-all duration-200 shadow-sm group-hover:shadow-md">
                               <User className="h-5 w-5" />
                             </div>
                           </div>
@@ -1289,10 +1289,10 @@ export default function MeetingPage() {
                         
                         <button
                           onClick={() => continueRecording('online')}
-                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:scale-[1.02] active:scale-[0.98]"
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 shadow-sm hover:shadow-md active:shadow-sm"
                         >
                           <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/60 transition-all duration-200 group-hover:scale-110">
+                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center transition-all duration-200 shadow-sm group-hover:shadow-md">
                               <Monitor className="h-5 w-5" />
                             </div>
                           </div>
@@ -1306,10 +1306,10 @@ export default function MeetingPage() {
                       <div className="flex items-center gap-1 bg-card/60 backdrop-blur border border-border/50 rounded-2xl p-1.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
                         <button
                           onClick={() => startRecording('local')}
-                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-950/30 transition-all duration-200 text-slate-700 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-200 hover:scale-[1.02] active:scale-[0.98]"
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-950/30 transition-all duration-200 text-slate-700 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-200 shadow-sm hover:shadow-md active:shadow-sm"
                         >
                           <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center group-hover:bg-slate-200 dark:group-hover:bg-slate-800/60 transition-all duration-200 group-hover:scale-110">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center transition-all duration-200 shadow-sm group-hover:shadow-md">
                               <User className="h-5 w-5" />
                             </div>
                           </div>
@@ -1320,10 +1320,10 @@ export default function MeetingPage() {
                         
                         <button
                           onClick={() => startRecording('online')}
-                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:scale-[1.02] active:scale-[0.98]"
+                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 shadow-sm hover:shadow-md active:shadow-sm"
                         >
                           <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/60 transition-all duration-200 group-hover:scale-110">
+                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center transition-all duration-200 shadow-sm group-hover:shadow-md">
                               <Monitor className="h-5 w-5" />
                             </div>
                           </div>
