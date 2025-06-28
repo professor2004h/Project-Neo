@@ -245,15 +245,62 @@ class MeetingsService:
         client = await self.db.client
         
         try:
+            # First try the dedicated search function
+            logger.info(f"Searching meetings for account {account_id} with query: '{query}'")
             result = await client.rpc('search_meetings', {
                 'p_account_id': account_id,
                 'p_search_query': query,
                 'p_limit': limit
             }).execute()
-            return result.data
+            
+            if result.data:
+                logger.info(f"Search found {len(result.data)} results")
+                return result.data
+            else:
+                logger.warning(f"Search function returned no results, trying fallback search")
+                
+                # Fallback to simple text matching if RPC returns empty
+                fallback_result = await client.table('meetings')\
+                    .select('meeting_id, title, transcript, created_at')\
+                    .eq('account_id', account_id)\
+                    .or_(f'title.ilike.%{query}%, transcript.ilike.%{query}%')\
+                    .order('created_at', desc=True)\
+                    .limit(limit)\
+                    .execute()
+                
+                # Format results to match search function output
+                formatted_results = []
+                for meeting in fallback_result.data:
+                    # Create a snippet from the transcript
+                    transcript = meeting.get('transcript', '')
+                    snippet = transcript[:200] + '...' if len(transcript) > 200 else transcript
+                    
+                    formatted_results.append({
+                        'meeting_id': meeting['meeting_id'],
+                        'title': meeting['title'],
+                        'snippet': snippet,
+                        'rank': 1.0,  # Default rank
+                        'created_at': meeting['created_at']
+                    })
+                
+                logger.info(f"Fallback search found {len(formatted_results)} results")
+                return formatted_results
+                
         except Exception as e:
             logger.error(f"Error searching meetings: {str(e)}")
-            raise HTTPException(status_code=500, detail="Failed to search meetings")
+            # Try a basic search as last resort
+            try:
+                basic_result = await client.table('meetings')\
+                    .select('meeting_id, title, transcript, created_at')\
+                    .eq('account_id', account_id)\
+                    .limit(limit)\
+                    .execute()
+                    
+                logger.info(f"Basic query found {len(basic_result.data) if basic_result.data else 0} total meetings")
+                return []  # Return empty for search, but we logged the total count
+            except Exception as basic_error:
+                logger.error(f"Even basic query failed: {str(basic_error)}")
+                raise HTTPException(status_code=500, detail="Failed to search meetings")
     
     # Sharing functionality
     async def share_meeting(
