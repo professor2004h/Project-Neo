@@ -1219,13 +1219,17 @@ async def meeting_bot_webhook(request: Request):
                                 os.remove(filepath)
                                 logger.info(f"[WEBHOOK] Cleaned up orphaned stopping session: {filename}")
                                 
-                        except Exception:
-                            # Remove corrupted session files
+                        except json.JSONDecodeError:
+                            # Remove truly corrupted session files (malformed JSON)
                             try:
                                 os.remove(filepath)
-                                logger.info(f"[WEBHOOK] Removed corrupted session file: {filename}")
+                                logger.info(f"[WEBHOOK] Removed corrupted session file (invalid JSON): {filename}")
                             except Exception:
                                 pass
+                        except Exception as e:
+                            # Log other errors but don't delete session files
+                            logger.warning(f"[WEBHOOK] Error reading session file {filename}: {str(e)}")
+                            # Don't delete - could be temporarily locked or in use
         except Exception as cleanup_error:
             logger.warning(f"[WEBHOOK] Session cleanup failed: {str(cleanup_error)}")
             
