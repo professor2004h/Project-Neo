@@ -416,7 +416,7 @@ export default function MeetingsPage() {
 
         {/* New Meeting Dialog */}
         <Dialog open={showNewMeetingDialog} onOpenChange={setShowNewMeetingDialog}>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Create New Meeting</DialogTitle>
               <DialogDescription>
@@ -448,7 +448,7 @@ export default function MeetingsPage() {
 
         {/* New Folder Dialog */}
         <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Create New Folder</DialogTitle>
               <DialogDescription>
@@ -480,7 +480,7 @@ export default function MeetingsPage() {
 
         {/* Edit Dialog */}
         <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Rename {editingItem?.type === 'meeting' ? 'Meeting' : 'Folder'}</DialogTitle>
             </DialogHeader>
