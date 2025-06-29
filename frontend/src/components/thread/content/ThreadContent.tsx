@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowDown, CircleDashed, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowDown, CircleDashed, CheckCircle, AlertTriangle, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Markdown } from '@/components/ui/markdown';
 import { ThreeSpinner } from '@/components/ui/three-spinner';
@@ -663,9 +663,44 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                         // Remove attachment info from the message content
                                         const cleanContent = messageContent.replace(/\[Uploaded File: .*?\]/g, '').trim();
 
+                                        // Copy button component
+                                        const CopyButton = () => {
+                                            const [isCopied, setIsCopied] = useState(false);
+
+                                            const handleCopy = async () => {
+                                                if (!cleanContent) return;
+                                                
+                                                try {
+                                                    await navigator.clipboard.writeText(cleanContent);
+                                                    setIsCopied(true);
+                                                    setTimeout(() => setIsCopied(false), 2000);
+                                                } catch (err) {
+                                                    console.error('Failed to copy:', err);
+                                                }
+                                            };
+
+                                            return (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={handleCopy}
+                                                    className="absolute top-2 right-2 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-background/20"
+                                                >
+                                                    {isCopied ? (
+                                                        <Check className="h-4 w-4" />
+                                                    ) : (
+                                                        <Copy className="h-4 w-4" />
+                                                    )}
+                                                    <span className="sr-only">
+                                                        {isCopied ? 'Copied!' : 'Copy message'}
+                                                    </span>
+                                                </Button>
+                                            );
+                                        };
+
                                         return (
                                             <div key={group.key} className="flex justify-end">
-                                                <div className="flex max-w-[85%] rounded-xl bg-primary/10 px-4 py-3 break-words overflow-hidden">
+                                                <div className="group relative flex max-w-[85%] rounded-xl bg-primary/10 px-4 py-3 break-words overflow-hidden">
                                                     <div className="space-y-3 min-w-0 flex-1">
                                                         {cleanContent && (
                                                             <Markdown className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere">{cleanContent}</Markdown>
@@ -674,6 +709,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                         {/* Use the helper function to render user attachments */}
                                                         {renderAttachments(attachments as string[], handleOpenFileViewer, sandboxId, project)}
                                                     </div>
+                                                    
+                                                    {/* Copy button - only show if there's content to copy */}
+                                                    {cleanContent && <CopyButton />}
                                                 </div>
                                             </div>
                                         );
