@@ -868,6 +868,7 @@ async def initiate_agent_with_files(
     files: List[UploadFile] = File(default=[]),
     is_agent_builder: Optional[bool] = Form(False),
     target_agent_id: Optional[str] = Form(None),
+    user_name: Optional[str] = Form(None),
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Initiate a new agent session with optional file attachments."""
@@ -1108,7 +1109,7 @@ async def initiate_agent_with_files(
             is_agent_builder=is_agent_builder,
             target_agent_id=target_agent_id,
             request_id=request_id,
-            user_name=body.user_name,
+            user_name=user_name,
         )
 
         return {"thread_id": thread_id, "agent_run_id": agent_run_id}

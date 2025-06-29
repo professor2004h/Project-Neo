@@ -3,7 +3,7 @@
 import React, { useState, Suspense, useEffect, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Menu } from 'lucide-react';
+import { Menu, Check, Sparkles } from 'lucide-react';
 import {
   ChatInput,
   ChatInputHandles,
@@ -40,7 +40,8 @@ export function DashboardContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [autoSubmit, setAutoSubmit] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
-  const [nameInput, setNameInput] = useState('Pookie');
+  const [nameInput, setNameInput] = useState('');
+  const [isNameFocused, setIsNameFocused] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>();
   const [initiatedThreadId, setInitiatedThreadId] = useState<string | null>(
     null,
@@ -170,10 +171,24 @@ ${meeting.transcript || '(No transcript available)'}`;
     'bg-gradient-to-r from-blue-500 to-blue-500 bg-clip-text text-transparent';
 
   const handleSaveName = () => {
-    const trimmed = nameInput.trim() || 'Pookie';
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    
     saveUserName(trimmed);
     setUserName(trimmed);
-    toast.success(`Nice to meet you, ${trimmed}!`);
+    setIsNameFocused(false);
+    toast.success(`Nice to meet you, ${trimmed}! 🎉`);
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveName();
+    }
+    if (e.key === 'Escape') {
+      setIsNameFocused(false);
+      setNameInput('');
+    }
   };
 
   const handleSubmit = async (
@@ -307,16 +322,50 @@ ${meeting.transcript || '(No transcript available)'}`;
                   {userName}
                 </span>
               ) : (
-                <>
-                  <Input
-                    value={nameInput}
-                    onChange={(e) => setNameInput(e.target.value)}
-                    className="h-8 w-32 text-base"
-                  />
-                  <Button size="sm" onClick={handleSaveName} type="button">
-                    Save
-                  </Button>
-                </>
+                <div className="relative group">
+                  <div className="flex items-center gap-2">
+                    {!isNameFocused ? (
+                      <button
+                        onClick={() => setIsNameFocused(true)}
+                        className="tracking-tight text-4xl text-muted-foreground/60 hover:text-muted-foreground leading-tight border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50 px-3 py-1 rounded-lg transition-all duration-200 hover:bg-muted/10 group-hover:scale-[1.02]"
+                      >
+                        <span className="flex items-center gap-2">
+                          what's your name?
+                          <Sparkles className="h-5 w-5 text-primary/60 animate-pulse" />
+                        </span>
+                      </button>
+                    ) : (
+                      <div className="relative">
+                        <Input
+                          value={nameInput}
+                          onChange={(e) => setNameInput(e.target.value)}
+                          onKeyDown={handleNameKeyDown}
+                          onBlur={() => {
+                            if (!nameInput.trim()) {
+                              setIsNameFocused(false);
+                            }
+                          }}
+                          placeholder="Enter your name"
+                          className="h-12 w-48 text-2xl text-center font-medium bg-background/80 backdrop-blur border-primary/30 focus:border-primary shadow-sm focus:shadow-md transition-all duration-200 pr-12"
+                          autoFocus
+                        />
+                        {nameInput.trim() && (
+                          <button
+                            onClick={handleSaveName}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full bg-green-500 hover:bg-green-600 transition-colors duration-200 group"
+                          >
+                            <Check className="h-4 w-4 text-white" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {!isNameFocused && (
+                    <p className="text-xs text-muted-foreground/70 mt-1 italic">
+                      Click to personalize your experience ✨
+                    </p>
+                  )}
+                </div>
               )}
               <span className="tracking-tight text-4xl text-muted-foreground leading-tight">
                 , I am
