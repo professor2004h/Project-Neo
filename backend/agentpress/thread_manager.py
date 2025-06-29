@@ -452,6 +452,86 @@ class ThreadManager:
         except Exception as e:
             logger.error(f"Failed to search memory for thread {thread_id}: {e}")
             return None
+    
+    async def _get_relevant_memories(self, thread_id: str, recent_messages: List[Dict[str, Any]], limit: int = 5) -> Optional[str]:
+        """
+        Get relevant memories based on recent conversation context.
+        
+        Args:
+            thread_id: The thread ID
+            recent_messages: Recent messages to use as context for memory search
+            limit: Maximum number of memories to retrieve
+            
+        Returns:
+            Formatted memory context string or None if no memories found
+        """
+        if not memory_service.is_available:
+            return None
+            
+        try:
+            # Extract text content from recent messages to create search query
+            search_context = []
+            for msg in recent_messages[-3:]:  # Use last 3 messages as context
+                if msg.get('role') in ['user', 'assistant']:
+                    content = msg.get('content', '')
+                    if isinstance(content, dict):
+                        text_content = content.get('content', str(content))
+                    elif isinstance(content, list):
+                        # Handle multipart content
+                        text_parts = []
+                        for part in content:
+                            if isinstance(part, dict) and part.get('type') == 'text':
+                                text_parts.append(part.get('text', ''))
+                        text_content = ' '.join(text_parts) if text_parts else str(content)
+                    else:
+                        text_content = str(content)
+                    
+                    if text_content.strip():
+                        search_context.append(text_content.strip()[:200])  # Limit length
+            
+            if not search_context:
+                return None
+                
+            # Create search query from recent context
+            search_query = ' '.join(search_context)
+            
+            # Search for relevant memories
+            context = await self._get_thread_context(thread_id)
+            user_id = context.get('user_id')
+            agent_id = context.get('agent_id')
+            
+            if not user_id:
+                return None
+            
+            results = await memory_service.search_memory_async(
+                query=search_query,
+                user_id=user_id,
+                agent_id=agent_id,
+                limit=limit
+            )
+            
+            if not results:
+                return None
+            
+            # Format memories for context
+            memory_context = "--- Relevant Memories ---\n"
+            memory_context += "Based on our previous conversations, here are some relevant memories:\n\n"
+            
+            for i, result in enumerate(results, 1):
+                memory_content = result.get('memory', '').strip()
+                confidence = result.get('score', 0.0)
+                
+                if memory_content and confidence > 0.3:  # Only include memories with reasonable confidence
+                    memory_context += f"{i}. {memory_content}\n"
+            
+            memory_context += "\n--- End of Memories ---\n\n"
+            
+            logger.debug(f"Added {len(results)} memories to context for thread {thread_id}")
+            return memory_context
+            
+        except Exception as e:
+            logger.error(f"Failed to get relevant memories for thread {thread_id}: {e}")
+            return None
 
     async def add_message(
         self,
@@ -666,6 +746,21 @@ Here are the XML tools available with examples:
 
                 # 1. Get messages from thread for LLM call
                 messages = await self.get_llm_messages(thread_id)
+
+                # 1.5. Add relevant memories to context
+                memory_context = await self._get_relevant_memories(thread_id, messages, limit=5)
+                if memory_context:
+                    # Add memory context as a system-style message before recent messages
+                    memory_message = {
+                        "role": "system",
+                        "content": memory_context
+                    }
+                    # Insert memory context before the last few messages to provide relevant context
+                    if len(messages) > 2:
+                        messages.insert(-2, memory_message)
+                    else:
+                        messages.insert(0, memory_message)
+                    logger.debug(f"Added memory context to thread {thread_id}")
 
                 # 2. Check token count before proceeding
                 token_count = 0

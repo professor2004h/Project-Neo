@@ -39,7 +39,7 @@ class MemorySearchTool(Tool):
                         "type": "function",
                         "function": {
                             "name": "search_memory",
-                            "description": "Search conversation memory to recall previous interactions, user preferences, and context. Use this when you need to remember something from past conversations or when the user asks about something you might have discussed before.",
+                            "description": "Search conversation memory to recall previous interactions, user preferences, and context. Use this when you need to remember something specific from past conversations, find user preferences, or when the user asks about something you might have discussed before. Note: Relevant memories are automatically included in context, but use this tool for specific memory searches.",
                             "parameters": {
                                 "type": "object",
                                 "properties": {
