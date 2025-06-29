@@ -16,15 +16,15 @@ from utils.logger import logger
 
 class SandboxPodcastTool(SandboxToolsBase):
     """
-    A tool for generating AI podcasts using the Podcastfy REST API.
+    A tool for generating AI podcasts using the Podcastfy FastAPI.
     
-    This tool integrates with the remote podcastfy service to create conversational
+    This tool integrates with the Podcastfy FastAPI service to create conversational
     audio content from URLs, files in the sandbox, and other content types.
     """
 
     name: str = "podcast_tool"
     description: str = """
-    Generate AI podcasts from content using the Podcastfy API.
+    Generate AI podcasts from content using the Podcastfy FastAPI.
     
     This tool can create conversational audio content from:
     - Website URLs
@@ -32,13 +32,13 @@ class SandboxPodcastTool(SandboxToolsBase):
     - Direct text input
     
     The tool uses advanced AI to create natural conversations between two speakers
-    and generates high-quality audio using ElevenLabs TTS.
+    and generates high-quality audio using various TTS models.
     """
 
     def __init__(self, project_id: str, thread_manager: ThreadManager):
         super().__init__(project_id, thread_manager)
         self.workspace_path = "/workspace"
-        self.api_base_url = os.getenv('PODCASTFY_API_URL', 'https://thatupiso-podcastfy-ai-demo.hf.space')
+        self.api_base_url = os.getenv('PODCASTFY_API_URL', 'http://localhost:8080')
         self.gemini_key = os.getenv('GEMINI_API_KEY', '')
         self.openai_key = os.getenv('OPENAI_API_KEY', '')
         self.elevenlabs_key = os.getenv('ELEVENLABS_API_KEY', '')
@@ -49,8 +49,6 @@ class SandboxPodcastTool(SandboxToolsBase):
         if not self.elevenlabs_key:
             raise ValueError("ELEVENLABS_API_KEY must be set")
 
-    # Removed _check_podcastfy_installation - no longer needed for API approach
-
     def _validate_file_exists(self, file_path: str) -> bool:
         """Check if a file exists in the sandbox."""
         try:
@@ -58,8 +56,6 @@ class SandboxPodcastTool(SandboxToolsBase):
             return True
         except Exception:
             return False
-
-    # Removed _generate_podcast_with_podcastfy - now using API instead
 
     @openapi_schema({
         "type": "function",
@@ -154,19 +150,15 @@ class SandboxPodcastTool(SandboxToolsBase):
                         "description": "Custom instructions to guide the conversation focus and topics",
                         "default": ""
                     },
-                    "max_num_chunks": {
-                        "type": "integer",
-                        "description": "Maximum number of discussion rounds in longform podcasts",
-                        "default": 7,
-                        "minimum": 1,
-                        "maximum": 15
+                    "tts_model": {
+                        "type": "string",
+                        "description": "Text-to-speech model to use ('openai', 'elevenlabs', 'edge')",
+                        "default": "elevenlabs"
                     },
-                    "min_chunk_size": {
-                        "type": "integer", 
-                        "description": "Minimum number of characters per discussion round in longform podcasts",
-                        "default": 600,
-                        "minimum": 200,
-                        "maximum": 2000
+                    "voices": {
+                        "type": "object",
+                        "description": "Voice configuration for TTS (e.g., {'question': 'voice1', 'answer': 'voice2'})",
+                        "default": {}
                     }
                 },
                 "required": []
@@ -192,8 +184,8 @@ class SandboxPodcastTool(SandboxToolsBase):
             {"param_name": "engagement_techniques", "node_type": "element", "path": "engagement_techniques", "required": False},
             {"param_name": "creativity", "node_type": "attribute", "path": ".", "required": False},
             {"param_name": "user_instructions", "node_type": "element", "path": "user_instructions", "required": False},
-            {"param_name": "max_num_chunks", "node_type": "attribute", "path": ".", "required": False},
-            {"param_name": "min_chunk_size", "node_type": "attribute", "path": ".", "required": False}
+            {"param_name": "tts_model", "node_type": "attribute", "path": ".", "required": False},
+            {"param_name": "voices", "node_type": "element", "path": "voices", "required": False}
         ],
         example='''
         <function_calls>
@@ -212,6 +204,7 @@ class SandboxPodcastTool(SandboxToolsBase):
         <parameter name="engagement_techniques">["rhetorical questions", "analogies", "humor"]</parameter>
         <parameter name="creativity">0.8</parameter>
         <parameter name="user_instructions">Focus on practical applications and real-world impact</parameter>
+        <parameter name="tts_model">elevenlabs</parameter>
         </invoke>
         </function_calls>
         '''
@@ -233,8 +226,8 @@ class SandboxPodcastTool(SandboxToolsBase):
                              engagement_techniques: List[str] = ["rhetorical questions", "anecdotes"],
                              creativity: float = 0.7,
                              user_instructions: str = "",
-                             max_num_chunks: int = 7,
-                             min_chunk_size: int = 600) -> ToolResult:
+                             tts_model: str = "elevenlabs",
+                             voices: Dict[str, str] = None) -> ToolResult:
         """Generate an AI-powered podcast from various content sources.
         
         Args:
@@ -254,8 +247,8 @@ class SandboxPodcastTool(SandboxToolsBase):
             engagement_techniques: Techniques to make the podcast more engaging
             creativity: Level of creativity/temperature (0.0-1.0)
             user_instructions: Custom instructions to guide the conversation
-            max_num_chunks: Maximum number of discussion rounds in longform
-            min_chunk_size: Minimum characters per discussion round in longform
+            tts_model: Text-to-speech model to use
+            voices: Voice configuration for TTS
             
         Returns:
             ToolResult with podcast generation status and file locations
@@ -268,79 +261,80 @@ class SandboxPodcastTool(SandboxToolsBase):
             if not any([urls, file_paths, image_paths]):
                 return self.fail_response("At least one content source (URLs, files, or images) must be provided")
             
-            # Prepare conversation configuration
-            word_count_map = {
-                "short": 1000,
-                "medium": 2500, 
-                "long": 4000
-            }
-            
-            # Process URLs
-            urls_input = ""
+            # Process URLs - combine with file content for now
+            processed_urls = []
             if urls:
                 # Validate URLs
-                valid_urls = []
                 for url in urls:
                     if not url.startswith(('http://', 'https://')):
                         url = 'https://' + url
                     try:
                         parsed = urlparse(url)
                         if parsed.netloc:
-                            valid_urls.append(url)
+                            processed_urls.append(url)
                     except:
                         continue
-                urls_input = ",".join(valid_urls)
             
-            # Process files - read content as text for now
-            # TODO: Implement file upload to the API
-            file_content = ""
+            # Process files - add as URLs for now since the API expects URLs
+            # TODO: Implement proper file upload to the FastAPI
             if file_paths:
                 for file_path in file_paths:
                     try:
                         clean_path = self.clean_path(file_path)
                         full_path = f"{self.workspace_path}/{clean_path}"
                         if self._validate_file_exists(full_path):
-                            file_info = self.sandbox.fs.get_file_info(full_path)
-                            file_bytes = self.sandbox.fs.download_file(full_path)
-                            file_text = file_bytes.decode('utf-8', errors='ignore')
-                            file_content += f"\n\nContent from {file_path}:\n{file_text}"
+                            # For now, just log that we have files
+                            # In the future, you could upload these to your FastAPI
+                            logger.info(f"File found: {file_path} (currently not uploaded to API)")
                         else:
                             logger.warning(f"File not found: {file_path}")
                     except Exception as e:
-                        file_content += f"\n\nError reading {file_path}: {str(e)}"
+                        logger.error(f"Error processing file {file_path}: {str(e)}")
             
-            # Combine text inputs
-            combined_text = file_content
+            # Send both API keys - let the FastAPI decide which to use
+            openai_key = self.openai_key
+            google_key = self.gemini_key
             
-            # Prepare API request data
-            api_data = [
-                combined_text,  # text_input
-                urls_input,     # urls_input
-                [],             # pdf_files (empty for now)
-                [],             # image_files (empty for now)
-                self.gemini_key,      # gemini_key
-                self.openai_key,      # openai_key
-                self.elevenlabs_key,  # elevenlabs_key
-                word_count_map.get(podcast_length, 2500),  # word_count
-                ",".join(conversation_style),    # conversation_style
-                roles_person1,        # roles_person1
-                roles_person2,        # roles_person2
-                ",".join(dialogue_structure),    # dialogue_structure
-                podcast_name,         # podcast_name
-                podcast_tagline,      # podcast_tagline
-                "elevenlabs",         # tts_model (fixed to elevenlabs)
-                creativity,           # creativity_level
-                user_instructions     # user_instructions
-            ]
+            llm_info = []
+            if openai_key:
+                llm_info.append("OpenAI")
+            if google_key:
+                llm_info.append("Gemini")
             
-            # Make API request
-            result = self._make_api_request(api_data)
+            if llm_info:
+                logger.info(f"Available LLM keys: {', '.join(llm_info)} - FastAPI will choose")
+            else:
+                raise ValueError("No valid LLM API key available")
             
-            if not result["success"]:
-                return self.fail_response(f"Podcast generation failed: {result}")
+            # Prepare request payload for FastAPI
+            payload = {
+                "urls": processed_urls,
+                "openai_key": openai_key,
+                "google_key": google_key,
+                "elevenlabs_key": self.elevenlabs_key,
+                "tts_model": tts_model,
+                "creativity": creativity,
+                "conversation_style": conversation_style,
+                "roles_person1": roles_person1,
+                "roles_person2": roles_person2,
+                "dialogue_structure": dialogue_structure,
+                "name": podcast_name,
+                "tagline": podcast_tagline,
+                "output_language": language,
+                "user_instructions": user_instructions,
+                "engagement_techniques": engagement_techniques,
+                "is_long_form": podcast_length == "long",
+                "voices": voices or {}
+            }
+            
+            # Make API request to FastAPI
+            result = self._make_fastapi_request(payload)
+            
+            if not result.get("audioUrl"):
+                return self.fail_response(f"Podcast generation failed: No audio URL returned")
             
             # Download the audio file
-            local_path = self._download_audio_file(result["data"])
+            local_path = self._download_audio_file(result["audioUrl"])
             
             # Create podcasts directory in workspace
             podcasts_dir = f"{self.workspace_path}/podcasts"
@@ -374,15 +368,15 @@ class SandboxPodcastTool(SandboxToolsBase):
             if urls:
                 message += f"- {len(urls)} URLs\n"
             if file_paths:
-                message += f"- {len(file_paths)} local files\n" 
+                message += f"- {len(file_paths)} local files (logged, not yet uploaded)\n" 
             if image_paths:
-                message += f"- {len(image_paths)} images\n"
+                message += f"- {len(image_paths)} images (not yet supported)\n"
             
             message += f"\nConfiguration:\n"
             message += f"- Style: {', '.join(conversation_style)}\n"
             message += f"- Length: {podcast_length}\n"
             message += f"- Language: {language}\n"
-            message += f"- TTS Model: ElevenLabs (high quality)\n"
+            message += f"- TTS Model: {tts_model}\n"
             message += f"- Podcast: {podcast_name}\n"
             message += f"- Speakers: {roles_person1} & {roles_person2}\n"
             message += f"- Structure: {', '.join(dialogue_structure)}\n"
@@ -502,76 +496,41 @@ class SandboxPodcastTool(SandboxToolsBase):
             logger.error(f"Error listing podcasts: {str(e)}", exc_info=True)
             return self.fail_response(f"Error listing podcasts: {str(e)}")
 
-    def _make_api_request(self, data: List[Any]) -> Dict[str, Any]:
-        """Make request to podcastfy API with two-step process"""
+    def _make_fastapi_request(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Make request to FastAPI endpoint"""
         try:
-            # Step 1: Initiate processing
+            logger.info(f"Making request to {self.api_base_url}/generate")
             response = requests.post(
-                f"{self.api_base_url}/gradio_api/call/process_inputs",
-                headers={"Content-Type": "application/json"},
-                json={"data": data},
-                timeout=30
+                f"{self.api_base_url}/generate",
+                json=payload,
+                timeout=120  # Longer timeout for podcast generation
             )
             response.raise_for_status()
-            
-            # Extract event ID from response
-            event_id = response.json().get('event_id')
-            if not event_id:
-                raise Exception("No event_id returned from API")
-            
-            # Step 2: Poll for results
-            max_attempts = 60  # 5 minutes with 5-second intervals
-            for attempt in range(max_attempts):
-                time.sleep(5)  # Wait between polling
-                
-                result_response = requests.get(
-                    f"{self.api_base_url}/gradio_api/call/process_inputs/{event_id}",
-                    timeout=30
-                )
-                
-                if result_response.status_code == 200:
-                    # Check if processing is complete
-                    lines = result_response.text.strip().split('\n')
-                    for line in lines:
-                        if line.startswith('event: complete'):
-                            continue
-                        if line.startswith('data: '):
-                            try:
-                                data_json = json.loads(line[6:])  # Remove 'data: ' prefix
-                                if data_json and len(data_json) > 0:
-                                    return {"success": True, "data": data_json[0]}
-                            except json.JSONDecodeError:
-                                continue
-                
-                # Check for other events that might indicate completion or error
-                if 'error' in result_response.text.lower():
-                    raise Exception(f"API returned error: {result_response.text}")
-            
-            raise Exception("Timeout waiting for podcast generation to complete")
+            return response.json()
             
         except requests.exceptions.RequestException as e:
-            raise Exception(f"API request failed: {str(e)}")
+            raise Exception(f"FastAPI request failed: {str(e)}")
         except Exception as e:
             raise Exception(f"Podcast generation failed: {str(e)}")
 
-    def _download_audio_file(self, file_data: Dict[str, Any]) -> str:
-        """Download the generated audio file to the sandbox"""
+    def _download_audio_file(self, audio_url: str) -> str:
+        """Download the generated audio file from FastAPI"""
         try:
-            # Extract file path and construct download URL
-            file_path = file_data.get('path', '')
-            if not file_path:
-                raise Exception("No file path found in API response")
+            # Construct full URL if relative
+            if audio_url.startswith('/'):
+                download_url = f"{self.api_base_url}{audio_url}"
+            else:
+                download_url = audio_url
             
-            # Construct the download URL
-            download_url = f"{self.api_base_url}/gradio_api/file={file_path}"
+            logger.info(f"Downloading audio from: {download_url}")
             
             # Download the file
             response = requests.get(download_url, timeout=60)
             response.raise_for_status()
             
-            # Save to workspace
+            # Save to temporary location
             os.makedirs("/workspace/podcasts", exist_ok=True)
-            filename = file_data.get('orig_name', 'podcast.mp3')
+            filename = audio_url.split('/')[-1]  # Extract filename from URL
             local_path = f"/workspace/podcasts/{filename}"
             
             with open(local_path, 'wb') as f:
@@ -591,18 +550,20 @@ class SandboxPodcastTool(SandboxToolsBase):
                 "description": "Generate an AI podcast from URLs, text, or files using advanced conversation AI",
                 "parameters": [
                     {"name": "urls", "type": "List[str]", "description": "List of URLs to process", "required": False},
-                    {"name": "text_input", "type": "str", "description": "Direct text input for podcast generation", "required": False},
-                    {"name": "files", "type": "List[str]", "description": "List of file paths in sandbox to include", "required": False},
-                    {"name": "word_count", "type": "int", "description": "Target word count for podcast (default: 2000)", "required": False},
-                    {"name": "conversation_style", "type": "str", "description": "Style like 'engaging,fast-paced'", "required": False},
+                    {"name": "file_paths", "type": "List[str]", "description": "List of file paths in sandbox to include", "required": False},
+                    {"name": "output_name", "type": "str", "description": "Custom name for output files", "required": False},
+                    {"name": "conversation_style", "type": "List[str]", "description": "Style like ['engaging','fast-paced']", "required": False},
+                    {"name": "podcast_length", "type": "str", "description": "Length: short/medium/long", "required": False},
                     {"name": "roles_person1", "type": "str", "description": "Role of first speaker", "required": False},
                     {"name": "roles_person2", "type": "str", "description": "Role of second speaker", "required": False},
-                    {"name": "dialogue_structure", "type": "str", "description": "Structure like 'Introduction,Content,Conclusion'", "required": False},
+                    {"name": "dialogue_structure", "type": "List[str]", "description": "Structure like ['Introduction','Content','Conclusion']", "required": False},
                     {"name": "podcast_name", "type": "str", "description": "Name of the podcast", "required": False},
                     {"name": "podcast_tagline", "type": "str", "description": "Podcast tagline", "required": False},
-                    {"name": "creativity_level", "type": "float", "description": "Creativity level 0-1 (default: 0.7)", "required": False},
+                    {"name": "creativity", "type": "float", "description": "Creativity level 0-1 (default: 0.7)", "required": False},
                     {"name": "user_instructions", "type": "str", "description": "Custom instructions", "required": False},
-                    {"name": "language", "type": "str", "description": "Language code (default: 'en')", "required": False}
+                    {"name": "language", "type": "str", "description": "Language (default: 'English')", "required": False},
+                    {"name": "tts_model", "type": "str", "description": "TTS model: openai/elevenlabs/edge", "required": False},
+                    {"name": "voices", "type": "Dict[str,str]", "description": "Voice config", "required": False}
                 ]
             },
             {
@@ -618,8 +579,8 @@ class SandboxPodcastTool(SandboxToolsBase):
             "openapi": "3.0.0",
             "info": {
                 "title": "Podcast Generation Tool",
-                "description": "Generate AI podcasts from content using Podcastfy API",
-                "version": "2.0.0"
+                "description": "Generate AI podcasts from content using Podcastfy FastAPI",
+                "version": "3.0.0"
             },
             "servers": [{"url": "http://localhost"}],
             "paths": {
@@ -635,18 +596,20 @@ class SandboxPodcastTool(SandboxToolsBase):
                                         "type": "object",
                                         "properties": {
                                             "urls": {"type": "array", "items": {"type": "string"}, "description": "URLs to process"},
-                                            "text_input": {"type": "string", "description": "Direct text input"},
-                                            "files": {"type": "array", "items": {"type": "string"}, "description": "File paths in sandbox"},
-                                            "word_count": {"type": "integer", "default": 2000, "description": "Target word count"},
-                                            "conversation_style": {"type": "string", "default": "engaging,fast-paced", "description": "Conversation style"},
+                                            "file_paths": {"type": "array", "items": {"type": "string"}, "description": "File paths in sandbox"},
+                                            "output_name": {"type": "string", "description": "Custom output name"},
+                                            "conversation_style": {"type": "array", "items": {"type": "string"}, "description": "Conversation style"},
+                                            "podcast_length": {"type": "string", "enum": ["short", "medium", "long"], "description": "Podcast length"},
                                             "roles_person1": {"type": "string", "default": "main summarizer", "description": "Role of first speaker"},
                                             "roles_person2": {"type": "string", "default": "questioner", "description": "Role of second speaker"},
-                                            "dialogue_structure": {"type": "string", "default": "Introduction,Content,Conclusion", "description": "Dialogue structure"},
-                                            "podcast_name": {"type": "string", "default": "PODCASTFY", "description": "Podcast name"},
-                                            "podcast_tagline": {"type": "string", "default": "YOUR PODCAST", "description": "Podcast tagline"},
-                                            "creativity_level": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.7, "description": "Creativity level"},
+                                            "dialogue_structure": {"type": "array", "items": {"type": "string"}, "description": "Dialogue structure"},
+                                            "podcast_name": {"type": "string", "default": "AI Generated Podcast", "description": "Podcast name"},
+                                            "podcast_tagline": {"type": "string", "description": "Podcast tagline"},
+                                            "creativity": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.7, "description": "Creativity level"},
                                             "user_instructions": {"type": "string", "description": "Custom instructions"},
-                                            "language": {"type": "string", "default": "en", "description": "Language code"}
+                                            "language": {"type": "string", "default": "English", "description": "Language"},
+                                            "tts_model": {"type": "string", "enum": ["openai", "elevenlabs", "edge"], "description": "TTS model"},
+                                            "voices": {"type": "object", "description": "Voice configuration"}
                                         }
                                     }
                                 }

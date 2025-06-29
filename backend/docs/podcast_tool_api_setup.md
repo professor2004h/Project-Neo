@@ -1,14 +1,14 @@
-# Podcast Tool API Setup
+# Podcast Tool FastAPI Setup
 
-The podcast tool has been updated to use the Podcastfy REST API instead of the local library. This eliminates dependency conflicts and provides a more reliable service.
+The podcast tool has been updated to use your custom Podcastfy FastAPI instead of the Gradio-based API. This provides a much cleaner and more direct integration.
 
 ## Required Environment Variables
 
 Add these environment variables to your `.env` file:
 
 ```bash
-# Podcastfy API Configuration
-PODCASTFY_API_URL=https://thatupiso-podcastfy-ai-demo.hf.space
+# Podcastfy FastAPI Configuration
+PODCASTFY_API_URL=http://localhost:8080  # Your FastAPI instance URL
 ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 
 # LLM API Keys (at least one is required)
@@ -35,98 +35,178 @@ GEMINI_API_KEY=your_gemini_api_key_here   # Alternative to OpenAI
 2. Create a new API key
 3. Add it to your `.env` file as `GEMINI_API_KEY`
 
-## Docker Container Setup for Podcastfy API
+**Note**: If both OpenAI and Gemini keys are provided, your FastAPI will decide which one to use based on its internal logic.
 
-If you want to run your own instance of the Podcastfy API instead of using the public one:
+## FastAPI Deployment
 
-### Option 1: Use the Official Podcastfy Docker Container
+Your FastAPI implementation is much simpler than the Gradio approach. Here's how to deploy it:
 
+### Option 1: Local Development
 ```bash
-# Clone the repository
-git clone https://github.com/souzatharsis/podcastfy.git
-cd podcastfy
+# Run your FastAPI locally
+python your_fastapi_file.py
 
-# Build the API container
-docker build -f Dockerfile_api -t podcastfy-api .
-
-# Run the container
-docker run -p 8000:8000 \
-  -e OPENAI_API_KEY=your_openai_key \
-  -e ELEVENLABS_API_KEY=your_elevenlabs_key \
-  -e GEMINI_API_KEY=your_gemini_key \
-  podcastfy-api
+# Or with uvicorn
+uvicorn main:app --host 0.0.0.0 --port 8080
 ```
 
-### Option 2: Deploy on Render
+### Option 2: Docker Deployment
+```bash
+# Create a Dockerfile for your FastAPI
+FROM python:3.9-slim
 
-1. Fork the [podcastfy repository](https://github.com/souzatharsis/podcastfy)
-2. Connect it to Render as a web service
-3. Use `Dockerfile_api` as the build configuration
-4. Set the environment variables in Render:
-   - `OPENAI_API_KEY`
-   - `ELEVENLABS_API_KEY`
-   - `GEMINI_API_KEY`
-5. Update your `PODCASTFY_API_URL` to point to your Render deployment
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-### Option 3: Deploy on Other Platforms
+COPY . .
 
-The podcastfy API can be deployed on any platform that supports Docker containers:
-- Google Cloud Run
-- AWS ECS/Fargate
-- Azure Container Instances
-- Railway
-- Fly.io
+ENV HOST=0.0.0.0
+ENV PORT=8080
+
+CMD ["python", "main.py"]
+```
+
+### Option 3: Deploy on Cloud Platforms
+
+Your FastAPI can be deployed on:
+- **Render**: Connect your repo, set environment variables
+- **Railway**: Simple git-based deployment
+- **Google Cloud Run**: Containerized deployment
+- **AWS ECS/Fargate**: Container service
+- **Azure Container Instances**: Quick container deployment
+- **Fly.io**: Global deployment
+
+## API Endpoints
+
+Your FastAPI provides these endpoints:
+
+### `POST /generate`
+Generates a podcast and returns an audio URL.
+
+**Request Format:**
+```json
+{
+  "urls": ["https://example.com/article"],
+  "openai_key": "your_openai_key",
+  "google_key": "your_gemini_key", 
+  "elevenlabs_key": "your_elevenlabs_key",
+  "tts_model": "elevenlabs",
+  "creativity": 0.7,
+  "conversation_style": ["engaging", "educational"],
+  "roles_person1": "main summarizer",
+  "roles_person2": "questioner",
+  "dialogue_structure": ["Introduction", "Content", "Conclusion"],
+  "name": "My Podcast",
+  "tagline": "Great conversations",
+  "output_language": "English",
+  "user_instructions": "Focus on practical insights",
+  "engagement_techniques": ["rhetorical questions"],
+  "is_long_form": false,
+  "voices": {}
+}
+```
+
+**Response Format:**
+```json
+{
+  "audioUrl": "/audio/podcast_abc123.mp3"
+}
+```
+
+### `GET /audio/{filename}`
+Serves the generated audio files.
+
+### `GET /health`
+Health check endpoint.
 
 ## Usage
 
-Once configured, the podcast tool will automatically use the API. No code changes are needed in your agent interactions.
+Once configured, the podcast tool will automatically use your FastAPI. The integration is seamless:
 
-Example usage:
 ```python
-# This will now use the API instead of the local library
+# The tool now makes direct HTTP requests to your FastAPI
 result = await podcast_tool.generate_podcast(
     urls=["https://example.com/article"],
     podcast_name="My Podcast",
-    conversation_style=["engaging", "educational"]
+    conversation_style=["engaging", "educational"],
+    tts_model="elevenlabs"
 )
 ```
+
+## Key Improvements Over Gradio API
+
+1. **Direct Response**: No polling required - immediate response with audio URL
+2. **Clean Interface**: Simple JSON request/response instead of complex arrays
+3. **Better Error Handling**: FastAPI provides clear error messages
+4. **Simpler Deployment**: Standard web service deployment
+5. **More Control**: You control the API implementation and can customize it
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **API timeout**: The API can take 1-3 minutes to generate podcasts. The tool automatically polls for completion.
+1. **Connection refused**: Make sure your FastAPI is running on the correct port
+   ```bash
+   curl http://localhost:8080/health
+   ```
 
-2. **Invalid API keys**: Make sure all required API keys are correctly set in your environment.
+2. **Invalid API keys**: Verify all required API keys are set correctly
 
-3. **API URL not accessible**: Verify that the `PODCASTFY_API_URL` is correct and accessible from your deployment environment.
+3. **File not found**: Check that the `/audio/{filename}` endpoint is serving files correctly
 
-4. **Rate limits**: Be aware of rate limits for the underlying services (ElevenLabs, OpenAI, etc.).
+4. **Timeout**: The tool has a 120-second timeout for podcast generation
 
-### API Response Format
+5. **Missing configuration**: Ensure your FastAPI has access to all required environment variables
 
-The API returns a file download URL in this format:
-```json
-{
-  "path": "/tmp/gradio/..../podcast_xyz.mp3",
-  "url": "https://api-url/gradio_api/file=/tmp/gradio/.../podcast_xyz.mp3",
-  "orig_name": "podcast_xyz.mp3"
-}
+### Testing Your FastAPI
+
+You can test your FastAPI directly:
+
+```bash
+# Health check
+curl http://localhost:8080/health
+
+# Generate podcast
+curl -X POST http://localhost:8080/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": ["https://example.com"],
+    "openai_key": "your_key",
+    "elevenlabs_key": "your_key",
+    "name": "Test Podcast"
+  }'
 ```
 
-The tool automatically downloads the file and saves it to the sandbox workspace.
+## File Upload Support (Future Enhancement)
 
-## Benefits of API Approach
+Currently, the tool logs local files but doesn't upload them to the FastAPI. To add file upload support:
 
-1. **No dependency conflicts**: Eliminates issues with podcastfy library dependencies
-2. **Consistent environment**: Same API works across all deployments
-3. **Scalability**: External service handles the heavy lifting
-4. **Reliability**: Well-maintained API endpoint
-5. **Latest features**: Always uses the latest version of podcastfy
+1. **Add file upload endpoint** to your FastAPI:
+```python
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    # Save and process uploaded file
+    return {"file_url": "processed_file_url"}
+```
+
+2. **Update the tool** to upload files before generating podcasts
+
+3. **Modify the generate endpoint** to accept file URLs
+
+## Benefits of Your FastAPI Approach
+
+1. **Simplicity**: Clean, straightforward API design
+2. **Performance**: Direct responses without polling
+3. **Flexibility**: Easy to customize and extend
+4. **Reliability**: Standard HTTP responses and error handling
+5. **Scalability**: Can be deployed anywhere that supports containers
+6. **Debugging**: Easy to test and debug locally
 
 ## Security Notes
 
-- API keys are sensitive - never commit them to version control
-- Use environment variables or secure secret management
-- Consider using your own deployment for production workloads
-- Monitor API usage and costs for external services 
+- API keys are passed in request bodies (consider headers for production)
+- Implement rate limiting for production use
+- Add authentication if needed
+- Monitor resource usage and costs
+- Consider using environment variables on the server side instead of passing keys in requests 
