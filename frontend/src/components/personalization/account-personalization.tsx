@@ -57,42 +57,56 @@ export default function AccountPersonalization({ accountId, returnUrl }: Props) 
 
   if (isLoading || authLoading) {
     return (
-      <div className="rounded-xl border shadow-sm bg-card p-6">
-        <h2 className="text-xl font-semibold mb-4">Personalization</h2>
-        <div className="space-y-4">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-10 w-full" />
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium text-card-title">Personalization</h3>
+          <p className="text-sm text-foreground/70">
+            Manage your personal profile information and preferences.
+          </p>
         </div>
+        <Card className="border-subtle dark:border-white/10 bg-white dark:bg-background-secondary shadow-none">
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-24" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-xl border shadow-sm bg-card p-6">
-        <h2 className="text-xl font-semibold mb-4">Personalization</h2>
-        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
-          <p className="text-sm text-destructive">Error loading user data: {error}</p>
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium text-card-title">Personalization</h3>
+          <p className="text-sm text-foreground/70">
+            Manage your personal profile information and preferences.
+          </p>
         </div>
+        <Card className="border-subtle dark:border-white/10 bg-white dark:bg-background-secondary shadow-none">
+          <CardContent className="pt-6">
+            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
+              <p className="text-sm text-destructive">Error loading user data: {error}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border shadow-sm bg-card p-6">
-      <h2 className="text-xl font-semibold mb-4">Personalization</h2>
-
-      <div className="mb-6">
-        <div className="rounded-lg border bg-background p-4">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-foreground/90">
-              Current Display Name
-            </span>
-            <span className="text-sm font-medium text-card-title">
-              {currentUserName || 'Not set'}
-            </span>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-card-title">Personalization</h3>
+        <p className="text-sm text-foreground/70">
+          Manage your personal profile information and preferences.
+        </p>
       </div>
 
       <Card className="border-subtle dark:border-white/10 bg-white dark:bg-background-secondary shadow-none">
