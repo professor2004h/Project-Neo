@@ -16,7 +16,7 @@ import { EditableText } from '@/components/ui/editable';
 import { Badge } from '@/components/ui/badge';
 import { Check, Clock } from 'lucide-react';
 import { BillingError } from '@/lib/api';
-import { getStoredUserName } from '@/lib/user-name';
+import { createClient } from '@/lib/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { agentKeys } from '@/hooks/react-query/agents/keys';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
@@ -316,9 +316,14 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
           message
         });
 
+        // Get user name from Supabase auth
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        const userName = user?.user_metadata?.name;
+
         const agentPromise = startAgentMutation.mutateAsync({
           threadId,
-          options: { ...options, user_name: getStoredUserName() || undefined }
+          options: { ...options, user_name: userName || undefined }
         });
 
         const results = await Promise.allSettled([messagePromise, agentPromise]);
