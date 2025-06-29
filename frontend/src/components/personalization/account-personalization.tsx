@@ -24,30 +24,36 @@ export default function AccountPersonalization({ accountId, returnUrl }: Props) 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchUserName() {
-      if (authLoading || !session) return;
+  const fetchUserName = async () => {
+    if (authLoading || !session) return;
 
-      try {
-        const supabaseClient = createClient();
-        const { data } = await supabaseClient.auth.getUser();
-        const name = data.user?.user_metadata?.name || 'Pookie';
-        setCurrentUserName(name);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to get user name:', err);
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Failed to load user data',
-        );
-      } finally {
-        setIsLoading(false);
-      }
+    try {
+      setIsLoading(true);
+      const supabaseClient = createClient();
+      const { data } = await supabaseClient.auth.getUser();
+      const name = data.user?.user_metadata?.name || '';
+      setCurrentUserName(name);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to get user name:', err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to load user data',
+      );
+    } finally {
+      setIsLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchUserName();
   }, [session, authLoading]);
+
+  // Function to refresh user data after update
+  const handleNameUpdate = () => {
+    fetchUserName();
+  };
 
   if (isLoading || authLoading) {
     return (
@@ -83,7 +89,7 @@ export default function AccountPersonalization({ accountId, returnUrl }: Props) 
               Current Display Name
             </span>
             <span className="text-sm font-medium text-card-title">
-              {currentUserName}
+              {currentUserName || 'Not set'}
             </span>
           </div>
         </div>
@@ -97,7 +103,7 @@ export default function AccountPersonalization({ accountId, returnUrl }: Props) 
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EditUserName currentName={currentUserName} />
+          <EditUserName currentName={currentUserName} onUpdate={handleNameUpdate} />
         </CardContent>
       </Card>
     </div>

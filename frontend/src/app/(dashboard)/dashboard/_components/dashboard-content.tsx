@@ -31,7 +31,7 @@ import { Examples } from './suggestions/examples';
 import { useThreadQuery } from '@/hooks/react-query/threads/use-threads';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
 import { toast } from 'sonner';
-import { USER_NAME_KEY, getStoredUserName, saveUserName } from '@/lib/user-name';
+import { createClient } from '@/lib/supabase/client';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
@@ -60,13 +60,38 @@ export function DashboardContent() {
 
   const threadQuery = useThreadQuery(initiatedThreadId || '');
 
-  // Load stored user name
+  // Load user name from Supabase auth and listen for changes
   useEffect(() => {
-    const stored = getStoredUserName();
-    if (stored) {
-      setUserName(stored);
-      setNameInput(stored);
-    }
+    const supabase = createClient();
+    
+    const loadUserName = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const name = user?.user_metadata?.name;
+      if (name) {
+        setUserName(name);
+        setNameInput(name);
+      }
+    };
+
+    // Load initial user name
+    loadUserName();
+
+    // Listen for auth state changes (including user metadata updates)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'USER_UPDATED' || event === 'SIGNED_IN') {
+          const name = session?.user?.user_metadata?.name;
+          if (name) {
+            setUserName(name);
+            setNameInput(name);
+          }
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -170,14 +195,28 @@ ${meeting.transcript || '(No transcript available)'}`;
   const secondaryGradient =
     'bg-gradient-to-r from-blue-500 to-blue-500 bg-clip-text text-transparent';
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     const trimmed = nameInput.trim();
     if (!trimmed) return;
     
-    saveUserName(trimmed);
-    setUserName(trimmed);
-    setIsNameFocused(false);
-    toast.success(`Nice to meet you, ${trimmed}! 🎉`);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({
+        data: { name: trimmed },
+      });
+
+      if (error) {
+        toast.error('Failed to save name: ' + error.message);
+        return;
+      }
+
+      setUserName(trimmed);
+      setIsNameFocused(false);
+      toast.success(`Nice to meet you, ${trimmed}! 🎉`);
+    } catch (error) {
+      toast.error('Failed to save name');
+      console.error('Error saving name:', error);
+    }
   };
 
   const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
