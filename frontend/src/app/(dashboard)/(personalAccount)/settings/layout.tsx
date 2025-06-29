@@ -12,7 +12,7 @@ export default function PersonalAccountSettingsPage({
 }) {
   const pathname = usePathname();
   const items = [
-    { name: '🎨 Personalization', href: '/settings/personalization' },
+    { name: "Profile", href: "/settings" },
     // { name: "Teams", href: "/settings/teams" },
     { name: 'Billing', href: '/settings/billing' },
   ];
