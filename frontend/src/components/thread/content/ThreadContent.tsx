@@ -684,12 +684,12 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={handleCopy}
-                                                    className="absolute top-2 right-2 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-background/20"
+                                                    className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-muted/80"
                                                 >
                                                     {isCopied ? (
-                                                        <Check className="h-4 w-4" />
+                                                        <Check className="h-3.5 w-3.5" />
                                                     ) : (
-                                                        <Copy className="h-4 w-4" />
+                                                        <Copy className="h-3.5 w-3.5" />
                                                     )}
                                                     <span className="sr-only">
                                                         {isCopied ? 'Copied!' : 'Copy message'}
@@ -700,18 +700,24 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
                                         return (
                                             <div key={group.key} className="flex justify-end">
-                                                <div className="group relative flex max-w-[85%] rounded-xl bg-primary/10 px-4 py-3 break-words overflow-hidden">
-                                                    <div className="space-y-3 min-w-0 flex-1">
-                                                        {cleanContent && (
-                                                            <Markdown className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere">{cleanContent}</Markdown>
-                                                        )}
+                                                <div className="group flex flex-col items-end max-w-[85%]">
+                                                    <div className="flex rounded-xl bg-primary/10 px-4 py-3 break-words overflow-hidden">
+                                                        <div className="space-y-3 min-w-0 flex-1">
+                                                            {cleanContent && (
+                                                                <Markdown className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere">{cleanContent}</Markdown>
+                                                            )}
 
-                                                        {/* Use the helper function to render user attachments */}
-                                                        {renderAttachments(attachments as string[], handleOpenFileViewer, sandboxId, project)}
+                                                            {/* Use the helper function to render user attachments */}
+                                                            {renderAttachments(attachments as string[], handleOpenFileViewer, sandboxId, project)}
+                                                        </div>
                                                     </div>
                                                     
-                                                    {/* Copy button - only show if there's content to copy */}
-                                                    {cleanContent && <CopyButton />}
+                                                    {/* Copy button - positioned at bottom-left, aligned with bubble edge */}
+                                                    {cleanContent && (
+                                                        <div className="self-start mt-1">
+                                                            <CopyButton />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
