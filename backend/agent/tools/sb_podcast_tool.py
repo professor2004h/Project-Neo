@@ -502,7 +502,7 @@ class SandboxPodcastTool(SandboxToolsBase):
             response = requests.post(
                 f"{self.api_base_url}/generate",
                 json=payload,
-                timeout=120  # Longer timeout for podcast generation
+                timeout=360  # 5 minutes timeout for podcast generation
             )
             response.raise_for_status()
             return response.json()
