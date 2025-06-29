@@ -14,6 +14,7 @@ import { handleFiles } from './file-upload-handler';
 import { MessageInput } from './message-input';
 import { AttachmentGroup } from '../attachment-group';
 import { useModelSelection } from './_use-model-selection';
+import { ReasoningSettings } from './reasoning-control';
 import { AgentSelector } from './agent-selector';
 import { useFileDelete } from '@/hooks/react-query/files';
 import { useQueryClient } from '@tanstack/react-query';
@@ -28,7 +29,11 @@ export interface ChatInputHandles {
 export interface ChatInputProps {
   onSubmit: (
     message: string,
-    options?: { model_name?: string; enable_thinking?: boolean },
+    options?: { 
+      model_name?: string; 
+      enable_thinking?: boolean;
+      reasoning_effort?: string;
+    },
   ) => void;
   placeholder?: string;
   loading?: boolean;
@@ -93,6 +98,11 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
+    
+    const [reasoningSettings, setReasoningSettings] = useState<ReasoningSettings>({
+      enabled: false,
+      effort: 'none',
+    });
 
     const {
       selectedModel,
@@ -169,15 +179,11 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       }
 
       let baseModelName = getActualModelId(selectedModel);
-      let thinkingEnabled = false;
-      if (selectedModel.endsWith('-thinking')) {
-        baseModelName = getActualModelId(selectedModel.replace(/-thinking$/, ''));
-        thinkingEnabled = true;
-      }
 
       onSubmit(message, {
         model_name: baseModelName,
-        enable_thinking: thinkingEnabled,
+        enable_thinking: reasoningSettings.enabled,
+        reasoning_effort: reasoningSettings.effort,
       });
 
       if (!isControlled) {
@@ -266,7 +272,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             setIsDraggingOver(false);
 
             if (fileInputRef.current && e.dataTransfer.files.length > 0) {
-              const files = Array.from(e.dataTransfer.files);
+              const files = Array.from(e.dataTransfer.files) as File[];
               handleFiles(
                 files,
                 sandboxId,
@@ -319,6 +325,9 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                 subscriptionStatus={subscriptionStatus}
                 canAccessModel={canAccessModel}
                 refreshCustomModels={refreshCustomModels}
+                
+                reasoningSettings={reasoningSettings}
+                onReasoningChange={setReasoningSettings}
               />
             </CardContent>
           </div>

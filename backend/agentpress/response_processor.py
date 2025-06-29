@@ -1315,7 +1315,7 @@ class ResponseProcessor:
 
     # Tool execution methods
     async def _execute_tool(self, tool_call: Dict[str, Any]) -> ToolResult:
-        """Execute a single tool call and return the result."""
+        """Execute a single tool call and return the result with credit tracking."""
         span = self.trace.span(name=f"execute_tool.{tool_call['function_name']}", input=tool_call["arguments"])            
         try:
             function_name = tool_call["function_name"]
@@ -1330,6 +1330,13 @@ class ResponseProcessor:
                 except json.JSONDecodeError:
                     arguments = {"text": arguments}
             
+            # Calculate credit cost BEFORE execution
+            from services.credit_calculator import CreditCalculator
+            credit_calc = CreditCalculator()
+            tool_credits, credit_details = credit_calc.calculate_tool_credits(function_name)
+            
+            logger.info(f"Tool {function_name} will cost {tool_credits} credits")
+            
             # Get available functions from tool registry
             available_functions = self.tool_registry.get_available_functions()
             
@@ -1343,6 +1350,36 @@ class ResponseProcessor:
             logger.debug(f"Found tool function for '{function_name}', executing...")
             result = await tool_fn(**arguments)
             logger.info(f"Tool execution complete: {function_name} -> {result}")
+            
+            # Check if this is a data provider tool with individual provider tracking
+            final_tool_name = function_name
+            final_credits = tool_credits
+            final_details = credit_details
+            data_provider_name = None
+            
+            if function_name == "execute_data_provider_call" and hasattr(result, '__dict__'):
+                # Extract data provider specific credit info if available
+                credit_tracking = getattr(result, '_credit_tracking', None)
+                if credit_tracking:
+                    # Use the specific provider tool name for analytics
+                    final_tool_name = credit_tracking.get('tool_name_for_analytics', function_name)
+                    final_credits = Decimal(str(credit_tracking.get('credits', tool_credits)))
+                    final_details = credit_tracking.get('calculation_details', credit_details)
+                    data_provider_name = credit_tracking.get('data_provider_name')
+                    logger.info(f"Data provider call detected: {data_provider_name} = {final_credits} credits (tool: {final_tool_name})")
+            
+            # Save credit usage to database if we have an agent_run_id
+            # Note: This would need to be passed down from the calling context
+            # For now, we'll store the credit info on the result for later processing
+            if hasattr(result, '__dict__'):
+                result.__dict__['_credit_info'] = {
+                    'tool_name': final_tool_name,  # Use the analytics-friendly tool name
+                    'credits': float(final_credits),
+                    'calculation_details': final_details,
+                    'data_provider_name': data_provider_name,
+                    'usage_type': 'tool'  # Always treat as tool for consistent analytics
+                }
+            
             span.end(status_message="tool_executed", output=result)
             return result
         except Exception as e:

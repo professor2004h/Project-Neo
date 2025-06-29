@@ -462,8 +462,13 @@ async def start_agent(
         logger.error(f"Failed to start sandbox for project {project_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to initialize sandbox: {str(e)}")
 
+    # Store reasoning mode in agent run
+    reasoning_mode = body.reasoning_effort if body.enable_thinking else 'none'
+    
     agent_run = await client.table('agent_runs').insert({
-        "thread_id": thread_id, "status": "running",
+        "thread_id": thread_id, 
+        "status": "running",
+        "reasoning_mode": reasoning_mode,
         "started_at": datetime.now(timezone.utc).isoformat()
     }).execute()
     agent_run_id = agent_run.data[0]['id']
@@ -521,6 +526,365 @@ async def get_agent_runs(thread_id: str, user_id: str = Depends(get_current_user
     agent_runs = await client.table('agent_runs').select('*').eq("thread_id", thread_id).order('created_at', desc=True).execute()
     logger.debug(f"Found {len(agent_runs.data)} agent runs for thread: {thread_id}")
     return {"agent_runs": agent_runs.data}
+
+@router.get("/agent-run/{agent_run_id}/credit-usage")
+async def get_agent_run_credit_usage(
+    agent_run_id: str, 
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    """Get detailed credit usage for a specific agent run."""
+    structlog.contextvars.bind_contextvars(
+        agent_run_id=agent_run_id,
+    )
+    logger.info(f"Fetching credit usage for agent run: {agent_run_id}")
+    
+    try:
+        from services.credit_tracker import CreditTracker
+        credit_tracker = CreditTracker()
+        
+        # Get credit usage summary
+        usage_summary = await credit_tracker.get_credit_usage_summary(agent_run_id)
+        
+        # Get data provider specific stats
+        provider_stats = await credit_tracker.get_data_provider_usage_stats(agent_run_id=agent_run_id)
+        
+        return {
+            "agent_run_id": agent_run_id,
+            "usage_summary": usage_summary,
+            "data_provider_stats": provider_stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching credit usage for agent run {agent_run_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch credit usage: {str(e)}")
+
+@router.get("/credit-rates")
+async def get_credit_rates(user_id: str = Depends(get_current_user_id_from_jwt)):
+    """Get current credit rates for tools and data providers."""
+    try:
+        from services.credit_calculator import CreditCalculator
+        credit_calc = CreditCalculator()
+        
+        return {
+            "base_rates": {
+                "conversation_per_minute": credit_calc.credit_rates['base_rate'],
+                "reasoning_multipliers": {
+                    "medium": credit_calc.credit_rates['reasoning_rate_medium'],
+                    "high": credit_calc.credit_rates['reasoning_rate_high']
+                }
+            },
+            "tool_costs": credit_calc.get_all_tool_costs(),
+            "data_provider_costs": credit_calc.get_all_data_provider_costs()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching credit rates: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch credit rates: {str(e)}")
+
+@router.get("/data-provider/{provider_name}/cost-estimate")
+async def get_data_provider_cost_estimate(
+    provider_name: str,
+    route: str = None,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    """Get cost estimate for a specific data provider call."""
+    try:
+        from services.credit_calculator import CreditCalculator
+        credit_calc = CreditCalculator()
+        
+        estimate = credit_calc.estimate_data_provider_call_cost(provider_name, route)
+        
+        return estimate
+        
+    except Exception as e:
+        logger.error(f"Error getting cost estimate for {provider_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get cost estimate: {str(e)}")
+
+@router.get("/tools/cost-estimates")
+async def get_all_tool_cost_estimates(user_id: str = Depends(get_current_user_id_from_jwt)):
+    """Get cost estimates for all available tools."""
+    try:
+        from services.credit_calculator import CreditCalculator
+        credit_calc = CreditCalculator()
+        
+        # Get all tool costs
+        all_tool_costs = credit_calc.get_all_tool_costs()
+        
+        # Create enhanced estimates with descriptions and categorization
+        tool_estimates = []
+        
+        # Tool categories and descriptions
+        tool_info = {
+            # Infrastructure & Automation Tools
+            "sb_browser_tool": {
+                "display_name": "Browser Tool",
+                "description": "Automate web browsing, clicking, form filling, and page interaction",
+                "category": "automation",
+                "icon": "🌐"
+            },
+            "sb_deploy_tool": {
+                "display_name": "Deploy Tool", 
+                "description": "Deploy applications and services with automated deployment",
+                "category": "infrastructure",
+                "icon": "🚀"
+            },
+            "sb_shell_tool": {
+                "display_name": "Terminal",
+                "description": "Execute shell commands and CLI operations in tmux sessions",
+                "category": "development",
+                "icon": "💻"
+            },
+            "web_search_tool": {
+                "display_name": "Web Search",
+                "description": "Search the web using Tavily API and scrape webpages with Firecrawl",
+                "category": "research",
+                "icon": "🔍"
+            },
+            
+            # File & Media Tools
+            "sb_files_tool": {
+                "display_name": "File Manager",
+                "description": "Create, read, update, and delete files with comprehensive file management",
+                "category": "files",
+                "icon": "📁"
+            },
+            "sb_excel_tool": {
+                "display_name": "Excel Operations",
+                "description": "Create, read, write, and format Excel spreadsheets",
+                "category": "files",
+                "icon": "📊"
+            },
+            "sb_pdf_form_tool": {
+                "display_name": "PDF Form Filler",
+                "description": "Read form fields, fill forms, and flatten PDF documents",
+                "category": "files", 
+                "icon": "📄"
+            },
+            "sb_vision_tool": {
+                "display_name": "Image Processing",
+                "description": "Vision and image processing capabilities for visual content analysis",
+                "category": "ai",
+                "icon": "👁️"
+            },
+            "sb_audio_transcription_tool": {
+                "display_name": "Audio Transcription",
+                "description": "Transcribe audio files to text using speech recognition",
+                "category": "ai",
+                "icon": "🎤"
+            },
+            "sb_podcast_tool": {
+                "display_name": "Audio Overviews",
+                "description": "Generate audio summaries and overviews from content",
+                "category": "ai",
+                "icon": "🎧"
+            },
+            
+            # Data Provider Tools
+            "linkedin_data_provider": {
+                "display_name": "LinkedIn Data Provider",
+                "description": "Access LinkedIn profiles, company data, and professional information",
+                "category": "data_providers",
+                "icon": "💼"
+            },
+            "apollo_data_provider": {
+                "display_name": "Apollo Data Provider", 
+                "description": "Lead generation, contact enrichment, and company discovery",
+                "category": "data_providers",
+                "icon": "🎯"
+            },
+            "twitter_data_provider": {
+                "display_name": "Twitter Data Provider",
+                "description": "Access Twitter/X social media data and user information", 
+                "category": "data_providers",
+                "icon": "🐦"
+            },
+            "amazon_data_provider": {
+                "display_name": "Amazon Data Provider",
+                "description": "Product data, pricing, and marketplace information from Amazon",
+                "category": "data_providers", 
+                "icon": "📦"
+            },
+            "yahoo_finance_data_provider": {
+                "display_name": "Yahoo Finance Data Provider",
+                "description": "Financial data, stock prices, and market information",
+                "category": "data_providers",
+                "icon": "📈"
+            },
+            "zillow_data_provider": {
+                "display_name": "Zillow Data Provider",
+                "description": "Real estate data, property values, and market analytics",
+                "category": "data_providers",
+                "icon": "🏠"
+            },
+            "activejobs_data_provider": {
+                "display_name": "Active Jobs Data Provider",
+                "description": "Job search data and employment opportunity information",
+                "category": "data_providers",
+                "icon": "💼"
+            },
+            
+            # System Tools
+            "sb_expose_tool": {
+                "display_name": "Port Exposure",
+                "description": "Expose services and manage ports for application accessibility",
+                "category": "system",
+                "icon": "🔌"
+            },
+            "mcp_tool": {
+                "display_name": "MCP Tools",
+                "description": "External Model Context Protocol integrations",
+                "category": "integrations", 
+                "icon": "🔗"
+            },
+            "data_providers_tool": {
+                "display_name": "Legacy Data Providers",
+                "description": "Fallback for unspecified data provider calls",
+                "category": "legacy",
+                "icon": "🗃️"
+            }
+        }
+        
+        # Build tool estimates
+        for tool_name, cost in all_tool_costs.items():
+            if tool_name == "default":
+                continue
+                
+            info = tool_info.get(tool_name, {
+                "display_name": tool_name.replace('_', ' ').title(),
+                "description": f"Tool: {tool_name}",
+                "category": "other",
+                "icon": "🔧"
+            })
+            
+            # Determine cost tier
+            if cost >= 3.0:
+                cost_tier = "high"
+                tier_color = "#ef4444"  # red
+            elif cost >= 1.5:
+                cost_tier = "medium" 
+                tier_color = "#f59e0b"  # amber
+            else:
+                cost_tier = "low"
+                tier_color = "#10b981"  # emerald
+            
+            estimate = {
+                "tool_name": tool_name,
+                "display_name": info["display_name"],
+                "description": info["description"],
+                "category": info["category"],
+                "icon": info["icon"],
+                "credit_cost": cost,
+                "cost_tier": cost_tier,
+                "tier_color": tier_color,
+                "cost_explanation": f"{info['display_name']} costs {cost} credits per use"
+            }
+            
+            tool_estimates.append(estimate)
+        
+        # Sort by category, then by cost (high to low)
+        category_order = ["automation", "data_providers", "ai", "development", "files", "research", "infrastructure", "system", "integrations", "legacy", "other"]
+        
+        def sort_key(tool):
+            category_index = category_order.index(tool["category"]) if tool["category"] in category_order else len(category_order)
+            return (category_index, -tool["credit_cost"])  # negative cost for descending order
+        
+        tool_estimates.sort(key=sort_key)
+        
+        # Group by category for better organization
+        categorized_tools = {}
+        for tool in tool_estimates:
+            category = tool["category"]
+            if category not in categorized_tools:
+                categorized_tools[category] = []
+            categorized_tools[category].append(tool)
+        
+        # Calculate summary stats
+        total_tools = len(tool_estimates)
+        avg_cost = sum(tool["credit_cost"] for tool in tool_estimates) / total_tools if total_tools > 0 else 0
+        high_cost_tools = len([t for t in tool_estimates if t["cost_tier"] == "high"])
+        medium_cost_tools = len([t for t in tool_estimates if t["cost_tier"] == "medium"])
+        low_cost_tools = len([t for t in tool_estimates if t["cost_tier"] == "low"])
+        
+        return {
+            "summary": {
+                "total_tools": total_tools,
+                "average_cost": round(avg_cost, 2),
+                "cost_distribution": {
+                    "high_cost": high_cost_tools,
+                    "medium_cost": medium_cost_tools, 
+                    "low_cost": low_cost_tools
+                }
+            },
+            "tools": tool_estimates,
+            "categorized_tools": categorized_tools,
+            "cost_tiers": {
+                "high": {"min_cost": 3.0, "color": "#ef4444", "description": "Resource-intensive tools"},
+                "medium": {"min_cost": 1.5, "color": "#f59e0b", "description": "Standard functionality tools"},
+                "low": {"min_cost": 0.0, "color": "#10b981", "description": "Basic operation tools"}
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting tool cost estimates: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get tool cost estimates: {str(e)}")
+
+@router.get("/tools/costs")
+async def get_all_tool_costs_simple(user_id: str = Depends(get_current_user_id_from_jwt)):
+    """Get a simple list of all tool costs."""
+    try:
+        from services.credit_calculator import CreditCalculator
+        credit_calc = CreditCalculator()
+        
+        # Get all tool costs
+        all_tool_costs = credit_calc.get_all_tool_costs()
+        
+        # Create simple mapping of display names to costs
+        tool_display_names = {
+            "sb_browser_tool": "Browser Tool",
+            "sb_deploy_tool": "Deploy Tool", 
+            "sb_shell_tool": "Terminal",
+            "web_search_tool": "Web Search",
+            "sb_files_tool": "File Manager",
+            "sb_excel_tool": "Excel Operations",
+            "sb_pdf_form_tool": "PDF Form Filler",
+            "sb_vision_tool": "Image Processing",
+            "sb_audio_transcription_tool": "Audio Transcription",
+            "sb_podcast_tool": "Audio Overviews",
+            "linkedin_data_provider": "LinkedIn Data Provider",
+            "apollo_data_provider": "Apollo Data Provider",
+            "twitter_data_provider": "Twitter Data Provider",
+            "amazon_data_provider": "Amazon Data Provider",
+            "yahoo_finance_data_provider": "Yahoo Finance Data Provider",
+            "zillow_data_provider": "Zillow Data Provider",
+            "activejobs_data_provider": "Active Jobs Data Provider",
+            "sb_expose_tool": "Port Exposure",
+            "mcp_tool": "MCP Tools",
+            "data_providers_tool": "Legacy Data Providers"
+        }
+        
+        simplified_costs = {}
+        for tool_name, cost in all_tool_costs.items():
+            if tool_name == "default":
+                continue
+            display_name = tool_display_names.get(tool_name, tool_name.replace('_', ' ').title())
+            simplified_costs[display_name] = cost
+        
+        # Sort by cost (high to low)
+        sorted_costs = dict(sorted(simplified_costs.items(), key=lambda x: x[1], reverse=True))
+        
+        return {
+            "tool_costs": sorted_costs,
+            "total_tools": len(sorted_costs),
+            "cost_range": {
+                "highest": max(sorted_costs.values()) if sorted_costs else 0,
+                "lowest": min(sorted_costs.values()) if sorted_costs else 0,
+                "average": round(sum(sorted_costs.values()) / len(sorted_costs), 2) if sorted_costs else 0
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting simple tool costs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get tool costs: {str(e)}")
 
 @router.get("/agent-run/{agent_run_id}")
 async def get_agent_run(agent_run_id: str, user_id: str = Depends(get_current_user_id_from_jwt)):
@@ -1094,9 +1458,13 @@ async def initiate_agent_with_files(
             "created_at": datetime.now(timezone.utc).isoformat()
         }).execute()
 
-        # 6. Start Agent Run
+        # 6. Start Agent Run with reasoning mode
+        reasoning_mode = reasoning_effort if enable_thinking else 'none'
+        
         agent_run = await client.table('agent_runs').insert({
-            "thread_id": thread_id, "status": "running",
+            "thread_id": thread_id, 
+            "status": "running",
+            "reasoning_mode": reasoning_mode,
             "started_at": datetime.now(timezone.utc).isoformat()
         }).execute()
         agent_run_id = agent_run.data[0]['id']

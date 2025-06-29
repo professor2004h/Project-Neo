@@ -8,6 +8,7 @@ import { FileUploadHandler } from './file-upload-handler';
 import { VoiceRecorder } from './voice-recorder';
 import { MeetingRecorder } from './meeting-recorder';
 import { ModelSelector } from './model-selector';
+import { ReasoningControl, ReasoningSettings } from './reasoning-control';
 import { SubscriptionStatus } from './_use-model-selection';
 import { isLocalMode } from '@/lib/config';
 import { TooltipContent } from '@/components/ui/tooltip';
@@ -42,6 +43,10 @@ interface MessageInputProps {
   subscriptionStatus: SubscriptionStatus;
   canAccessModel: (modelId: string) => boolean;
   refreshCustomModels?: () => void;
+  
+  // New reasoning props
+  reasoningSettings: ReasoningSettings;
+  onReasoningChange: (settings: ReasoningSettings) => void;
 }
 
 export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
@@ -74,6 +79,10 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
       subscriptionStatus,
       canAccessModel,
       refreshCustomModels,
+      
+      // New reasoning props
+      reasoningSettings,
+      onReasoningChange,
     },
     ref,
   ) => {
@@ -185,6 +194,13 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               subscriptionStatus={subscriptionStatus}
               canAccessModel={canAccessModel}
               refreshCustomModels={refreshCustomModels}
+            />
+            <ReasoningControl
+              value={reasoningSettings}
+              onChange={onReasoningChange}
+              disabled={loading || (disabled && !isAgentRunning)}
+              modelName={selectedModel}
+              subscriptionStatus={subscriptionStatus}
             />
             <Button
               type="submit"
