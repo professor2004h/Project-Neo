@@ -29,6 +29,7 @@ from services.billing import check_billing_status
 from agent.tools.sb_vision_tool import SandboxVisionTool
 from agent.tools.audio_transcription_tool import AudioTranscriptionTool
 from agent.tools.sb_podcast_tool import SandboxPodcastTool
+from agent.tools.memory_search_tool import MemorySearchTool
 
 from services.langfuse import langfuse
 from langfuse.client import StatefulTraceClient
@@ -117,12 +118,15 @@ async def run_agent(
         thread_manager.add_tool(SandboxPDFFormTool, project_id=project_id, thread_manager=thread_manager)
         thread_manager.add_tool(AudioTranscriptionTool, project_id=project_id, thread_manager=thread_manager)
         thread_manager.add_tool(SandboxPodcastTool, project_id=project_id, thread_manager=thread_manager)
+        thread_manager.add_tool(MemorySearchTool, thread_manager=thread_manager)
         if config.RAPID_API_KEY:
             thread_manager.add_tool(DataProvidersTool)
     else:
         logger.info("Custom agent specified - registering only enabled tools")
         thread_manager.add_tool(ExpandMessageTool, thread_id=thread_id, thread_manager=thread_manager)
         thread_manager.add_tool(MessageTool)
+        # Always enable memory search for custom agents
+        thread_manager.add_tool(MemorySearchTool, thread_manager=thread_manager)
         if enabled_tools.get('sb_shell_tool', {}).get('enabled', False):
             thread_manager.add_tool(SandboxShellTool, project_id=project_id, thread_manager=thread_manager)
         if enabled_tools.get('sb_files_tool', {}).get('enabled', False):

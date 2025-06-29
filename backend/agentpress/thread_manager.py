@@ -8,6 +8,7 @@ This module provides comprehensive conversation management, including:
 - LLM interaction with streaming support
 - Error handling and cleanup
 - Context summarization to manage token limits
+- Memory management using mem0
 """
 
 import json
@@ -21,6 +22,7 @@ from agentpress.response_processor import (
     ProcessorConfig
 )
 from services.supabase import DBConnection
+from services.memory import memory_service
 from utils.logger import logger
 from langfuse.client import StatefulGenerationClient, StatefulTraceClient
 from services.langfuse import langfuse
@@ -327,6 +329,129 @@ class ThreadManager:
     def add_tool(self, tool_class: Type[Tool], function_names: Optional[List[str]] = None, **kwargs):
         """Add a tool to the ThreadManager."""
         self.tool_registry.register_tool(tool_class, function_names, **kwargs)
+    
+    async def _get_thread_context(self, thread_id: str) -> Dict[str, Optional[str]]:
+        """
+        Get user_id and agent_id from thread context.
+        
+        Args:
+            thread_id: The thread ID to get context for
+            
+        Returns:
+            Dictionary containing user_id and agent_id (if available)
+        """
+        try:
+            client = await self.db.client
+            thread_result = await client.table('threads').select('account_id, agent_id').eq('thread_id', thread_id).execute()
+            
+            if thread_result.data:
+                thread_data = thread_result.data[0]
+                return {
+                    'user_id': thread_data.get('account_id'),
+                    'agent_id': thread_data.get('agent_id')
+                }
+            else:
+                logger.warning(f"Thread {thread_id} not found for memory context")
+                return {'user_id': None, 'agent_id': None}
+                
+        except Exception as e:
+            logger.error(f"Failed to get thread context for {thread_id}: {e}")
+            return {'user_id': None, 'agent_id': None}
+    
+    async def _add_message_to_memory(self, thread_id: str, message_data: Dict[str, Any]):
+        """
+        Add a message to memory if it's a user or assistant message.
+        
+        Args:
+            thread_id: The thread ID
+            message_data: The message data that was added to the database
+        """
+        if not memory_service.is_available:
+            return
+            
+        try:
+            message_type = message_data.get('type')
+            
+            # Only add user and assistant messages to memory
+            if message_type not in ['user', 'assistant']:
+                return
+            
+            # Get thread context for user_id and agent_id
+            context = await self._get_thread_context(thread_id)
+            user_id = context.get('user_id')
+            agent_id = context.get('agent_id')
+            
+            if not user_id:
+                logger.debug(f"No user_id found for thread {thread_id}, skipping memory addition")
+                return
+            
+            # Format message for memory
+            content = message_data.get('content', '')
+            if isinstance(content, dict):
+                # Extract text content from structured content
+                text_content = content.get('content', str(content))
+            else:
+                text_content = str(content)
+            
+            # Create memory message
+            memory_message = {
+                'role': message_type,
+                'content': text_content
+            }
+            
+            # Add to memory
+            await memory_service.add_memory_async(
+                messages=[memory_message],
+                user_id=user_id,
+                agent_id=agent_id,
+                metadata={
+                    'thread_id': thread_id,
+                    'message_id': message_data.get('message_id')
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to add message to memory for thread {thread_id}: {e}")
+    
+    async def search_memory(self, thread_id: str, query: str, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+        """
+        Search memory for a thread.
+        
+        Args:
+            thread_id: The thread ID to search memory for
+            query: The search query
+            limit: Maximum number of results to return
+            
+        Returns:
+            List of memory results or None if failed
+        """
+        if not memory_service.is_available:
+            logger.debug("Memory service not available")
+            return None
+            
+        try:
+            # Get thread context for user_id and agent_id
+            context = await self._get_thread_context(thread_id)
+            user_id = context.get('user_id')
+            agent_id = context.get('agent_id')
+            
+            if not user_id:
+                logger.debug(f"No user_id found for thread {thread_id}, cannot search memory")
+                return None
+            
+            # Search memory
+            results = await memory_service.search_memory_async(
+                query=query,
+                user_id=user_id,
+                agent_id=agent_id,
+                limit=limit
+            )
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"Failed to search memory for thread {thread_id}: {e}")
+            return None
 
     async def add_message(
         self,
@@ -366,7 +491,16 @@ class ThreadManager:
             logger.info(f"Successfully added message to thread {thread_id}")
 
             if result.data and len(result.data) > 0 and isinstance(result.data[0], dict) and 'message_id' in result.data[0]:
-                return result.data[0]
+                message_data = result.data[0]
+                
+                # Add to memory asynchronously (don't wait for completion to avoid blocking)
+                try:
+                    await self._add_message_to_memory(thread_id, message_data)
+                except Exception as memory_error:
+                    # Log memory errors but don't fail the message addition
+                    logger.warning(f"Failed to add message to memory, but message was saved to database: {memory_error}")
+                
+                return message_data
             else:
                 logger.error(f"Insert operation failed or did not return expected data structure for thread {thread_id}. Result data: {result.data}")
                 return None
