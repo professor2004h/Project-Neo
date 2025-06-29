@@ -8,7 +8,7 @@ Add these environment variables to your `.env` file:
 
 ```bash
 # Podcastfy FastAPI Configuration
-PODCASTFY_API_URL=http://localhost:8080  # Your FastAPI instance URL
+PODCASTFY_API_URL=https://podcastfy-8x6a.onrender.com  # Your deployed FastAPI instance
 ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 
 # LLM API Keys (at least one is required)
@@ -178,21 +178,15 @@ curl -X POST http://localhost:8080/generate \
   }'
 ```
 
-## File Upload Support (Future Enhancement)
+## File Content Processing
 
-Currently, the tool logs local files but doesn't upload them to the FastAPI. To add file upload support:
+The tool now reads local files from the sandbox and sends their content as text to your FastAPI via the `text` parameter. This works for:
 
-1. **Add file upload endpoint** to your FastAPI:
-```python
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    # Save and process uploaded file
-    return {"file_url": "processed_file_url"}
-```
+- Text files (.txt, .md, .csv)
+- Any UTF-8 encoded files
+- Multiple files are combined into a single text payload
 
-2. **Update the tool** to upload files before generating podcasts
-
-3. **Modify the generate endpoint** to accept file URLs
+Files are processed by reading their content and combining them before sending to the `/generate` endpoint.
 
 ## Benefits of Your FastAPI Approach
 

@@ -38,7 +38,7 @@ class SandboxPodcastTool(SandboxToolsBase):
     def __init__(self, project_id: str, thread_manager: ThreadManager):
         super().__init__(project_id, thread_manager)
         self.workspace_path = "/workspace"
-        self.api_base_url = os.getenv('PODCASTFY_API_URL', 'http://localhost:8080')
+        self.api_base_url = os.getenv('PODCASTFY_API_URL', 'https://podcastfy-8x6a.onrender.com')
         self.gemini_key = os.getenv('GEMINI_API_KEY', '')
         self.openai_key = os.getenv('OPENAI_API_KEY', '')
         self.elevenlabs_key = os.getenv('ELEVENLABS_API_KEY', '')
@@ -275,21 +275,24 @@ class SandboxPodcastTool(SandboxToolsBase):
                     except:
                         continue
             
-            # Process files - add as URLs for now since the API expects URLs
-            # TODO: Implement proper file upload to the FastAPI
+            # Process files - read content and send as text to FastAPI
+            file_content = ""
             if file_paths:
                 for file_path in file_paths:
                     try:
                         clean_path = self.clean_path(file_path)
                         full_path = f"{self.workspace_path}/{clean_path}"
                         if self._validate_file_exists(full_path):
-                            # For now, just log that we have files
-                            # In the future, you could upload these to your FastAPI
-                            logger.info(f"File found: {file_path} (currently not uploaded to API)")
+                            file_info = self.sandbox.fs.get_file_info(full_path)
+                            file_bytes = self.sandbox.fs.download_file(full_path)
+                            file_text = file_bytes.decode('utf-8', errors='ignore')
+                            file_content += f"\n\nContent from {file_path}:\n{file_text}"
+                            logger.info(f"File read successfully: {file_path} ({len(file_text)} characters)")
                         else:
                             logger.warning(f"File not found: {file_path}")
                     except Exception as e:
-                        logger.error(f"Error processing file {file_path}: {str(e)}")
+                        logger.error(f"Error reading file {file_path}: {str(e)}")
+                        file_content += f"\n\nError reading {file_path}: {str(e)}"
             
             # Send both API keys - let the FastAPI decide which to use
             openai_key = self.openai_key
@@ -309,6 +312,7 @@ class SandboxPodcastTool(SandboxToolsBase):
             # Prepare request payload for FastAPI
             payload = {
                 "urls": processed_urls,
+                "text": file_content.strip() if file_content.strip() else None,
                 "openai_key": openai_key,
                 "google_key": google_key,
                 "elevenlabs_key": self.elevenlabs_key,
@@ -368,7 +372,8 @@ class SandboxPodcastTool(SandboxToolsBase):
             if urls:
                 message += f"- {len(urls)} URLs\n"
             if file_paths:
-                message += f"- {len(file_paths)} local files (logged, not yet uploaded)\n" 
+                total_chars = len(file_content.strip()) if file_content.strip() else 0
+                message += f"- {len(file_paths)} local files ({total_chars} characters)\n" 
             if image_paths:
                 message += f"- {len(image_paths)} images (not yet supported)\n"
             
