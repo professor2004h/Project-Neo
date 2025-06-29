@@ -11,7 +11,7 @@ import {
 export default async function PersonalAccountSettingsPage() {
   const supabaseClient = await createClient();
   const { data } = await supabaseClient.auth.getUser();
-  const currentName = data.user?.user_metadata?.name || 'Pookie';
+  const currentName = data.user?.user_metadata?.name || '';
 
   return (
     <div className="space-y-6">
