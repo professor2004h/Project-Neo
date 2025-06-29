@@ -373,7 +373,7 @@ ${meeting.transcript || '(No transcript available)'}`;
             ) : (
               <div className="flex items-center gap-2 flex-wrap justify-center">
                 <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
-                  Hey{userName ? ',' : ''}
+                  Hey{userName ? ' ' : ''}
                 </h1>
                 {userName ? (
                   <span className="tracking-tight text-4xl text-foreground leading-tight font-medium">
