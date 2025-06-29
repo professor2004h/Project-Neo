@@ -14,9 +14,6 @@ ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 # LLM API Keys (at least one is required)
 OPENAI_API_KEY=your_openai_api_key_here  # Usually already configured
 GEMINI_API_KEY=your_gemini_api_key_here   # Alternative to OpenAI
-
-# LLM Preference (optional)
-PODCAST_PREFERRED_LLM=openai  # Options: 'openai' or 'gemini' (default: openai)
 ```
 
 ## API Key Setup
@@ -105,8 +102,6 @@ result = await podcast_tool.generate_podcast(
 3. **API URL not accessible**: Verify that the `PODCASTFY_API_URL` is correct and accessible from your deployment environment.
 
 4. **Rate limits**: Be aware of rate limits for the underlying services (ElevenLabs, OpenAI, etc.).
-
-5. **Gemini quota exceeded**: If you see "429 You exceeded your current quota" for Gemini, set `PODCAST_PREFERRED_LLM=openai` to use OpenAI instead.
 
 ### API Response Format
 

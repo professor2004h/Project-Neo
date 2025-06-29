@@ -42,7 +42,6 @@ class SandboxPodcastTool(SandboxToolsBase):
         self.gemini_key = os.getenv('GEMINI_API_KEY', '')
         self.openai_key = os.getenv('OPENAI_API_KEY', '')
         self.elevenlabs_key = os.getenv('ELEVENLABS_API_KEY', '')
-        self.preferred_llm = os.getenv('PODCAST_PREFERRED_LLM', 'openai').lower()  # 'openai' or 'gemini'
         
         # Validate required environment variables
         if not self.openai_key and not self.gemini_key:
@@ -313,37 +312,14 @@ class SandboxPodcastTool(SandboxToolsBase):
             # Combine text inputs
             combined_text = file_content
             
-            # Determine which LLM to use based on preference and availability
-            if self.preferred_llm == 'openai' and self.openai_key:
-                gemini_key_to_send = ""  # Force use of OpenAI
-                openai_key_to_send = self.openai_key
-                logger.info("Using OpenAI for podcast generation (preferred)")
-            elif self.preferred_llm == 'gemini' and self.gemini_key:
-                gemini_key_to_send = self.gemini_key
-                openai_key_to_send = ""  # Force use of Gemini
-                logger.info("Using Gemini for podcast generation (preferred)")
-            elif self.openai_key:
-                # Fallback to OpenAI if preferred LLM not available
-                gemini_key_to_send = ""
-                openai_key_to_send = self.openai_key
-                logger.info("Using OpenAI for podcast generation (fallback)")
-            elif self.gemini_key:
-                # Fallback to Gemini if OpenAI not available
-                gemini_key_to_send = self.gemini_key
-                openai_key_to_send = ""
-                logger.info("Using Gemini for podcast generation (fallback)")
-            else:
-                # This should not happen due to validation in __init__
-                raise ValueError("No valid LLM API key available")
-            
             # Prepare API request data
             api_data = [
                 combined_text,  # text_input
                 urls_input,     # urls_input
                 [],             # pdf_files (empty for now)
                 [],             # image_files (empty for now)
-                gemini_key_to_send,   # gemini_key
-                openai_key_to_send,   # openai_key
+                self.gemini_key,      # gemini_key
+                self.openai_key,      # openai_key
                 self.elevenlabs_key,  # elevenlabs_key
                 word_count_map.get(podcast_length, 2500),  # word_count
                 ",".join(conversation_style),    # conversation_style
