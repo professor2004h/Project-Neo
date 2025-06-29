@@ -3,7 +3,7 @@
 import React, { useState, Suspense, useEffect, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Menu, Check, Sparkles } from 'lucide-react';
+import { Menu, Check } from 'lucide-react';
 import {
   ChatInput,
   ChatInputHandles,
@@ -42,6 +42,7 @@ export function DashboardContent() {
   const [userName, setUserName] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
   const [isNameFocused, setIsNameFocused] = useState(false);
+  const [isLoadingUserName, setIsLoadingUserName] = useState(true);
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>();
   const [initiatedThreadId, setInitiatedThreadId] = useState<string | null>(
     null,
@@ -65,11 +66,17 @@ export function DashboardContent() {
     const supabase = createClient();
     
     const loadUserName = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const name = user?.user_metadata?.name;
-      if (name) {
-        setUserName(name);
-        setNameInput(name);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const name = user?.user_metadata?.name;
+        if (name) {
+          setUserName(name);
+          setNameInput(name);
+        }
+      } catch (error) {
+        console.error('Error loading user name:', error);
+      } finally {
+        setIsLoadingUserName(false);
       }
     };
 
@@ -352,26 +359,34 @@ ${meeting.transcript || '(No transcript available)'}`;
 
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[650px] max-w-[90%]">
           <div className="flex flex-col items-center text-center w-full">
-            <div className="flex items-center gap-2 flex-wrap justify-center">
-              <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
-                Hey,
-              </h1>
-              {userName ? (
-                <span className="tracking-tight text-4xl text-foreground leading-tight font-medium">
-                  {userName}
-                </span>
-              ) : (
-                <div className="relative group">
-                  <div className="flex items-center gap-2">
+            {isLoadingUserName ? (
+              <div className="flex items-center gap-2 flex-wrap justify-center">
+                <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
+                  Hey there, I am
+                </h1>
+                <AgentSelector
+                  selectedAgentId={selectedAgentId}
+                  onAgentSelect={setSelectedAgentId}
+                  variant="heading"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap justify-center">
+                <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
+                  Hey{userName ? ',' : ''}
+                </h1>
+                {userName ? (
+                  <span className="tracking-tight text-4xl text-foreground leading-tight font-medium">
+                    {userName}
+                  </span>
+                ) : (
+                  <div className="relative">
                     {!isNameFocused ? (
                       <button
                         onClick={() => setIsNameFocused(true)}
-                        className="tracking-tight text-4xl text-muted-foreground/60 hover:text-muted-foreground leading-tight border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50 px-3 py-1 rounded-lg transition-all duration-200 hover:bg-muted/10 group-hover:scale-[1.02]"
+                        className="tracking-tight text-4xl text-muted-foreground hover:text-foreground leading-tight underline decoration-dashed underline-offset-4 transition-colors duration-200"
                       >
-                        <span className="flex items-center gap-2">
-                          what's your name?
-                          <Sparkles className="h-5 w-5 text-primary/60 animate-pulse" />
-                        </span>
+                        there
                       </button>
                     ) : (
                       <div className="relative">
@@ -384,37 +399,32 @@ ${meeting.transcript || '(No transcript available)'}`;
                               setIsNameFocused(false);
                             }
                           }}
-                          placeholder="Enter your name"
-                          className="h-12 w-48 text-2xl text-center font-medium bg-background/80 backdrop-blur border-primary/30 focus:border-primary shadow-sm focus:shadow-md transition-all duration-200 pr-12"
+                          placeholder="your name"
+                          className="h-12 w-40 text-4xl text-center font-medium bg-transparent border-0 border-b-2 border-muted-foreground/30 focus:border-primary rounded-none shadow-none focus:shadow-none transition-colors duration-200 px-0"
                           autoFocus
                         />
                         {nameInput.trim() && (
                           <button
                             onClick={handleSaveName}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full bg-green-500 hover:bg-green-600 transition-colors duration-200 group"
+                            className="absolute -right-8 top-1/2 -translate-y-1/2 p-1 rounded-full bg-primary hover:bg-primary/90 transition-colors duration-200"
                           >
-                            <Check className="h-4 w-4 text-white" />
+                            <Check className="h-4 w-4 text-primary-foreground" />
                           </button>
                         )}
                       </div>
                     )}
                   </div>
-                  {!isNameFocused && (
-                    <p className="text-xs text-muted-foreground/70 mt-1 italic">
-                      Click to personalize your experience ✨
-                    </p>
-                  )}
-                </div>
-              )}
-              <span className="tracking-tight text-4xl text-muted-foreground leading-tight">
-                , I am
-              </span>
-              <AgentSelector
-                selectedAgentId={selectedAgentId}
-                onAgentSelect={setSelectedAgentId}
-                variant="heading"
-              />
-            </div>
+                )}
+                <span className="tracking-tight text-4xl text-muted-foreground leading-tight">
+                  , I am
+                </span>
+                <AgentSelector
+                  selectedAgentId={selectedAgentId}
+                  onAgentSelect={setSelectedAgentId}
+                  variant="heading"
+                />
+              </div>
+            )}
             <p className="tracking-tight text-3xl font-normal text-muted-foreground/80 mt-2">
               What would you like to do today?
             </p>
