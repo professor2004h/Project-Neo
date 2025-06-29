@@ -70,7 +70,7 @@ export default function EditUserName({ currentName, onUpdate }: Props) {
         <button
           type="submit"
           disabled={isLoading || !name.trim()}
-          className="rounded-lg bg-primary hover:bg-primary/90 text-white h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isLoading ? 'Updating...' : 'Save Changes'}
         </button>
