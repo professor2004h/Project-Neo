@@ -8,12 +8,11 @@ import {
   ChatInput,
   ChatInputHandles,
 } from '@/components/thread/chat-input/chat-input';
-import {
-  BillingError,
-} from '@/lib/api';
+import { BillingError } from '@/lib/api';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Tooltip,
   TooltipContent,
@@ -31,6 +30,8 @@ import { useModal } from '@/hooks/use-modal-store';
 import { Examples } from './suggestions/examples';
 import { useThreadQuery } from '@/hooks/react-query/threads/use-threads';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
+import { toast } from 'sonner';
+import { USER_NAME_KEY, getStoredUserName, saveUserName } from '@/lib/user-name';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
@@ -38,8 +39,12 @@ export function DashboardContent() {
   const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [autoSubmit, setAutoSubmit] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [nameInput, setNameInput] = useState('Pookie');
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>();
-  const [initiatedThreadId, setInitiatedThreadId] = useState<string | null>(null);
+  const [initiatedThreadId, setInitiatedThreadId] = useState<string | null>(
+    null,
+  );
   const { billingError, handleBillingError, clearBillingError } =
     useBillingError();
   const router = useRouter();
@@ -53,6 +58,15 @@ export function DashboardContent() {
   const { onOpen } = useModal();
 
   const threadQuery = useThreadQuery(initiatedThreadId || '');
+
+  // Load stored user name
+  useEffect(() => {
+    const stored = getStoredUserName();
+    if (stored) {
+      setUserName(stored);
+      setNameInput(stored);
+    }
+  }, []);
 
   useEffect(() => {
     const agentIdFromUrl = searchParams.get('agent_id');
@@ -80,42 +94,51 @@ export function DashboardContent() {
 
 MEETING INFORMATION:
 - Title: ${meeting.title}
-- Meeting Created: ${createdAt.toLocaleDateString('en-US', { 
-  year: 'numeric', 
-  month: 'long', 
-  day: 'numeric' 
-})} at ${createdAt.toLocaleTimeString('en-US', { 
-  hour: 'numeric', 
-  minute: '2-digit', 
-  hour12: true 
-})}
-- File Generated: ${now.toLocaleDateString('en-US', { 
-  year: 'numeric', 
-  month: 'long', 
-  day: 'numeric' 
-})} at ${now.toLocaleTimeString('en-US', { 
-  hour: 'numeric', 
-  minute: '2-digit', 
-  hour12: true 
-})}
+- Meeting Created: ${createdAt.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })} at ${createdAt.toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            })}
+- File Generated: ${now.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })} at ${now.toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            })}
 
 FULL TRANSCRIPT:
 ${meeting.transcript || '(No transcript available)'}`;
 
-            console.log('Formatted transcript for operator:', formattedTranscript.substring(0, 500) + '...');
-            
+            console.log(
+              'Formatted transcript for operator:',
+              formattedTranscript.substring(0, 500) + '...',
+            );
+
             // Create a file from the formatted transcript
-            const blob = new Blob([formattedTranscript], { type: 'text/plain' });
-            const file = new File([blob], `${meeting.title}_transcript.txt`, { type: 'text/plain' });
-            
+            const blob = new Blob([formattedTranscript], {
+              type: 'text/plain',
+            });
+            const file = new File([blob], `${meeting.title}_transcript.txt`, {
+              type: 'text/plain',
+            });
+
             // Add file to chat input
             if (chatInputRef.current) {
               chatInputRef.current.addExternalFile(file);
             }
-            
+
             // Set initial prompt
-            setInputValue(`I have a meeting transcript from "${meeting.title}". Please help me analyze it.`);
-            
+            setInputValue(
+              `I have a meeting transcript from "${meeting.title}". Please help me analyze it.`,
+            );
+
             // Remove the query parameter
             const newUrl = new URL(window.location.href);
             newUrl.searchParams.delete('attachMeeting');
@@ -133,7 +156,9 @@ ${meeting.transcript || '(No transcript available)'}`;
       const thread = threadQuery.data;
       console.log('Thread data received:', thread);
       if (thread.project_id) {
-        router.push(`/projects/${thread.project_id}/thread/${initiatedThreadId}`);
+        router.push(
+          `/projects/${thread.project_id}/thread/${initiatedThreadId}`,
+        );
       } else {
         router.push(`/agents/${initiatedThreadId}`);
       }
@@ -143,6 +168,13 @@ ${meeting.transcript || '(No transcript available)'}`;
 
   const secondaryGradient =
     'bg-gradient-to-r from-blue-500 to-blue-500 bg-clip-text text-transparent';
+
+  const handleSaveName = () => {
+    const trimmed = nameInput.trim() || 'Pookie';
+    saveUserName(trimmed);
+    setUserName(trimmed);
+    toast.success(`Nice to meet you, ${trimmed}!`);
+  };
 
   const handleSubmit = async (
     message: string,
@@ -179,11 +211,21 @@ ${meeting.transcript || '(No transcript available)'}`;
         formData.append('files', file, normalizedName);
       });
 
-      if (options?.model_name) formData.append('model_name', options.model_name);
-      formData.append('enable_thinking', String(options?.enable_thinking ?? false));
+      if (options?.model_name)
+        formData.append('model_name', options.model_name);
+      formData.append(
+        'enable_thinking',
+        String(options?.enable_thinking ?? false),
+      );
       formData.append('reasoning_effort', options?.reasoning_effort ?? 'low');
       formData.append('stream', String(options?.stream ?? true));
-      formData.append('enable_context_manager', String(options?.enable_context_manager ?? false));
+      formData.append(
+        'enable_context_manager',
+        String(options?.enable_context_manager ?? false),
+      );
+      if (userName) {
+        formData.append('user_name', userName);
+      }
 
       console.log('FormData content:', Array.from(formData.entries()));
 
@@ -200,7 +242,7 @@ ${meeting.transcript || '(No transcript available)'}`;
       console.error('Error during submission process:', error);
       if (error instanceof BillingError) {
         console.log('Handling BillingError:', error.detail);
-        onOpen("paymentRequiredDialog");
+        onOpen('paymentRequiredDialog');
       }
     } finally {
       setIsSubmitting(false);
@@ -256,10 +298,29 @@ ${meeting.transcript || '(No transcript available)'}`;
 
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[650px] max-w-[90%]">
           <div className="flex flex-col items-center text-center w-full">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2 flex-wrap justify-center">
               <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
-                Hey, I am
+                Hey,
               </h1>
+              {userName ? (
+                <span className="tracking-tight text-4xl text-foreground leading-tight font-medium">
+                  {userName}
+                </span>
+              ) : (
+                <>
+                  <Input
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    className="h-8 w-32 text-base"
+                  />
+                  <Button size="sm" onClick={handleSaveName} type="button">
+                    Save
+                  </Button>
+                </>
+              )}
+              <span className="tracking-tight text-4xl text-muted-foreground leading-tight">
+                , I am
+              </span>
               <AgentSelector
                 selectedAgentId={selectedAgentId}
                 onAgentSelect={setSelectedAgentId}
@@ -271,11 +332,7 @@ ${meeting.transcript || '(No transcript available)'}`;
             </p>
           </div>
 
-          <div className={cn(
-            "w-full mb-2",
-            "max-w-full",
-            "sm:max-w-3xl"
-          )}>
+          <div className={cn('w-full mb-2', 'max-w-full', 'sm:max-w-3xl')}>
             <ChatInput
               ref={chatInputRef}
               onSubmit={handleSubmit}
