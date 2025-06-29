@@ -16,7 +16,7 @@ export async function editUserName(prevState: any, formData: FormData) {
   }
 
   // Revalidate the page to show updated data
-  revalidatePath('/settings');
+  revalidatePath('/settings/personalization');
   
   return { success: true, name };
 }
