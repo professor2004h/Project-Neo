@@ -1036,13 +1036,45 @@ ${transcript}`;
   };
 
   // Start chat with transcript
+  const [isOpeningChat, setIsOpeningChat] = useState(false);
+  
   const startChatWithTranscript = async () => {
-    // Save current transcript to ensure it's persisted
-    await updateMeeting(meetingId, { transcript });
+    if (isOpeningChat) return; // Prevent double clicks
     
-    // Navigate to dashboard with meeting attachment
-    // The formatting will happen in the dashboard component
-    router.push(`/dashboard?attachMeeting=${meetingId}`);
+    setIsOpeningChat(true);
+    
+    try {
+      // If there's a transcript, save it first
+      if (transcript && transcript.trim()) {
+        console.log('[CHAT] Saving transcript before opening chat...');
+        await updateMeeting(meetingId, { transcript });
+        console.log('[CHAT] Transcript saved successfully');
+      } else {
+        console.log('[CHAT] No transcript to save, proceeding to chat...');
+      }
+      
+      // Navigate to dashboard with meeting attachment
+      console.log('[CHAT] Navigating to dashboard with meeting attachment');
+      router.push(`/dashboard?attachMeeting=${meetingId}`);
+    } catch (error) {
+      console.error('[CHAT] Error opening chat:', error);
+      
+      // Show user-friendly error
+      if (error instanceof Error && error.message.includes('auth')) {
+        toast.error('Please log in again to open chat');
+      } else {
+        toast.error('Failed to open chat. Please try again.');
+      }
+      
+      // Still try to navigate without saving if there's an error
+      // This ensures the button always works even if the save fails
+      setTimeout(() => {
+        console.log('[CHAT] Fallback: navigating anyway');
+        router.push(`/dashboard?attachMeeting=${meetingId}`);
+      }, 1000);
+    } finally {
+      setIsOpeningChat(false);
+    }
   };
 
   // Poll for transcript while processing
@@ -1158,11 +1190,20 @@ ${transcript}`;
           <Button
             size="sm"
             onClick={startChatWithTranscript}
-            disabled={!transcript}
+            disabled={isOpeningChat}
             className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50"
           >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Open in Chat
+            {isOpeningChat ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Opening...
+              </>
+            ) : (
+              <>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Open in Chat
+              </>
+            )}
           </Button>
         </div>
       </div>
