@@ -555,6 +555,7 @@ export const startAgent = async (
     reasoning_effort?: string;
     stream?: boolean;
     agent_id?: string;
+    user_name?: string;
   },
 ): Promise<{ agent_run_id: string }> => {
   try {
@@ -584,6 +585,7 @@ export const startAgent = async (
       reasoning_effort: 'low',
       stream: true,
       agent_id: undefined,
+      user_name: undefined,
     };
 
     const finalOptions = { ...defaultOptions, ...options };
@@ -598,6 +600,9 @@ export const startAgent = async (
     // Only include agent_id if it's provided
     if (finalOptions.agent_id) {
       body.agent_id = finalOptions.agent_id;
+    }
+    if (finalOptions.user_name) {
+      body.user_name = finalOptions.user_name;
     }
 
     const response = await fetch(`${API_URL}/thread/${threadId}/agent/start`, {

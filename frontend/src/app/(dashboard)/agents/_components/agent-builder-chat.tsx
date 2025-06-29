@@ -16,6 +16,7 @@ import { EditableText } from '@/components/ui/editable';
 import { Badge } from '@/components/ui/badge';
 import { Check, Clock } from 'lucide-react';
 import { BillingError } from '@/lib/api';
+import { getStoredUserName } from '@/lib/user-name';
 import { useQueryClient } from '@tanstack/react-query';
 import { agentKeys } from '@/hooks/react-query/agents/keys';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
@@ -317,7 +318,7 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
 
         const agentPromise = startAgentMutation.mutateAsync({
           threadId,
-          options
+          options: { ...options, user_name: getStoredUserName() || undefined }
         });
 
         const results = await Promise.allSettled([messagePromise, agentPromise]);

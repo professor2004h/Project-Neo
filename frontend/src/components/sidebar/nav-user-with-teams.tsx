@@ -264,16 +264,18 @@ export function NavUserWithTeams({
 
               <DropdownMenuSeparator />
               <DialogTrigger asChild>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   className="gap-2 p-2"
                   onClick={() => {
-                    setShowNewTeamDialog(true)
+                    setShowNewTeamDialog(true);
                   }}
                 >
                   <div className="bg-background flex size-6 items-center justify-center rounded-md border">
                     <Plus className="size-4" />
                   </div>
-                  <div className="text-muted-foreground font-medium">Add team</div>
+                  <div className="text-muted-foreground font-medium">
+                    Add team
+                  </div>
                 </DropdownMenuItem>
               </DialogTrigger>
               <DropdownMenuSeparator />
@@ -286,12 +288,12 @@ export function NavUserWithTeams({
                     Billing
                   </Link>
                 </DropdownMenuItem>
-                {/* <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild>
                   <Link href="/settings">
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </Link>
-                </DropdownMenuItem> */}
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
                 >
@@ -303,7 +305,10 @@ export function NavUserWithTeams({
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className='text-destructive focus:text-destructive focus:bg-destructive/10' onClick={handleLogout}>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                onClick={handleLogout}
+              >
                 <LogOut className="h-4 w-4 text-destructive" />
                 Log out
               </DropdownMenuItem>

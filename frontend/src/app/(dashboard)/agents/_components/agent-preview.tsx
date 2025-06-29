@@ -15,6 +15,7 @@ import { useAddUserMessageMutation } from '@/hooks/react-query/threads/use-messa
 import { useStartAgentMutation, useStopAgentMutation } from '@/hooks/react-query/threads/use-agent-run';
 import { BillingError } from '@/lib/api';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
+import { getStoredUserName } from '@/lib/user-name';
 
 interface Agent {
   agent_id: string;
@@ -207,7 +208,7 @@ export const AgentPreview = ({ agent }: AgentPreviewProps) => {
           try {
             const agentResult = await startAgentMutation.mutateAsync({
               threadId: result.thread_id,
-              options
+              options: { ...options, user_name: getStoredUserName() || undefined }
             });
             console.log('[PREVIEW] Agent started manually:', agentResult);
             setAgentRunId(agentResult.agent_run_id);
@@ -274,7 +275,7 @@ export const AgentPreview = ({ agent }: AgentPreviewProps) => {
 
         const agentPromise = startAgentMutation.mutateAsync({
           threadId,
-          options
+          options: { ...options, user_name: getStoredUserName() || undefined }
         });
 
         const results = await Promise.allSettled([messagePromise, agentPromise]);

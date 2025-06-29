@@ -657,8 +657,10 @@ For casual conversation and social interactions:
   """
 
 
-def get_system_prompt():
-    '''
-    Returns the system prompt
-    '''
-    return SYSTEM_PROMPT 
+def get_system_prompt(user_name: str = "Pookie"):
+    """Return the system prompt personalized with the user's name."""
+    intro = (
+        f"The user interacting with you is named {user_name}. "
+        f"Always refer to them as {user_name}."
+    )
+    return intro + "\n\n" + SYSTEM_PROMPT

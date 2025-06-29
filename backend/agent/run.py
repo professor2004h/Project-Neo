@@ -53,7 +53,8 @@ async def run_agent(
     agent_config: Optional[dict] = None,    
     trace: Optional[StatefulTraceClient] = None,
     is_agent_builder: Optional[bool] = False,
-    target_agent_id: Optional[str] = None
+    target_agent_id: Optional[str] = None,
+    user_name: Optional[str] = None,
 ):
     """Run the development agent with specified configuration."""
     logger.info(f"🚀 Starting agent with model: {model_name}")
@@ -213,7 +214,7 @@ async def run_agent(
         default_system_content = get_gemini_system_prompt()
     else:
         # Use the original prompt - the LLM can only use tools that are registered
-        default_system_content = get_system_prompt()
+        default_system_content = get_system_prompt(user_name or "Pookie")
         
     # Add sample response for non-anthropic models
     if "anthropic" not in model_name.lower():
