@@ -26,13 +26,14 @@ class SandboxPodcastTool(SandboxToolsBase):
     description: str = """
     Generate AI podcasts from content using the Podcastfy FastAPI.
     
-    This tool can create conversational audio content from:
-    - Website URLs
-    - Files in the sandbox (PDFs, text files, images)
-    - Direct text input
+    Supported input types:
+    - URLs: Website content to process
+    - Files: Local files in sandbox (content read as text)
+    - Text: Direct text input
+    - Topic: High-level subject for AI to discuss
     
     The tool uses advanced AI to create natural conversations between two speakers
-    and generates high-quality audio using various TTS models.
+    and generates high-quality audio using ElevenLabs TTS.
     """
 
     def __init__(self, project_id: str, thread_manager: ThreadManager):
@@ -61,7 +62,7 @@ class SandboxPodcastTool(SandboxToolsBase):
         "type": "function",
         "function": {
             "name": "generate_podcast",
-            "description": "Generate an AI-powered podcast from various content sources including URLs, local files, and images. The tool creates engaging conversational audio content using advanced AI. Generated podcasts are saved in the sandbox workspace for easy access.",
+            "description": "Generate an AI-powered podcast from various content sources including URLs, local files, text, and topics. The tool creates engaging conversational audio content using advanced AI. Generated podcasts are saved in the sandbox workspace for easy access.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -73,12 +74,7 @@ class SandboxPodcastTool(SandboxToolsBase):
                     "file_paths": {
                         "type": "array", 
                         "items": {"type": "string"},
-                        "description": "List of local file paths in the sandbox to generate podcast from. Supports PDFs, text files, markdown, etc. Paths should be relative to /workspace (e.g., 'documents/paper.pdf')"
-                    },
-                    "image_paths": {
-                        "type": "array",
-                        "items": {"type": "string"}, 
-                        "description": "List of image file paths in the sandbox to generate podcast from. Supports JPG, PNG, etc. Paths should be relative to /workspace (e.g., 'images/chart.png')"
+                        "description": "List of local file paths in the sandbox. File content will be read and sent as text. Supports text files, PDFs, markdown, etc. Paths should be relative to /workspace (e.g., 'documents/paper.pdf')"
                     },
                     "text": {
                         "type": "string",
@@ -173,7 +169,6 @@ class SandboxPodcastTool(SandboxToolsBase):
         mappings=[
             {"param_name": "urls", "node_type": "element", "path": "urls", "required": False},
             {"param_name": "file_paths", "node_type": "element", "path": "file_paths", "required": False},
-            {"param_name": "image_paths", "node_type": "element", "path": "image_paths", "required": False},
             {"param_name": "text", "node_type": "element", "path": "text", "required": False},
             {"param_name": "topic", "node_type": "element", "path": "topic", "required": False},
             {"param_name": "output_name", "node_type": "attribute", "path": ".", "required": False},
@@ -217,7 +212,6 @@ class SandboxPodcastTool(SandboxToolsBase):
     async def generate_podcast(self,
                              urls: Optional[List[str]] = None,
                              file_paths: Optional[List[str]] = None, 
-                             image_paths: Optional[List[str]] = None,
                              text: Optional[str] = None,
                              topic: Optional[str] = None,
                              output_name: Optional[str] = None,
@@ -238,8 +232,7 @@ class SandboxPodcastTool(SandboxToolsBase):
         
         Args:
             urls: List of website URLs to include
-            file_paths: List of local file paths in the sandbox
-            image_paths: List of image file paths in the sandbox
+            file_paths: List of local file paths in the sandbox (content will be read and sent as text)
             text: Direct text input for podcast generation
             topic: Topic or subject for the podcast (will be used to generate relevant content)
             output_name: Custom name for output files
@@ -265,8 +258,8 @@ class SandboxPodcastTool(SandboxToolsBase):
             await self._ensure_sandbox()
             
             # Validate inputs
-            if not any([urls, file_paths, image_paths, text, topic]):
-                return self.fail_response("At least one content source (URLs, files, images, text, or topic) must be provided")
+            if not any([urls, file_paths, text, topic]):
+                return self.fail_response("At least one content source (URLs, files, text, or topic) must be provided")
             
             # Process URLs - combine with file content for now
             processed_urls = []
@@ -282,7 +275,7 @@ class SandboxPodcastTool(SandboxToolsBase):
                     except:
                         continue
             
-            # Process files - read content and send as text to FastAPI
+            # Process files - read file content and send as text to FastAPI (not the files themselves)
             file_content = ""
             if file_paths:
                 for file_path in file_paths:
@@ -397,12 +390,10 @@ class SandboxPodcastTool(SandboxToolsBase):
                 message += f"- {len(urls)} URLs\n"
             if file_paths:
                 file_chars = len(file_content.strip()) if file_content.strip() else 0
-                message += f"- {len(file_paths)} local files ({file_chars} characters)\n" 
+                message += f"- {len(file_paths)} local files (content read as text: {file_chars} characters)\n" 
             if text:
                 text_chars = len(text.strip()) if text.strip() else 0
                 message += f"- Direct text input ({text_chars} characters)\n"
-            if image_paths:
-                message += f"- {len(image_paths)} images (not yet supported)\n"
             
             message += f"\nConfiguration:\n"
             message += f"- Style: {', '.join(conversation_style)}\n"
@@ -579,7 +570,7 @@ class SandboxPodcastTool(SandboxToolsBase):
                 "description": "Generate an AI podcast from URLs, text, or files using advanced conversation AI",
                 "parameters": [
                     {"name": "urls", "type": "List[str]", "description": "List of URLs to process", "required": False},
-                    {"name": "file_paths", "type": "List[str]", "description": "List of file paths in sandbox to include", "required": False},
+                    {"name": "file_paths", "type": "List[str]", "description": "List of file paths in sandbox (content read as text)", "required": False},
                     {"name": "text", "type": "str", "description": "Direct text input for podcast generation", "required": False},
                     {"name": "topic", "type": "str", "description": "Topic or subject for the podcast", "required": False},
                     {"name": "output_name", "type": "str", "description": "Custom name for output files", "required": False},
@@ -626,7 +617,7 @@ class SandboxPodcastTool(SandboxToolsBase):
                                         "type": "object",
                                         "properties": {
                                             "urls": {"type": "array", "items": {"type": "string"}, "description": "URLs to process"},
-                                            "file_paths": {"type": "array", "items": {"type": "string"}, "description": "File paths in sandbox"},
+                                            "file_paths": {"type": "array", "items": {"type": "string"}, "description": "File paths in sandbox (content read as text)"},
                                             "text": {"type": "string", "description": "Direct text input for podcast generation"},
                                             "topic": {"type": "string", "description": "Topic or subject for the podcast"},
                                             "output_name": {"type": "string", "description": "Custom output name"},
