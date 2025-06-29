@@ -290,7 +290,7 @@ export function NavUserWithTeams({
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/settings">
+                  <Link href="/settings/personalization">
                     <Palette className="h-4 w-4" />
                     Personalization
                   </Link>
