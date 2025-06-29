@@ -26,7 +26,7 @@ export const getToolDisplayName = (toolName: string): string => {
       'sb_pdf_form_tool': 'PDF Form Filler',
       'data_providers_tool': 'Data Providers',
       'sb_audio_transcription_tool': 'Audio Transcription',
-      'sb_podcast_tool': 'Podcast Generation',
+      'sb_podcast_tool': 'Audio Overviews',
     };
     
     return displayNames[toolName] || toolName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
