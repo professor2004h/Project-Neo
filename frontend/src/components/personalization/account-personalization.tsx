@@ -57,8 +57,8 @@ export default function AccountPersonalization({ accountId, returnUrl }: Props) 
 
   if (isLoading || authLoading) {
     return (
-      <div className="rounded-xl border shadow-sm bg-card p-6">
-        <h2 className="text-xl font-semibold mb-4">Personalization</h2>
+      <div className="rounded-xl border bg-card shadow-sm p-6">
+        <h2 className="text-xl font-semibold text-card-foreground mb-4">Personalization</h2>
         <div className="space-y-4">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-10 w-full" />
@@ -69,8 +69,8 @@ export default function AccountPersonalization({ accountId, returnUrl }: Props) 
 
   if (error) {
     return (
-      <div className="rounded-xl border shadow-sm bg-card p-6">
-        <h2 className="text-xl font-semibold mb-4">Personalization</h2>
+      <div className="rounded-xl border bg-card shadow-sm p-6">
+        <h2 className="text-xl font-semibold text-card-foreground mb-4">Personalization</h2>
         <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
           <p className="text-sm text-destructive">Error loading user data: {error}</p>
         </div>
@@ -79,25 +79,25 @@ export default function AccountPersonalization({ accountId, returnUrl }: Props) 
   }
 
   return (
-    <div className="rounded-xl border shadow-sm bg-card p-6">
-      <h2 className="text-xl font-semibold mb-4">Personalization</h2>
+    <div className="rounded-xl border bg-card shadow-sm p-6">
+      <h2 className="text-xl font-semibold text-card-foreground mb-4">Personalization</h2>
 
       <div className="mb-6">
-        <div className="rounded-lg border bg-background p-4">
+        <div className="rounded-lg border bg-muted p-4">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-foreground/90">
+            <span className="text-sm font-medium text-muted-foreground">
               Current Display Name
             </span>
-            <span className="text-sm font-medium text-card-title">
+            <span className="text-sm font-medium text-foreground">
               {currentUserName || 'Not set'}
             </span>
           </div>
         </div>
       </div>
 
-      <Card className="border-subtle dark:border-white/10 bg-white dark:bg-background-secondary shadow-none">
+      <Card className="border bg-card shadow-none">
         <CardHeader>
-          <CardTitle className="text-base text-card-title">Display Name</CardTitle>
+          <CardTitle className="text-base text-card-foreground">Display Name</CardTitle>
           <CardDescription>
             Update your display name that appears throughout the application.
           </CardDescription>
