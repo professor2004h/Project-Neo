@@ -150,11 +150,6 @@ class SandboxPodcastTool(SandboxToolsBase):
                         "description": "Custom instructions to guide the conversation focus and topics",
                         "default": ""
                     },
-                    "tts_model": {
-                        "type": "string",
-                        "description": "Text-to-speech model to use ('openai', 'elevenlabs', 'edge')",
-                        "default": "elevenlabs"
-                    },
                     "voices": {
                         "type": "object",
                         "description": "Voice configuration for TTS (e.g., {'question': 'voice1', 'answer': 'voice2'})",
@@ -184,7 +179,6 @@ class SandboxPodcastTool(SandboxToolsBase):
             {"param_name": "engagement_techniques", "node_type": "element", "path": "engagement_techniques", "required": False},
             {"param_name": "creativity", "node_type": "attribute", "path": ".", "required": False},
             {"param_name": "user_instructions", "node_type": "element", "path": "user_instructions", "required": False},
-            {"param_name": "tts_model", "node_type": "attribute", "path": ".", "required": False},
             {"param_name": "voices", "node_type": "element", "path": "voices", "required": False}
         ],
         example='''
@@ -316,7 +310,7 @@ class SandboxPodcastTool(SandboxToolsBase):
                 "openai_key": openai_key,
                 "google_key": google_key,
                 "elevenlabs_key": self.elevenlabs_key,
-                "tts_model": tts_model,
+                "tts_model": "elevenlabs",
                 "creativity": creativity,
                 "conversation_style": conversation_style,
                 "roles_person1": roles_person1,

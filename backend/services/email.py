@@ -167,7 +167,7 @@ class EmailService:
 <body>
   <div class="container">
     <div class="logo-container">
-      <img src="https://i.postimg.cc/WdNtRx5Z/kortix-suna-logo.png" alt="Kortix Suna Logo" class="logo">
+      <img src="" alt=" Omni Operator Logo" class="logo">
     </div>
     <h1>Welcome to OMNI!</h1>
 
