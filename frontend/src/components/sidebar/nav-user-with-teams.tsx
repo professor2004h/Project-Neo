@@ -11,6 +11,7 @@ import {
   Command,
   CreditCard,
   LogOut,
+  Palette,
   Plus,
   Settings,
   User,
@@ -290,7 +291,7 @@ export function NavUserWithTeams({
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/settings/personalization">
-                    🎨
+                    <Palette className="h-4 w-4" />
                     Personalization
                   </Link>
                 </DropdownMenuItem>
