@@ -80,6 +80,14 @@ class SandboxPodcastTool(SandboxToolsBase):
                         "items": {"type": "string"}, 
                         "description": "List of image file paths in the sandbox to generate podcast from. Supports JPG, PNG, etc. Paths should be relative to /workspace (e.g., 'images/chart.png')"
                     },
+                    "text": {
+                        "type": "string",
+                        "description": "Direct text input for podcast generation. Useful for providing custom content or transcripts directly."
+                    },
+                    "topic": {
+                        "type": "string",
+                        "description": "Topic or subject for the podcast. The AI will create a discussion about this topic."
+                    },
                     "output_name": {
                         "type": "string",
                         "description": "Custom name for the generated podcast files (without extension). If not provided, a timestamp-based name will be used.",
@@ -166,6 +174,8 @@ class SandboxPodcastTool(SandboxToolsBase):
             {"param_name": "urls", "node_type": "element", "path": "urls", "required": False},
             {"param_name": "file_paths", "node_type": "element", "path": "file_paths", "required": False},
             {"param_name": "image_paths", "node_type": "element", "path": "image_paths", "required": False},
+            {"param_name": "text", "node_type": "element", "path": "text", "required": False},
+            {"param_name": "topic", "node_type": "element", "path": "topic", "required": False},
             {"param_name": "output_name", "node_type": "attribute", "path": ".", "required": False},
             {"param_name": "conversation_style", "node_type": "element", "path": "conversation_style", "required": False},
             {"param_name": "podcast_length", "node_type": "attribute", "path": ".", "required": False},
@@ -184,8 +194,10 @@ class SandboxPodcastTool(SandboxToolsBase):
         example='''
         <function_calls>
         <invoke name="generate_podcast">
+        <parameter name="topic">The Future of AI in Healthcare</parameter>
         <parameter name="urls">["https://example.com/article1", "https://example.com/article2"]</parameter>
         <parameter name="file_paths">["documents/research.pdf", "notes/summary.txt"]</parameter>
+        <parameter name="text">Here is some additional context about the research that I want to include in the podcast...</parameter>
         <parameter name="output_name">my_research_podcast</parameter>
         <parameter name="conversation_style">["engaging", "fast-paced", "enthusiastic"]</parameter>
         <parameter name="podcast_length">medium</parameter>
@@ -198,7 +210,6 @@ class SandboxPodcastTool(SandboxToolsBase):
         <parameter name="engagement_techniques">["rhetorical questions", "analogies", "humor"]</parameter>
         <parameter name="creativity">0.8</parameter>
         <parameter name="user_instructions">Focus on practical applications and real-world impact</parameter>
-        <parameter name="tts_model">elevenlabs</parameter>
         </invoke>
         </function_calls>
         '''
@@ -207,6 +218,8 @@ class SandboxPodcastTool(SandboxToolsBase):
                              urls: Optional[List[str]] = None,
                              file_paths: Optional[List[str]] = None, 
                              image_paths: Optional[List[str]] = None,
+                             text: Optional[str] = None,
+                             topic: Optional[str] = None,
                              output_name: Optional[str] = None,
                              conversation_style: List[str] = ["engaging", "educational"],
                              podcast_length: str = "medium", 
@@ -220,14 +233,15 @@ class SandboxPodcastTool(SandboxToolsBase):
                              engagement_techniques: List[str] = ["rhetorical questions", "anecdotes"],
                              creativity: float = 0.7,
                              user_instructions: str = "",
-                             tts_model: str = "elevenlabs",
                              voices: Dict[str, str] = None) -> ToolResult:
         """Generate an AI-powered podcast from various content sources.
         
         Args:
             urls: List of website URLs to include
             file_paths: List of local file paths in the sandbox
-            image_paths: List of image file paths in the sandbox  
+            image_paths: List of image file paths in the sandbox
+            text: Direct text input for podcast generation
+            topic: Topic or subject for the podcast (will be used to generate relevant content)
             output_name: Custom name for output files
             conversation_style: Style of conversation (e.g., ["engaging", "fast-paced", "enthusiastic"])
             podcast_length: Desired length (short/medium/long)
@@ -241,7 +255,6 @@ class SandboxPodcastTool(SandboxToolsBase):
             engagement_techniques: Techniques to make the podcast more engaging
             creativity: Level of creativity/temperature (0.0-1.0)
             user_instructions: Custom instructions to guide the conversation
-            tts_model: Text-to-speech model to use
             voices: Voice configuration for TTS
             
         Returns:
@@ -252,8 +265,8 @@ class SandboxPodcastTool(SandboxToolsBase):
             await self._ensure_sandbox()
             
             # Validate inputs
-            if not any([urls, file_paths, image_paths]):
-                return self.fail_response("At least one content source (URLs, files, or images) must be provided")
+            if not any([urls, file_paths, image_paths, text, topic]):
+                return self.fail_response("At least one content source (URLs, files, images, text, or topic) must be provided")
             
             # Process URLs - combine with file content for now
             processed_urls = []
@@ -288,6 +301,21 @@ class SandboxPodcastTool(SandboxToolsBase):
                         logger.error(f"Error reading file {file_path}: {str(e)}")
                         file_content += f"\n\nError reading {file_path}: {str(e)}"
             
+            # Combine all text content
+            combined_text = ""
+            if topic:
+                combined_text += f"Topic: {topic}\n\nPlease create a podcast discussion about: {topic}"
+            if text:
+                if combined_text:
+                    combined_text += f"\n\nAdditional content: {text}"
+                else:
+                    combined_text = text
+            if file_content:
+                if combined_text:
+                    combined_text += f"\n\n{file_content}"
+                else:
+                    combined_text = file_content
+            
             # Send both API keys - let the FastAPI decide which to use
             openai_key = self.openai_key
             google_key = self.gemini_key
@@ -306,7 +334,7 @@ class SandboxPodcastTool(SandboxToolsBase):
             # Prepare request payload for FastAPI
             payload = {
                 "urls": processed_urls,
-                "text": file_content.strip() if file_content.strip() else None,
+                "text": combined_text.strip() if combined_text.strip() else None,
                 "openai_key": openai_key,
                 "google_key": google_key,
                 "elevenlabs_key": self.elevenlabs_key,
@@ -363,11 +391,16 @@ class SandboxPodcastTool(SandboxToolsBase):
             
             # Add content source summary
             message += f"\nContent sources processed:\n"
+            if topic:
+                message += f"- Topic: {topic}\n"
             if urls:
                 message += f"- {len(urls)} URLs\n"
             if file_paths:
-                total_chars = len(file_content.strip()) if file_content.strip() else 0
-                message += f"- {len(file_paths)} local files ({total_chars} characters)\n" 
+                file_chars = len(file_content.strip()) if file_content.strip() else 0
+                message += f"- {len(file_paths)} local files ({file_chars} characters)\n" 
+            if text:
+                text_chars = len(text.strip()) if text.strip() else 0
+                message += f"- Direct text input ({text_chars} characters)\n"
             if image_paths:
                 message += f"- {len(image_paths)} images (not yet supported)\n"
             
@@ -375,7 +408,7 @@ class SandboxPodcastTool(SandboxToolsBase):
             message += f"- Style: {', '.join(conversation_style)}\n"
             message += f"- Length: {podcast_length}\n"
             message += f"- Language: {language}\n"
-            message += f"- TTS Model: {tts_model}\n"
+            message += f"- TTS Model: ElevenLabs\n"
             message += f"- Podcast: {podcast_name}\n"
             message += f"- Speakers: {roles_person1} & {roles_person2}\n"
             message += f"- Structure: {', '.join(dialogue_structure)}\n"
@@ -527,15 +560,12 @@ class SandboxPodcastTool(SandboxToolsBase):
             response = requests.get(download_url, timeout=60)
             response.raise_for_status()
             
-            # Save to temporary location
-            os.makedirs("/workspace/podcasts", exist_ok=True)
+            # Save to temporary location using tempfile
+            import tempfile
             filename = audio_url.split('/')[-1]  # Extract filename from URL
-            local_path = f"/workspace/podcasts/{filename}"
-            
-            with open(local_path, 'wb') as f:
-                f.write(response.content)
-            
-            return local_path
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{filename}") as temp_file:
+                temp_file.write(response.content)
+                return temp_file.name
             
         except Exception as e:
             raise Exception(f"Failed to download audio file: {str(e)}")
@@ -550,6 +580,8 @@ class SandboxPodcastTool(SandboxToolsBase):
                 "parameters": [
                     {"name": "urls", "type": "List[str]", "description": "List of URLs to process", "required": False},
                     {"name": "file_paths", "type": "List[str]", "description": "List of file paths in sandbox to include", "required": False},
+                    {"name": "text", "type": "str", "description": "Direct text input for podcast generation", "required": False},
+                    {"name": "topic", "type": "str", "description": "Topic or subject for the podcast", "required": False},
                     {"name": "output_name", "type": "str", "description": "Custom name for output files", "required": False},
                     {"name": "conversation_style", "type": "List[str]", "description": "Style like ['engaging','fast-paced']", "required": False},
                     {"name": "podcast_length", "type": "str", "description": "Length: short/medium/long", "required": False},
@@ -561,7 +593,6 @@ class SandboxPodcastTool(SandboxToolsBase):
                     {"name": "creativity", "type": "float", "description": "Creativity level 0-1 (default: 0.7)", "required": False},
                     {"name": "user_instructions", "type": "str", "description": "Custom instructions", "required": False},
                     {"name": "language", "type": "str", "description": "Language (default: 'English')", "required": False},
-                    {"name": "tts_model", "type": "str", "description": "TTS model: openai/elevenlabs/edge", "required": False},
                     {"name": "voices", "type": "Dict[str,str]", "description": "Voice config", "required": False}
                 ]
             },
@@ -596,6 +627,8 @@ class SandboxPodcastTool(SandboxToolsBase):
                                         "properties": {
                                             "urls": {"type": "array", "items": {"type": "string"}, "description": "URLs to process"},
                                             "file_paths": {"type": "array", "items": {"type": "string"}, "description": "File paths in sandbox"},
+                                            "text": {"type": "string", "description": "Direct text input for podcast generation"},
+                                            "topic": {"type": "string", "description": "Topic or subject for the podcast"},
                                             "output_name": {"type": "string", "description": "Custom output name"},
                                             "conversation_style": {"type": "array", "items": {"type": "string"}, "description": "Conversation style"},
                                             "podcast_length": {"type": "string", "enum": ["short", "medium", "long"], "description": "Podcast length"},
@@ -607,7 +640,6 @@ class SandboxPodcastTool(SandboxToolsBase):
                                             "creativity": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.7, "description": "Creativity level"},
                                             "user_instructions": {"type": "string", "description": "Custom instructions"},
                                             "language": {"type": "string", "default": "English", "description": "Language"},
-                                            "tts_model": {"type": "string", "enum": ["openai", "elevenlabs", "edge"], "description": "TTS model"},
                                             "voices": {"type": "object", "description": "Voice configuration"}
                                         }
                                     }
