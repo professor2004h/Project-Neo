@@ -290,7 +290,7 @@ export function NavUserWithTeams({
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/settings/personalization">
+                  <Link href="/settings">
                     <Palette className="h-4 w-4" />
                     Personalization
                   </Link>
@@ -303,12 +303,6 @@ export function NavUserWithTeams({
                     <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                     <span>Theme</span>
                   </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />

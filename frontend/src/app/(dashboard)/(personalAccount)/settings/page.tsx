@@ -1,38 +1,29 @@
-import EditUserName from '@/components/basejump/edit-user-name';
 import { createClient } from '@/lib/supabase/server';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import AccountPersonalization from '@/components/personalization/account-personalization';
+
+const returnUrl = process.env.NEXT_PUBLIC_URL as string;
 
 export default async function PersonalAccountSettingsPage() {
   const supabaseClient = await createClient();
-  const { data } = await supabaseClient.auth.getUser();
-  const currentName = data.user?.user_metadata?.name || '';
+  const { data: personalAccount } = await supabaseClient.rpc(
+    'get_personal_account',
+  );
+
+  if (!personalAccount) {
+    return (
+      <div className="p-6">
+        <h2 className="text-xl font-semibold mb-4">Personalization</h2>
+        <p className="text-muted-foreground">Unable to load account information.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium text-card-title">Profile Settings</h3>
-        <p className="text-sm text-foreground/70">
-          Manage your personal profile information and preferences.
-        </p>
-      </div>
-
-      <Card className="border-subtle dark:border-white/10 bg-white dark:bg-background-secondary shadow-none">
-        <CardHeader>
-          <CardTitle className="text-base text-card-title">Display Name</CardTitle>
-          <CardDescription>
-            Update your display name that appears throughout the application.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <EditUserName currentName={currentName} />
-        </CardContent>
-      </Card>
+    <div>
+      <AccountPersonalization
+        accountId={personalAccount.account_id}
+        returnUrl={`${returnUrl}/settings`}
+      />
     </div>
   );
 }
