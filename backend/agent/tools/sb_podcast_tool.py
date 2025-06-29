@@ -1,11 +1,13 @@
 import os
 import json
 import tempfile
-import subprocess
 import asyncio
 import datetime
+import time
+import requests
 from typing import Optional, List, Dict, Any, Union
 from pathlib import Path
+from urllib.parse import urlparse, urljoin
 from agentpress.tool import ToolResult, openapi_schema, xml_schema
 from sandbox.tool_base import SandboxToolsBase
 from agentpress.thread_manager import ThreadManager
@@ -13,37 +15,41 @@ from utils.logger import logger
 
 
 class SandboxPodcastTool(SandboxToolsBase):
-    """Tool for generating AI-powered podcasts from various content sources using podcastfy.
+    """
+    A tool for generating AI podcasts using the Podcastfy REST API.
     
-    Supports generating podcasts from:
-    - Website URLs 
-    - Local files in the sandbox (PDFs, text files, images)
-    - File URLs 
-    - Multiple content sources combined
+    This tool integrates with the remote podcastfy service to create conversational
+    audio content from URLs, files in the sandbox, and other content types.
+    """
+
+    name: str = "podcast_tool"
+    description: str = """
+    Generate AI podcasts from content using the Podcastfy API.
     
-    Generated podcasts are saved in the sandbox for easy access.
+    This tool can create conversational audio content from:
+    - Website URLs
+    - Files in the sandbox (PDFs, text files, images)
+    - Direct text input
+    
+    The tool uses advanced AI to create natural conversations between two speakers
+    and generates high-quality audio using ElevenLabs TTS.
     """
 
     def __init__(self, project_id: str, thread_manager: ThreadManager):
         super().__init__(project_id, thread_manager)
         self.workspace_path = "/workspace"
+        self.api_base_url = os.getenv('PODCASTFY_API_URL', 'https://thatupiso-podcastfy-ai-demo.hf.space')
+        self.gemini_key = os.getenv('GEMINI_API_KEY', '')
+        self.openai_key = os.getenv('OPENAI_API_KEY', '')
+        self.elevenlabs_key = os.getenv('ELEVENLABS_API_KEY', '')
         
-    def _check_podcastfy_installation(self) -> bool:
-        """Check if podcastfy is installed and install if needed."""
-        try:
-            import podcastfy
-            return True
-        except ImportError:
-            logger.info("Installing podcastfy library...")
-            try:
-                subprocess.run([
-                    "pip", "install", "podcastfy==0.4.1"
-                ], check=True, capture_output=True)
-                logger.info("Podcastfy installed successfully")
-                return True
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Failed to install podcastfy: {e}")
-                return False
+        # Validate required environment variables
+        if not self.openai_key and not self.gemini_key:
+            raise ValueError("Either OPENAI_API_KEY or GEMINI_API_KEY must be set")
+        if not self.elevenlabs_key:
+            raise ValueError("ELEVENLABS_API_KEY must be set")
+
+    # Removed _check_podcastfy_installation - no longer needed for API approach
 
     def _validate_file_exists(self, file_path: str) -> bool:
         """Check if a file exists in the sandbox."""
@@ -53,121 +59,7 @@ class SandboxPodcastTool(SandboxToolsBase):
         except Exception:
             return False
 
-    async def _generate_podcast_with_podcastfy(self, 
-                                             urls: Optional[List[str]] = None,
-                                             file_paths: Optional[List[str]] = None,
-                                             image_paths: Optional[List[str]] = None,
-                                             conversation_config: Optional[Dict[str, Any]] = None,
-                                             tts_model: str = "openai",
-                                             transcript_only: bool = False) -> Dict[str, Any]:
-        """Generate podcast using podcastfy library."""
-        
-        # Import podcastfy after ensuring it's installed
-        try:
-            from podcastfy.client import generate_podcast
-        except ImportError as e:
-            logger.error(f"Failed to import podcastfy: {e}")
-            raise Exception("Podcastfy library not available")
-
-        # Prepare generation parameters
-        generation_params = {}
-        
-        # Add URLs if provided
-        if urls:
-            generation_params["urls"] = urls
-            
-        # Handle local files by downloading them to temp directory for podcastfy
-        temp_files = []
-        if file_paths:
-            temp_dir = tempfile.mkdtemp()
-            for file_path in file_paths:
-                try:
-                    # Download file from sandbox
-                    file_content = self.sandbox.fs.download_file(file_path)
-                    
-                    # Create temp file with same extension
-                    file_name = os.path.basename(file_path)
-                    temp_file_path = os.path.join(temp_dir, file_name)
-                    
-                    with open(temp_file_path, 'wb') as f:
-                        f.write(file_content)
-                    
-                    temp_files.append(temp_file_path)
-                    
-                except Exception as e:
-                    logger.error(f"Error processing file {file_path}: {e}")
-                    continue
-            
-            if temp_files:
-                if not generation_params.get("urls"):
-                    generation_params["urls"] = temp_files
-                else:
-                    generation_params["urls"].extend(temp_files)
-        
-        # Handle image paths
-        if image_paths:
-            temp_dir = tempfile.mkdtemp() if not temp_files else os.path.dirname(temp_files[0])
-            temp_image_files = []
-            
-            for image_path in image_paths:
-                try:
-                    clean_path = self.clean_path(image_path)
-                    full_path = f"{self.workspace_path}/{clean_path}"
-                    
-                    if self._validate_file_exists(full_path):
-                        # Download image from sandbox
-                        image_content = self.sandbox.fs.download_file(full_path)
-                        
-                        # Create temp file
-                        image_name = os.path.basename(image_path)
-                        temp_image_path = os.path.join(temp_dir, image_name)
-                        
-                        with open(temp_image_path, 'wb') as f:
-                            f.write(image_content)
-                        
-                        temp_image_files.append(temp_image_path)
-                        
-                except Exception as e:
-                    logger.error(f"Error processing image {image_path}: {e}")
-                    continue
-            
-            if temp_image_files:
-                generation_params["image_paths"] = temp_image_files
-
-        # Set conversation config if provided
-        if conversation_config:
-            generation_params["conversation_config"] = conversation_config
-            
-        # Set TTS model
-        generation_params["tts_model"] = tts_model
-        
-        # Set transcript only flag
-        generation_params["transcript_only"] = transcript_only
-        
-        # Generate podcast
-        try:
-            logger.info("Generating podcast with podcastfy...")
-            result = generate_podcast(**generation_params)
-            
-            # Clean up temp files
-            for temp_file in temp_files:
-                try:
-                    os.unlink(temp_file)
-                except:
-                    pass
-            
-            if image_paths and 'temp_image_files' in locals():
-                for temp_file in temp_image_files:
-                    try:
-                        os.unlink(temp_file)
-                    except:
-                        pass
-            
-            return {"status": "success", "result": result}
-            
-        except Exception as e:
-            logger.error(f"Podcast generation failed: {e}")
-            return {"status": "error", "error": str(e)}
+    # Removed _generate_podcast_with_podcastfy - now using API instead
 
     @openapi_schema({
         "type": "function",
@@ -376,10 +268,6 @@ class SandboxPodcastTool(SandboxToolsBase):
             if not any([urls, file_paths, image_paths]):
                 return self.fail_response("At least one content source (URLs, files, or images) must be provided")
             
-            # Check and install podcastfy if needed
-            if not self._check_podcastfy_installation():
-                return self.fail_response("Failed to install podcastfy library")
-            
             # Prepare conversation configuration
             word_count_map = {
                 "short": 1000,
@@ -387,48 +275,72 @@ class SandboxPodcastTool(SandboxToolsBase):
                 "long": 4000
             }
             
-            conversation_config = {
-                "word_count": word_count_map.get(podcast_length, 2500),
-                "conversation_style": conversation_style,
-                "roles_person1": roles_person1,
-                "roles_person2": roles_person2,
-                "dialogue_structure": dialogue_structure,
-                "podcast_name": podcast_name,
-                "podcast_tagline": podcast_tagline,
-                "output_language": language,
-                "engagement_techniques": engagement_techniques,
-                "creativity": creativity,
-                "user_instructions": user_instructions,
-                "max_num_chunks": max_num_chunks,
-                "min_chunk_size": min_chunk_size
-            }
+            # Process URLs
+            urls_input = ""
+            if urls:
+                # Validate URLs
+                valid_urls = []
+                for url in urls:
+                    if not url.startswith(('http://', 'https://')):
+                        url = 'https://' + url
+                    try:
+                        parsed = urlparse(url)
+                        if parsed.netloc:
+                            valid_urls.append(url)
+                    except:
+                        continue
+                urls_input = ",".join(valid_urls)
             
-            # Validate file paths and prepare them
-            validated_file_paths = []
+            # Process files - read content as text for now
+            # TODO: Implement file upload to the API
+            file_content = ""
             if file_paths:
                 for file_path in file_paths:
-                    clean_path = self.clean_path(file_path)
-                    full_path = f"{self.workspace_path}/{clean_path}"
-                    if self._validate_file_exists(full_path):
-                        validated_file_paths.append(full_path)
-                    else:
-                        logger.warning(f"File not found: {file_path}")
+                    try:
+                        clean_path = self.clean_path(file_path)
+                        full_path = f"{self.workspace_path}/{clean_path}"
+                        if self._validate_file_exists(full_path):
+                            file_info = self.sandbox.fs.get_file_info(full_path)
+                            file_bytes = self.sandbox.fs.download_file(full_path)
+                            file_text = file_bytes.decode('utf-8', errors='ignore')
+                            file_content += f"\n\nContent from {file_path}:\n{file_text}"
+                        else:
+                            logger.warning(f"File not found: {file_path}")
+                    except Exception as e:
+                        file_content += f"\n\nError reading {file_path}: {str(e)}"
             
-            # Generate podcast
-            result = await self._generate_podcast_with_podcastfy(
-                urls=urls,
-                file_paths=validated_file_paths if validated_file_paths else None,
-                image_paths=image_paths,
-                conversation_config=conversation_config,
-                tts_model="elevenlabs",
-                transcript_only=transcript_only
-            )
+            # Combine text inputs
+            combined_text = file_content
             
-            if result["status"] == "error":
-                return self.fail_response(f"Podcast generation failed: {result['error']}")
+            # Prepare API request data
+            api_data = [
+                combined_text,  # text_input
+                urls_input,     # urls_input
+                [],             # pdf_files (empty for now)
+                [],             # image_files (empty for now)
+                self.gemini_key,      # gemini_key
+                self.openai_key,      # openai_key
+                self.elevenlabs_key,  # elevenlabs_key
+                word_count_map.get(podcast_length, 2500),  # word_count
+                ",".join(conversation_style),    # conversation_style
+                roles_person1,        # roles_person1
+                roles_person2,        # roles_person2
+                ",".join(dialogue_structure),    # dialogue_structure
+                podcast_name,         # podcast_name
+                podcast_tagline,      # podcast_tagline
+                "elevenlabs",         # tts_model (fixed to elevenlabs)
+                creativity,           # creativity_level
+                user_instructions     # user_instructions
+            ]
             
-            # Process the generated files
-            generated_result = result["result"]
+            # Make API request
+            result = self._make_api_request(api_data)
+            
+            if not result["success"]:
+                return self.fail_response(f"Podcast generation failed: {result}")
+            
+            # Download the audio file
+            local_path = self._download_audio_file(result["data"])
             
             # Create podcasts directory in workspace
             podcasts_dir = f"{self.workspace_path}/podcasts"
@@ -439,50 +351,23 @@ class SandboxPodcastTool(SandboxToolsBase):
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 output_name = f"podcast_{timestamp}"
             
-            saved_files = []
+            # Upload to sandbox
+            with open(local_path, 'rb') as f:
+                audio_content = f.read()
             
-            # Handle transcript file (if generated)
-            if isinstance(generated_result, tuple) and len(generated_result) >= 1:
-                transcript_file = generated_result[0]
-                if transcript_file and os.path.exists(transcript_file):
-                    # Read transcript content
-                    with open(transcript_file, 'r', encoding='utf-8') as f:
-                        transcript_content = f.read()
-                    
-                    # Save to sandbox
-                    transcript_filename = f"{output_name}_transcript.txt"
-                    transcript_path = f"{podcasts_dir}/{transcript_filename}"
-                    self.sandbox.fs.upload_file(transcript_content.encode('utf-8'), transcript_path)
-                    saved_files.append(f"podcasts/{transcript_filename}")
+            audio_filename = f"{output_name}.mp3"
+            audio_path = f"{podcasts_dir}/{audio_filename}"
+            self.sandbox.fs.upload_file(audio_content, audio_path)
             
-            # Handle audio file (if generated)
-            if not transcript_only:
-                if isinstance(generated_result, tuple) and len(generated_result) >= 2:
-                    audio_file = generated_result[1]
-                elif isinstance(generated_result, str) and generated_result.endswith(('.mp3', '.wav')):
-                    audio_file = generated_result
-                else:
-                    audio_file = None
-                
-                if audio_file and os.path.exists(audio_file):
-                    # Read audio content
-                    with open(audio_file, 'rb') as f:
-                        audio_content = f.read()
-                    
-                    # Save to sandbox
-                    audio_filename = f"{output_name}.mp3"
-                    audio_path = f"{podcasts_dir}/{audio_filename}"
-                    self.sandbox.fs.upload_file(audio_content, audio_path)
-                    saved_files.append(f"podcasts/{audio_filename}")
+            # Clean up local file
+            try:
+                os.unlink(local_path)
+            except:
+                pass
             
             # Prepare success message
-            if transcript_only:
-                message = f"🎙️ Podcast transcript generated successfully!\n\nGenerated files:\n"
-            else:
-                message = f"🎙️ Podcast generated successfully!\n\nGenerated files:\n"
-            
-            for file_path in saved_files:
-                message += f"- {file_path}\n"
+            message = f"🎙️ Podcast generated successfully!\n\nGenerated files:\n"
+            message += f"- podcasts/{audio_filename}\n"
             
             # Add content source summary
             message += f"\nContent sources processed:\n"
@@ -615,4 +500,202 @@ class SandboxPodcastTool(SandboxToolsBase):
             
         except Exception as e:
             logger.error(f"Error listing podcasts: {str(e)}", exc_info=True)
-            return self.fail_response(f"Error listing podcasts: {str(e)}") 
+            return self.fail_response(f"Error listing podcasts: {str(e)}")
+
+    def _make_api_request(self, data: List[Any]) -> Dict[str, Any]:
+        """Make request to podcastfy API with two-step process"""
+        try:
+            # Step 1: Initiate processing
+            response = requests.post(
+                f"{self.api_base_url}/gradio_api/call/process_inputs",
+                headers={"Content-Type": "application/json"},
+                json={"data": data},
+                timeout=30
+            )
+            response.raise_for_status()
+            
+            # Extract event ID from response
+            event_id = response.json().get('event_id')
+            if not event_id:
+                raise Exception("No event_id returned from API")
+            
+            # Step 2: Poll for results
+            max_attempts = 60  # 5 minutes with 5-second intervals
+            for attempt in range(max_attempts):
+                time.sleep(5)  # Wait between polling
+                
+                result_response = requests.get(
+                    f"{self.api_base_url}/gradio_api/call/process_inputs/{event_id}",
+                    timeout=30
+                )
+                
+                if result_response.status_code == 200:
+                    # Check if processing is complete
+                    lines = result_response.text.strip().split('\n')
+                    for line in lines:
+                        if line.startswith('event: complete'):
+                            continue
+                        if line.startswith('data: '):
+                            try:
+                                data_json = json.loads(line[6:])  # Remove 'data: ' prefix
+                                if data_json and len(data_json) > 0:
+                                    return {"success": True, "data": data_json[0]}
+                            except json.JSONDecodeError:
+                                continue
+                
+                # Check for other events that might indicate completion or error
+                if 'error' in result_response.text.lower():
+                    raise Exception(f"API returned error: {result_response.text}")
+            
+            raise Exception("Timeout waiting for podcast generation to complete")
+            
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"API request failed: {str(e)}")
+        except Exception as e:
+            raise Exception(f"Podcast generation failed: {str(e)}")
+
+    def _download_audio_file(self, file_data: Dict[str, Any]) -> str:
+        """Download the generated audio file to the sandbox"""
+        try:
+            # Extract file path and construct download URL
+            file_path = file_data.get('path', '')
+            if not file_path:
+                raise Exception("No file path found in API response")
+            
+            # Construct the download URL
+            download_url = f"{self.api_base_url}/gradio_api/file={file_path}"
+            
+            # Download the file
+            response = requests.get(download_url, timeout=60)
+            response.raise_for_status()
+            
+            # Save to workspace
+            os.makedirs("/workspace/podcasts", exist_ok=True)
+            filename = file_data.get('orig_name', 'podcast.mp3')
+            local_path = f"/workspace/podcasts/{filename}"
+            
+            with open(local_path, 'wb') as f:
+                f.write(response.content)
+            
+            return local_path
+            
+        except Exception as e:
+            raise Exception(f"Failed to download audio file: {str(e)}")
+
+    # Define the available functions for the agent
+    @property  
+    def xml_function_list(self):
+        return [
+            {
+                "name": "generate_podcast",
+                "description": "Generate an AI podcast from URLs, text, or files using advanced conversation AI",
+                "parameters": [
+                    {"name": "urls", "type": "List[str]", "description": "List of URLs to process", "required": False},
+                    {"name": "text_input", "type": "str", "description": "Direct text input for podcast generation", "required": False},
+                    {"name": "files", "type": "List[str]", "description": "List of file paths in sandbox to include", "required": False},
+                    {"name": "word_count", "type": "int", "description": "Target word count for podcast (default: 2000)", "required": False},
+                    {"name": "conversation_style", "type": "str", "description": "Style like 'engaging,fast-paced'", "required": False},
+                    {"name": "roles_person1", "type": "str", "description": "Role of first speaker", "required": False},
+                    {"name": "roles_person2", "type": "str", "description": "Role of second speaker", "required": False},
+                    {"name": "dialogue_structure", "type": "str", "description": "Structure like 'Introduction,Content,Conclusion'", "required": False},
+                    {"name": "podcast_name", "type": "str", "description": "Name of the podcast", "required": False},
+                    {"name": "podcast_tagline", "type": "str", "description": "Podcast tagline", "required": False},
+                    {"name": "creativity_level", "type": "float", "description": "Creativity level 0-1 (default: 0.7)", "required": False},
+                    {"name": "user_instructions", "type": "str", "description": "Custom instructions", "required": False},
+                    {"name": "language", "type": "str", "description": "Language code (default: 'en')", "required": False}
+                ]
+            },
+            {
+                "name": "list_podcasts", 
+                "description": "List all generated podcasts in the workspace",
+                "parameters": []
+            }
+        ]
+
+    @property
+    def openapi_schema(self):
+        return {
+            "openapi": "3.0.0",
+            "info": {
+                "title": "Podcast Generation Tool",
+                "description": "Generate AI podcasts from content using Podcastfy API",
+                "version": "2.0.0"
+            },
+            "servers": [{"url": "http://localhost"}],
+            "paths": {
+                "/generate_podcast": {
+                    "post": {
+                        "summary": "Generate AI Podcast",
+                        "description": "Create a conversational podcast from URLs, text, or files",
+                        "requestBody": {
+                            "required": True,
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "urls": {"type": "array", "items": {"type": "string"}, "description": "URLs to process"},
+                                            "text_input": {"type": "string", "description": "Direct text input"},
+                                            "files": {"type": "array", "items": {"type": "string"}, "description": "File paths in sandbox"},
+                                            "word_count": {"type": "integer", "default": 2000, "description": "Target word count"},
+                                            "conversation_style": {"type": "string", "default": "engaging,fast-paced", "description": "Conversation style"},
+                                            "roles_person1": {"type": "string", "default": "main summarizer", "description": "Role of first speaker"},
+                                            "roles_person2": {"type": "string", "default": "questioner", "description": "Role of second speaker"},
+                                            "dialogue_structure": {"type": "string", "default": "Introduction,Content,Conclusion", "description": "Dialogue structure"},
+                                            "podcast_name": {"type": "string", "default": "PODCASTFY", "description": "Podcast name"},
+                                            "podcast_tagline": {"type": "string", "default": "YOUR PODCAST", "description": "Podcast tagline"},
+                                            "creativity_level": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.7, "description": "Creativity level"},
+                                            "user_instructions": {"type": "string", "description": "Custom instructions"},
+                                            "language": {"type": "string", "default": "en", "description": "Language code"}
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {
+                            "200": {
+                                "description": "Podcast generated successfully",
+                                "content": {
+                                    "application/json": {
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {"type": "boolean"},
+                                                "message": {"type": "string"},
+                                                "audio_file": {"type": "string"},
+                                                "filename": {"type": "string"},
+                                                "configuration": {"type": "object"}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "/list_podcasts": {
+                    "get": {
+                        "summary": "List Generated Podcasts",
+                        "description": "Get a list of all generated podcasts",
+                        "responses": {
+                            "200": {
+                                "description": "List of podcasts",
+                                "content": {
+                                    "application/json": {
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {"type": "boolean"},
+                                                "podcasts": {"type": "array"},
+                                                "total_count": {"type": "integer"},
+                                                "message": {"type": "string"}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } 

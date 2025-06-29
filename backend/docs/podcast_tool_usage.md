@@ -1,6 +1,6 @@
 # Podcast Generation Tool
 
-The Podcast Generation Tool integrates with the [podcastfy library](https://github.com/souzatharsis/podcastfy) to create AI-powered podcasts from various content sources.
+The Podcast Generation Tool integrates with the [Podcastfy REST API](https://github.com/souzatharsis/podcastfy) to create AI-powered podcasts from various content sources. This API-based approach eliminates dependency conflicts and provides reliable service.
 
 ## Features
 
@@ -112,10 +112,18 @@ Use the `list_podcasts` function to view all generated podcasts with their detai
 
 ## API Key Requirements
 
-- **OpenAI**: Required for transcript generation
-- **ElevenLabs**: Required for high-quality voice synthesis
+The tool requires API keys for the underlying services:
 
-Configure API keys in your environment variables or config files.
+- **ElevenLabs**: Required for high-quality voice synthesis (ELEVENLABS_API_KEY)
+- **OpenAI OR Gemini**: Required for transcript generation (OPENAI_API_KEY or GEMINI_API_KEY)
+
+Configure these environment variables:
+- `PODCASTFY_API_URL`: URL of the Podcastfy API service (default: https://thatupiso-podcastfy-ai-demo.hf.space)
+- `ELEVENLABS_API_KEY`: Your ElevenLabs API key
+- `OPENAI_API_KEY`: Your OpenAI API key (if using OpenAI)
+- `GEMINI_API_KEY`: Your Google Gemini API key (alternative to OpenAI)
+
+See `docs/podcast_tool_api_setup.md` for detailed setup instructions.
 
 ## Supported File Formats
 
@@ -141,11 +149,12 @@ Configure API keys in your environment variables or config files.
 ## Error Handling
 
 The tool includes comprehensive error handling for:
-- Missing dependencies (auto-installs podcastfy)
+- Missing or invalid API keys
 - Invalid file paths
 - Network connectivity issues
 - API rate limits
 - File format incompatibilities
+- API timeout (automatically retries with polling)
 
 ## Performance Notes
 
@@ -158,18 +167,27 @@ The tool includes comprehensive error handling for:
 
 ### Common Issues
 
-1. **"Podcastfy library not available"**
-   - Tool will attempt auto-installation
-   - Ensure pip is available in the environment
+1. **"Either OPENAI_API_KEY or GEMINI_API_KEY must be set"**
+   - Configure at least one LLM API key in your environment
+   - Verify the API key is correctly formatted
 
-2. **"File not found"**
+2. **"ELEVENLABS_API_KEY must be set"**
+   - Configure your ElevenLabs API key in the environment
+   - Get your key from https://elevenlabs.io/
+
+3. **"File not found"**
    - Verify file paths are relative to /workspace
    - Use the files tool to check file existence
 
-3. **"No content sources provided"**
+4. **"No content sources provided"**
    - Provide at least one of: urls, file_paths, or image_paths
 
-4. **TTS generation fails**
-   - Check ElevenLabs API key configuration
-   - Verify network connectivity
-   - Ensure ElevenLabs API quota is available 
+5. **"API request failed" or "Timeout"**
+   - Check network connectivity to the Podcastfy API
+   - Verify the PODCASTFY_API_URL is correct and accessible
+   - The API can take 1-3 minutes to generate podcasts
+
+6. **"No event_id returned from API"**
+   - The API service may be temporarily unavailable
+   - Try again in a few minutes
+   - Consider setting up your own Podcastfy API instance 
