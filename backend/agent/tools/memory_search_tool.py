@@ -6,7 +6,7 @@ previous conversations, preferences, and context.
 """
 
 from typing import List, Dict, Any, Optional
-from agentpress.tool import Tool, SchemaType
+from agentpress.tool import Tool, SchemaType, ToolSchema
 from agentpress.thread_manager import ThreadManager
 from utils.logger import logger
 
@@ -29,13 +29,13 @@ class MemorySearchTool(Tool):
         super().__init__()
         self.thread_manager = thread_manager
 
-    def get_schemas(self) -> Dict[str, List[Any]]:
+    def get_schemas(self) -> Dict[str, List[ToolSchema]]:
         """Get the OpenAPI schemas for memory search operations."""
         return {
             "search_memory": [
-                {
-                    "schema_type": SchemaType.OPENAPI,
-                    "schema": {
+                ToolSchema(
+                    schema_type=SchemaType.OPENAPI,
+                    schema={
                         "type": "function",
                         "function": {
                             "name": "search_memory",
@@ -59,7 +59,7 @@ class MemorySearchTool(Tool):
                             }
                         }
                     }
-                }
+                )
             ]
         }
 
