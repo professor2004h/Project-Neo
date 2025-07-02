@@ -26,6 +26,7 @@ from services.mcp_custom import discover_custom_tools
 import sys
 from services import email_api
 from triggers import api as triggers_api
+from feedback import api as feedback_api
 
 
 load_dotenv()
@@ -178,6 +179,8 @@ from triggers import api as triggers_api
 from triggers import unified_oauth_api
 app.include_router(triggers_api.router)
 app.include_router(unified_oauth_api.router)
+
+app.include_router(feedback_api.router, prefix="/api")
 
 @app.get("/api/health")
 async def health_check():
