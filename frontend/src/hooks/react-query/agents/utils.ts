@@ -9,9 +9,11 @@ export type Agent = {
   name: string;
   description?: string;
   system_prompt: string;
-  configured_mcps: Array<{
+  configured_mcps?: Array<{
     name: string;
+    qualifiedName?: string;
     config: Record<string, any>;
+    enabledTools?: string[];
   }>;
   custom_mcps?: Array<{
     name: string;
@@ -19,7 +21,7 @@ export type Agent = {
     config: Record<string, any>;
     enabledTools: string[];
   }>;
-  agentpress_tools: Record<string, any>;
+  agentpress_tools?: Record<string, { enabled: boolean; description: string }>;
   is_default: boolean;
   is_public?: boolean;
   visibility?: 'public' | 'teams' | 'private';
@@ -27,9 +29,10 @@ export type Agent = {
   download_count?: number;
   tags?: string[];
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
   avatar?: string;
   avatar_color?: string;
+  knowledge_bases?: Array<{ index_name: string; description: string }>;
 };
 
 export type PaginationInfo = {
@@ -79,6 +82,7 @@ export type AgentCreateRequest = {
   }>;
   agentpress_tools?: Record<string, any>;
   is_default?: boolean;
+  knowledge_bases?: Array<{ index_name: string; description: string }>;
 };
 
 export type AgentUpdateRequest = {
@@ -97,6 +101,7 @@ export type AgentUpdateRequest = {
   }>;
   agentpress_tools?: Record<string, any>;
   is_default?: boolean;
+  knowledge_bases?: Array<{ index_name: string; description: string }>;
 };
 
 export const getAgents = async (params: AgentsParams = {}): Promise<AgentsResponse> => {

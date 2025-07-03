@@ -30,6 +30,7 @@ from agent.tools.sb_vision_tool import SandboxVisionTool
 from agent.tools.audio_transcription_tool import AudioTranscriptionTool
 from agent.tools.sb_podcast_tool import SandboxPodcastTool
 from agent.tools.memory_search_tool import MemorySearchTool
+from agent.tools.knowledge_search_tool import KnowledgeSearchTool
 
 from services.langfuse import langfuse
 from langfuse.client import StatefulTraceClient
@@ -151,6 +152,11 @@ async def run_agent(
             thread_manager.add_tool(SandboxPodcastTool, project_id=project_id, thread_manager=thread_manager)
         if config.RAPID_API_KEY and enabled_tools.get('data_providers_tool', {}).get('enabled', False):
             thread_manager.add_tool(DataProvidersTool)
+
+    # Register knowledge search tool if agent has knowledge bases configured
+    if agent_config and agent_config.get('knowledge_bases'):
+        logger.info(f"Registering knowledge search tool with {len(agent_config['knowledge_bases'])} knowledge bases")
+        thread_manager.add_tool(KnowledgeSearchTool, thread_manager=thread_manager, knowledge_bases=agent_config['knowledge_bases'])
 
     # Register MCP tool wrapper if agent has configured MCPs or custom MCPs
     mcp_wrapper_instance = None

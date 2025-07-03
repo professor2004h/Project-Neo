@@ -1,0 +1,200 @@
+import React, { useState } from 'react';
+import { Plus, Trash2, BookOpen, Info } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+interface KnowledgeBase {
+  index_name: string;
+  description: string;
+}
+
+interface AgentKnowledgeConfigurationProps {
+  knowledgeBases: KnowledgeBase[];
+  onKnowledgeBasesChange: (knowledgeBases: KnowledgeBase[]) => void;
+}
+
+export const AgentKnowledgeConfiguration = ({ 
+  knowledgeBases, 
+  onKnowledgeBasesChange 
+}: AgentKnowledgeConfigurationProps) => {
+  const [newIndexName, setNewIndexName] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+
+  const handleAddKnowledgeBase = () => {
+    if (newIndexName.trim() && newDescription.trim()) {
+      const newKnowledgeBase: KnowledgeBase = {
+        index_name: newIndexName.trim(),
+        description: newDescription.trim()
+      };
+      onKnowledgeBasesChange([...knowledgeBases, newKnowledgeBase]);
+      setNewIndexName('');
+      setNewDescription('');
+    }
+  };
+
+  const handleRemoveKnowledgeBase = (index: number) => {
+    const updated = knowledgeBases.filter((_, i) => i !== index);
+    onKnowledgeBasesChange(updated);
+  };
+
+  const handleUpdateKnowledgeBase = (index: number, field: keyof KnowledgeBase, value: string) => {
+    const updated = [...knowledgeBases];
+    updated[index] = { ...updated[index], [field]: value };
+    onKnowledgeBasesChange(updated);
+  };
+
+  return (
+    <Card className="px-0 bg-transparent border-none shadow-none">
+      <CardHeader className="px-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CardTitle>Knowledge Bases</CardTitle>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  <p>
+                    Connect LlamaCloud indices to give your agent access to specialized knowledge bases. 
+                    Each index will appear as a separate search function that the agent can use.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <span className="text-sm text-muted-foreground">
+            {knowledgeBases.length} configured
+          </span>
+        </div>
+        <CardDescription>
+          Add LlamaCloud indices to enable knowledge search capabilities
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4 px-0">
+        {/* Existing Knowledge Bases */}
+        {knowledgeBases.length > 0 && (
+          <div className="space-y-3">
+            {knowledgeBases.map((kb, index) => (
+              <div 
+                key={index} 
+                className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg border"
+              >
+                <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-800/50 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor={`index-${index}`} className="text-xs text-muted-foreground">
+                      Index Name
+                    </Label>
+                    <Input
+                      id={`index-${index}`}
+                      value={kb.index_name}
+                      onChange={(e) => handleUpdateKnowledgeBase(index, 'index_name', e.target.value)}
+                      placeholder="my-knowledge-index"
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`desc-${index}`} className="text-xs text-muted-foreground">
+                      Description
+                    </Label>
+                    <Textarea
+                      id={`desc-${index}`}
+                      value={kb.description}
+                      onChange={(e) => handleUpdateKnowledgeBase(index, 'description', e.target.value)}
+                      placeholder="Contains documentation about..."
+                      className="min-h-[60px] resize-none"
+                    />
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveKnowledgeBase(index)}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add New Knowledge Base */}
+        <div className="space-y-4 p-4 bg-muted/30 rounded-lg border-2 border-dashed">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Plus className="h-4 w-4" />
+            Add New Knowledge Base
+          </div>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="new-index" className="text-xs text-muted-foreground">
+                Index Name
+              </Label>
+              <Input
+                id="new-index"
+                value={newIndexName}
+                onChange={(e) => setNewIndexName(e.target.value)}
+                placeholder="my-knowledge-index"
+                className="h-9"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAddKnowledgeBase();
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-desc" className="text-xs text-muted-foreground">
+                Description
+              </Label>
+              <Textarea
+                id="new-desc"
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                placeholder="What kind of information does this knowledge base contain?"
+                className="min-h-[60px] resize-none"
+              />
+            </div>
+            <Button
+              onClick={handleAddKnowledgeBase}
+              disabled={!newIndexName.trim() || !newDescription.trim()}
+              className="w-full"
+              size="sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Knowledge Base
+            </Button>
+          </div>
+        </div>
+
+        {/* Configuration Help */}
+        <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+          <h4 className="text-sm font-medium flex items-center gap-2">
+            <Info className="h-4 w-4" />
+            Configuration Required
+          </h4>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>To use knowledge bases, ensure these environment variables are set:</p>
+            <ul className="list-disc list-inside ml-2 space-y-1">
+              <li><code className="bg-muted px-1 py-0.5 rounded">LLAMA_CLOUD_API_KEY</code> - Your LlamaCloud API key</li>
+              <li><code className="bg-muted px-1 py-0.5 rounded">LLAMA_CLOUD_PROJECT_NAME</code> - Your project name (default: "Default")</li>
+            </ul>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
