@@ -72,53 +72,9 @@ export function NavUserWithTeams({
   const { onOpen } = useModal();
   const queryClient = useQueryClient();
 
-  // Add state to track the current account and prevent flickering
-  const [currentAccountState, setCurrentAccountState] = React.useState<any>(null);
-
-  // Initialize account state from sessionStorage on component mount
-  React.useEffect(() => {
-    if (!accounts) return;
-
-    try {
-      const storedContext = sessionStorage.getItem(TEAM_CONTEXT_KEY);
-      if (storedContext) {
-        const context = JSON.parse(storedContext);
-        const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-        
-        if (context.timestamp > fiveMinutesAgo) {
-          const teamAccount = accounts.find(
-            (account) => !account.personal_account && account.account_id === context.account_id
-          );
-          
-          if (teamAccount) {
-            const teamAccountState = {
-              ...teamAccount,
-              email: `Team: ${teamAccount.name}`,
-              avatar: user.avatar,
-            };
-            setCurrentAccountState(teamAccountState);
-            return;
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to read team context on mount:', error);
-    }
-
-    // Default to personal account if no team context
-    const personalAccount = accounts.find((account) => account.personal_account);
-    if (personalAccount) {
-      setCurrentAccountState({
-        ...personalAccount,
-        email: user.email,
-        avatar: user.avatar,
-      });
-    }
-  }, [accounts, user]);
-
   // Determine current account with team context persistence
   const currentAccount = React.useMemo(() => {
-    if (!accounts) return currentAccountState;
+    if (!accounts) return null;
 
     // Extract team slug from URL path
     const teamMatch = pathname?.match(/^\/([^\/]+)(?:\/|$)/);
@@ -178,14 +134,7 @@ export function NavUserWithTeams({
     }
 
     return determinedAccount;
-  }, [pathname, accounts, user, currentAccountState]);
-
-  // Update state when currentAccount changes
-  React.useEffect(() => {
-    if (currentAccount && currentAccount !== currentAccountState) {
-      setCurrentAccountState(currentAccount);
-    }
-  }, [currentAccount, currentAccountState]);
+  }, [pathname, accounts, user]);
 
   // Prepare personal account and team accounts
   const personalAccount = React.useMemo(
@@ -230,9 +179,6 @@ export function NavUserWithTeams({
   const handleTeamSwitch = (team: any) => {
     console.log('Switching to:', team.personal_account ? 'Personal' : `Team: ${team.name}`);
     
-    // Update local state immediately to prevent flickering
-    setCurrentAccountState(team);
-    
     // Update sessionStorage immediately
     if (!team.personal_account) {
       // Store team context
@@ -263,7 +209,7 @@ export function NavUserWithTeams({
     }, 100);
   };
 
-  const displayedUser = currentAccount || currentAccountState || {
+  const displayedUser = currentAccount || {
     name: user.name,
     email: user.email,
     avatar: user.avatar,
