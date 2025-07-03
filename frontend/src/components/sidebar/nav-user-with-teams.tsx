@@ -170,16 +170,41 @@ export function NavUserWithTeams({
     router.push('/');
   };
 
-  const handleTeamSwitch = (team: any) => {
-    // Invalidate all sidebar queries to force refresh when switching accounts
-    queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
-    queryClient.invalidateQueries({ queryKey: threadKeys.lists() });
+  const handleTeamSwitch = async (team: any) => {
+    console.log('Switching to:', team.personal_account ? 'Personal' : `Team: ${team.name}`);
     
+    // Clear team context from sessionStorage when switching to personal account
     if (team.personal_account) {
-      router.push('/dashboard');
-    } else {
-      router.push(`/${team.slug}/settings`);
+      try {
+        sessionStorage.removeItem(TEAM_CONTEXT_KEY);
+      } catch (error) {
+        console.warn('Failed to clear team context:', error);
+      }
     }
+    
+    // Navigate first to ensure URL changes
+    const targetUrl = team.personal_account ? '/dashboard' : `/${team.slug}/settings`;
+    
+    // Force navigation even if URL is the same by adding a timestamp query param temporarily
+    const currentUrl = window.location.pathname;
+    const isUrlChanging = currentUrl !== targetUrl;
+    
+    if (isUrlChanging) {
+      await router.push(targetUrl);
+    } else {
+      // Force a URL change by adding a temporary query param, then remove it
+      await router.push(`${targetUrl}?switch=${Date.now()}`);
+      // Remove the query param after a short delay
+      setTimeout(() => {
+        window.history.replaceState({}, '', targetUrl);
+      }, 100);
+    }
+    
+    // Wait a bit for navigation to complete before invalidating queries
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: threadKeys.lists() });
+    }, 100);
   };
 
   const displayedUser = currentAccount || {
