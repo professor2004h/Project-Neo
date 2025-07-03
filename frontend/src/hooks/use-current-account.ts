@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAccounts } from './use-accounts';
 
@@ -12,6 +12,8 @@ export interface CurrentAccount {
   is_team_context: boolean;
 }
 
+const TEAM_CONTEXT_KEY = 'current_team_context';
+
 /**
  * Hook to determine the current account context based on URL path
  * Returns the appropriate account_id for API calls
@@ -20,17 +22,85 @@ export function useCurrentAccount(): CurrentAccount | null {
   const pathname = usePathname();
   const { data: accounts } = useAccounts();
 
+  useEffect(() => {
+    // Store current team context in sessionStorage when on team pages
+    if (pathname && accounts) {
+      const teamMatch = pathname.match(/^\/([^\/]+)(?:\/|$)/);
+      const teamSlug = teamMatch?.[1];
+      
+      if (teamSlug && teamSlug !== 'dashboard') {
+        const teamAccount = accounts.find(
+          (account) => !account.personal_account && account.slug === teamSlug
+        );
+        
+        if (teamAccount) {
+          sessionStorage.setItem(TEAM_CONTEXT_KEY, JSON.stringify({
+            account_id: teamAccount.account_id,
+            name: teamAccount.name,
+            slug: teamAccount.slug,
+            timestamp: Date.now()
+          }));
+        }
+      }
+    }
+  }, [pathname, accounts]);
+
   return useMemo(() => {
     if (!accounts) return null;
 
-    // Extract team slug from URL path - match any team route
+    // Extract team slug from URL path
     const teamMatch = pathname?.match(/^\/([^\/]+)(?:\/|$)/);
     const teamSlug = teamMatch?.[1];
 
     // Skip if it's a known non-team route
-    const nonTeamRoutes = ['dashboard', 'agents', 'projects', 'settings', 'marketplace', 'meetings', 'api', 'auth', 'legal', 'share', 'invitation', 'monitoring'];
+    const nonTeamRoutes = ['agents', 'projects', 'settings', 'marketplace', 'meetings', 'api', 'auth', 'legal', 'share', 'invitation', 'monitoring'];
     if (!teamSlug || nonTeamRoutes.includes(teamSlug)) {
       // Default to personal account for non-team routes
+      const personalAccount = accounts.find((account) => account.personal_account);
+      
+      if (personalAccount) {
+        return {
+          account_id: personalAccount.account_id,
+          name: personalAccount.name,
+          personal_account: true,
+          slug: personalAccount.slug,
+          is_team_context: false,
+        };
+      }
+      return null;
+    }
+
+    // Special case: if someone is on /dashboard, check for recent team context
+    if (teamSlug === 'dashboard') {
+      try {
+        const storedContext = sessionStorage.getItem(TEAM_CONTEXT_KEY);
+        if (storedContext) {
+          const context = JSON.parse(storedContext);
+          const fiveMinutesAgo = Date.now() - (5 * 60 * 1000); // 5 minutes
+          
+          // If team context was stored recently (within 5 minutes), use it
+          if (context.timestamp > fiveMinutesAgo) {
+            const teamAccount = accounts.find(
+              (account) => !account.personal_account && account.account_id === context.account_id
+            );
+            
+            if (teamAccount) {
+              return {
+                account_id: teamAccount.account_id,
+                name: teamAccount.name,
+                personal_account: false,
+                slug: teamAccount.slug,
+                is_team_context: true,
+              };
+            }
+          }
+        }
+      } catch (error) {
+        // Ignore sessionStorage errors
+        console.warn('Failed to read team context from sessionStorage:', error);
+      }
+      
+      // Default to personal account for /dashboard if no recent team context
       const personalAccount = accounts.find((account) => account.personal_account);
       
       if (personalAccount) {
