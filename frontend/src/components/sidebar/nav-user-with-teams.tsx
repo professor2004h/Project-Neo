@@ -195,9 +195,12 @@ export function NavUserWithTeams({
       }
     }
     
-    // Navigate to dashboard and force a full refresh
+    // Navigate to dashboard first, then reload to ensure everything updates
     router.push('/dashboard');
-    router.refresh();
+    // Use setTimeout to ensure navigation happens before reload
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
 
   const displayedUser = currentAccount || {
