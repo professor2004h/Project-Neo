@@ -1741,35 +1741,39 @@ async def publish_agent_to_marketplace(
         
         # If sharing with teams, validate user has admin access to those teams
         if publish_data.visibility == "teams" and publish_data.team_ids:
-            # Get user's teams where they are owner
-            teams_result = await client.rpc('get_accounts').execute()
+            # Query user's team memberships directly instead of using get_accounts() which relies on auth.uid()
+            teams_result = await client.table('basejump.account_user').select('''
+                account_id,
+                account_role,
+                basejump.accounts!inner(name, personal_account)
+            ''').eq('user_id', user_id).eq('account_role', 'owner').execute()
+            
             if not teams_result.data:
                 raise HTTPException(status_code=403, detail="Unable to verify team permissions")
             
+            # Get team IDs where user is owner (excluding personal accounts)
             admin_team_ids = set()
-            for account in teams_result.data:
-                if not account.get('personal_account') and account.get('account_role') == 'owner':
-                    admin_team_ids.add(account['account_id'])
+            for membership in teams_result.data:
+                account = membership.get('basejump.accounts')
+                if account and not account.get('personal_account'):
+                    admin_team_ids.add(membership['account_id'])
             
             # Check if all requested teams are in admin list
             requested_team_ids = set(publish_data.team_ids)
             if not requested_team_ids.issubset(admin_team_ids):
-                raise HTTPException(status_code=403, detail="You must be an admin of all teams you're sharing with")
+                missing_teams = requested_team_ids - admin_team_ids
+                raise HTTPException(
+                    status_code=403, 
+                    detail=f"You must be an admin of all teams you're sharing with. Missing permissions for: {', '.join(missing_teams)}"
+                )
         
-        # Use the new database function with visibility support
-        if publish_data.visibility == "teams" and publish_data.team_ids:
-            # Call the new function with team visibility
-            await client.rpc('publish_agent_with_visibility', {
-                'p_agent_id': agent_id,
-                'p_visibility': publish_data.visibility,
-                'p_team_ids': publish_data.team_ids
-            }).execute()
-        else:
-            # For public or private visibility
-            await client.rpc('publish_agent_with_visibility', {
-                'p_agent_id': agent_id,
-                'p_visibility': publish_data.visibility
-            }).execute()
+        # Use the new database function that accepts user_id explicitly
+        await client.rpc('publish_agent_with_visibility_by_user', {
+            'p_agent_id': agent_id,
+            'p_visibility': publish_data.visibility,
+            'p_user_id': user_id,
+            'p_team_ids': publish_data.team_ids if publish_data.visibility == "teams" else None
+        }).execute()
         
         # Update tags if provided
         if publish_data.tags:
@@ -1777,7 +1781,7 @@ async def publish_agent_to_marketplace(
         
         message = {
             "public": "Agent published to marketplace successfully",
-            "teams": f"Agent shared with {len(publish_data.team_ids)} team(s)",
+            "teams": f"Agent shared with {len(publish_data.team_ids or [])} team(s)",
             "private": "Agent set to private"
         }.get(publish_data.visibility, "Agent visibility updated")
         
@@ -1815,10 +1819,12 @@ async def unpublish_agent_from_marketplace(
         if agent['account_id'] != user_id:
             raise HTTPException(status_code=403, detail="Access denied")
         
-        # Update agent to remove from marketplace using the visibility function
-        await client.rpc('publish_agent_with_visibility', {
+        # Update agent to remove from marketplace using the new visibility function
+        await client.rpc('publish_agent_with_visibility_by_user', {
             'p_agent_id': agent_id,
-            'p_visibility': 'private'
+            'p_visibility': 'private',
+            'p_user_id': user_id,
+            'p_team_ids': None
         }).execute()
         
         logger.info(f"Successfully unpublished agent {agent_id} from marketplace")
