@@ -53,17 +53,12 @@ export function PublishAgentDialog({
         toast.error('Please select at least one team');
         return;
       }
-
-      // TODO: Update backend API to support team-specific publishing
-      // For now, we only support marketplace publishing
-      if (publishType === 'teams') {
-        toast.error('Team-specific publishing is coming soon!');
-        return;
-      }
       
       await publishAgentMutation.mutateAsync({
         agentId: agent.agent_id,
-        tags: []
+        tags: [],
+        visibility: publishType === 'marketplace' ? 'public' : 'teams',
+        teamIds: publishType === 'teams' ? Array.from(selectedTeams) : []
       });
       
       const message = publishType === 'marketplace' 
