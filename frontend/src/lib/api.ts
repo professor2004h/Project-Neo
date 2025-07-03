@@ -106,7 +106,7 @@ export interface FileInfo {
 }
 
 // Project APIs
-export const getProjects = async (): Promise<Project[]> => {
+export const getProjects = async (accountId?: string): Promise<Project[]> => {
   try {
     const supabase = createClient();
 
@@ -123,11 +123,14 @@ export const getProjects = async (): Promise<Project[]> => {
       return [];
     }
 
-    // Query only projects where account_id matches the current user's ID
+    // Use provided accountId or fall back to user's personal account ID
+    const effectiveAccountId = accountId || userData.user.id;
+
+    // Query only projects where account_id matches the effective account ID
     const { data, error } = await supabase
       .from('projects')
       .select('*')
-      .eq('account_id', userData.user.id);
+      .eq('account_id', effectiveAccountId);
 
     if (error) {
       // Handle permission errors specifically
@@ -390,7 +393,7 @@ export const deleteProject = async (projectId: string): Promise<void> => {
 };
 
 // Thread APIs
-export const getThreads = async (projectId?: string): Promise<Thread[]> => {
+export const getThreads = async (projectId?: string, accountId?: string): Promise<Thread[]> => {
   const supabase = createClient();
 
   // Get the current user's ID to filter threads
@@ -408,8 +411,11 @@ export const getThreads = async (projectId?: string): Promise<Thread[]> => {
 
   let query = supabase.from('threads').select('*');
 
-  // Always filter by the current user's account ID
-  query = query.eq('account_id', userData.user.id);
+  // Use provided accountId or fall back to user's personal account ID
+  const effectiveAccountId = accountId || userData.user.id;
+
+  // Always filter by the effective account ID
+  query = query.eq('account_id', effectiveAccountId);
 
   if (projectId) {
     console.log('[API] Filtering threads by project_id:', projectId);
@@ -454,7 +460,7 @@ export const getThread = async (threadId: string): Promise<Thread> => {
   return data;
 };
 
-export const createThread = async (projectId: string): Promise<Thread> => {
+export const createThread = async (projectId: string, accountId?: string): Promise<Thread> => {
   const supabase = createClient();
 
   // If user is not logged in, redirect to login
@@ -465,11 +471,14 @@ export const createThread = async (projectId: string): Promise<Thread> => {
     throw new Error('You must be logged in to create a thread');
   }
 
+  // Use provided accountId or fall back to user's personal account ID
+  const effectiveAccountId = accountId || user.id;
+
   const { data, error } = await supabase
     .from('threads')
     .insert({
       project_id: projectId,
-      account_id: user.id, // Use the current user's ID as the account ID
+      account_id: effectiveAccountId, // Use the effective account ID
     })
     .select()
     .single();
