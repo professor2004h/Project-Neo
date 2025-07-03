@@ -1741,22 +1741,25 @@ async def publish_agent_to_marketplace(
         
         # If sharing with teams, validate user has admin access to those teams
         if publish_data.visibility == "teams" and publish_data.team_ids:
-            # Query user's team memberships directly instead of using get_accounts() which relies on auth.uid()
-            teams_result = await client.table('account_user').select('''
-                account_id,
-                account_role,
-                accounts!inner(name, personal_account)
-            ''').eq('user_id', user_id).eq('account_role', 'owner').execute()
+            # Query user's team memberships from basejump schema (no complex joins)
+            # Get user's owner memberships
+            memberships_result = await client.table('account_user').select('account_id, account_role').eq('user_id', user_id).eq('account_role', 'owner').execute()
             
-            if not teams_result.data:
-                raise HTTPException(status_code=403, detail="Unable to verify team permissions")
+            if not memberships_result.data:
+                raise HTTPException(status_code=403, detail="Unable to verify team permissions - no owner memberships found")
+            
+            # Get account details for these memberships
+            member_account_ids = [m['account_id'] for m in memberships_result.data]
+            accounts_result = await client.table('accounts').select('id, personal_account').in_('id', member_account_ids).execute()
+            
+            if not accounts_result.data:
+                raise HTTPException(status_code=403, detail="Unable to verify account details")
             
             # Get team IDs where user is owner (excluding personal accounts)
             admin_team_ids = set()
-            for membership in teams_result.data:
-                account = membership.get('accounts')
-                if account and not account.get('personal_account'):
-                    admin_team_ids.add(membership['account_id'])
+            for account in accounts_result.data:
+                if not account.get('personal_account'):
+                    admin_team_ids.add(account['id'])
             
             # Check if all requested teams are in admin list
             requested_team_ids = set(publish_data.team_ids)
