@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/tooltip';
 
 interface KnowledgeBase {
+  name: string;
   index_name: string;
   description: string;
 }
@@ -26,16 +27,19 @@ export const AgentKnowledgeConfiguration = ({
   knowledgeBases, 
   onKnowledgeBasesChange 
 }: AgentKnowledgeConfigurationProps) => {
+  const [newName, setNewName] = useState('');
   const [newIndexName, setNewIndexName] = useState('');
   const [newDescription, setNewDescription] = useState('');
 
   const handleAddKnowledgeBase = () => {
-    if (newIndexName.trim() && newDescription.trim()) {
+    if (newName.trim() && newIndexName.trim() && newDescription.trim()) {
       const newKnowledgeBase: KnowledgeBase = {
+        name: newName.trim(),
         index_name: newIndexName.trim(),
         description: newDescription.trim()
       };
       onKnowledgeBasesChange([...knowledgeBases, newKnowledgeBase]);
+      setNewName('');
       setNewIndexName('');
       setNewDescription('');
     }
@@ -65,8 +69,9 @@ export const AgentKnowledgeConfiguration = ({
                 </TooltipTrigger>
                 <TooltipContent className="max-w-sm">
                   <p>
-                    Connect LlamaCloud indices to give your agent access to specialized knowledge bases. 
-                    Each index will appear as a separate search function that the agent can use.
+                    Connect vector indices to give your agent access to specialized knowledge bases. 
+                    Each knowledge base will appear as a separate search tool that the agent can use.
+                    The tool name determines how the agent refers to it, while the index name is for LlamaCloud API calls.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -77,7 +82,7 @@ export const AgentKnowledgeConfiguration = ({
           </span>
         </div>
         <CardDescription>
-          Add LlamaCloud indices to enable knowledge search capabilities
+          Add vector indices to enable knowledge search capabilities. Each knowledge base becomes a named search tool for your agent.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 px-0">
@@ -93,6 +98,18 @@ export const AgentKnowledgeConfiguration = ({
                   <BookOpen className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div className="flex-1 space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor={`name-${index}`} className="text-xs text-muted-foreground">
+                      Tool Name
+                    </Label>
+                    <Input
+                      id={`name-${index}`}
+                      value={kb.name}
+                      onChange={(e) => handleUpdateKnowledgeBase(index, 'name', e.target.value)}
+                      placeholder="documentation_search"
+                      className="h-9"
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor={`index-${index}`} className="text-xs text-muted-foreground">
                       Index Name
@@ -139,6 +156,24 @@ export const AgentKnowledgeConfiguration = ({
           </div>
           <div className="space-y-3">
             <div className="space-y-2">
+              <Label htmlFor="new-name" className="text-xs text-muted-foreground">
+                Tool Name
+              </Label>
+              <Input
+                id="new-name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="documentation_search"
+                className="h-9"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAddKnowledgeBase();
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="new-index" className="text-xs text-muted-foreground">
                 Index Name
               </Label>
@@ -170,7 +205,7 @@ export const AgentKnowledgeConfiguration = ({
             </div>
             <Button
               onClick={handleAddKnowledgeBase}
-              disabled={!newIndexName.trim() || !newDescription.trim()}
+              disabled={!newName.trim() || !newIndexName.trim() || !newDescription.trim()}
               className="w-full"
               size="sm"
             >

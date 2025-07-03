@@ -8,10 +8,11 @@ The Knowledge Search Tool allows agents to search through configured LlamaCloud 
 
 ## Key Features
 
-1. **Dynamic Function Generation**: Each knowledge base gets its own search function (e.g., `search_my_index`, `search_technical_docs`)
+1. **Dynamic Function Generation**: Each knowledge base gets its own search function with custom names (e.g., `search_documentation`, `search_technical_docs`)
 2. **Environment Variable Configuration**: API key and project name are configured via environment variables
 3. **Clean UI Integration**: Knowledge bases are configured through a dedicated UI component in the agent builder
 4. **Production-Grade**: Robust error handling, logging, and maintainable code structure
+5. **Flexible Naming**: Tool names are separate from index names, allowing for clean function names while maintaining API compatibility
 
 ## Components
 
@@ -53,11 +54,13 @@ LLAMA_CLOUD_PROJECT_NAME=Default  # Your project name (optional, defaults to "De
 {
   "knowledge_bases": [
     {
+      "name": "documentation",
       "index_name": "my-documentation",
       "description": "Product documentation and user guides"
     },
     {
-      "index_name": "api-reference", 
+      "name": "api_reference",
+      "index_name": "api-reference-index", 
       "description": "API documentation and code examples"
     }
   ]
@@ -70,7 +73,8 @@ LLAMA_CLOUD_PROJECT_NAME=Default  # Your project name (optional, defaults to "De
 
 1. In the agent builder UI, navigate to the "Knowledge Bases" section
 2. Add knowledge bases by providing:
-   - **Index Name**: The exact name of your LlamaCloud index
+   - **Tool Name**: The name for the search function (e.g., `documentation`, `api_reference`)
+   - **Index Name**: The exact name of your LlamaCloud index (for API calls)
    - **Description**: What information this knowledge base contains
 3. Save the agent configuration
 
@@ -79,7 +83,7 @@ LLAMA_CLOUD_PROJECT_NAME=Default  # Your project name (optional, defaults to "De
 When an agent has knowledge bases configured, it automatically gets:
 
 1. Individual search functions for each knowledge base:
-   - `search_my_documentation(query: str)`
+   - `search_documentation(query: str)`
    - `search_api_reference(query: str)`
 
 2. A listing function to see all available knowledge bases:
@@ -93,7 +97,7 @@ When an agent has knowledge bases configured, it automatically gets:
 </invoke>
 </function_calls>
 
-<!-- Agent sees available knowledge bases -->
+<!-- Agent sees available knowledge bases with their tool names -->
 
 <function_calls>
 <invoke name="search_api_reference">
@@ -101,7 +105,7 @@ When an agent has knowledge bases configured, it automatically gets:
 </invoke>
 </function_calls>
 
-<!-- Agent receives search results from the API reference index -->
+<!-- Agent receives search results from the API reference knowledge base -->
 ```
 
 ## Implementation Details
@@ -110,9 +114,12 @@ When an agent has knowledge bases configured, it automatically gets:
 
 The tool creates methods dynamically in `_create_dynamic_methods()`:
 1. Iterates through configured knowledge bases
-2. Creates a safe method name from the index name
-3. Decorates the method with OpenAPI and XML schemas
-4. Binds the method to the tool instance
+2. Creates a safe method name from the tool name (not the index name)
+3. Uses the index name for actual LlamaCloud API calls
+4. Decorates the method with OpenAPI and XML schemas
+5. Binds the method to the tool instance
+
+This separation allows for clean, descriptive function names while maintaining the correct API connections to LlamaCloud indices.
 
 ### Search Configuration
 

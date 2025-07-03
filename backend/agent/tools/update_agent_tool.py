@@ -82,7 +82,8 @@ class UpdateAgentTool(Tool):
                         "items": {
                             "type": "object",
                             "properties": {
-                                "index_name": {"type": "string", "description": "Name of the LlamaCloud index"},
+                                "name": {"type": "string", "description": "Name of the tool (used for method name generation)"},
+                                "index_name": {"type": "string", "description": "Name of the LlamaCloud index (used for API calls)"},
                                 "description": {"type": "string", "description": "Description of what this knowledge base contains"}
                             }
                         }
@@ -138,7 +139,7 @@ class UpdateAgentTool(Tool):
             configured_mcps: MCP servers configuration
             avatar: Emoji avatar
             avatar_color: Avatar background color
-            knowledge_bases: List of LlamaCloud knowledge base indices for the agent to search
+            knowledge_bases: List of LlamaCloud knowledge base configurations for the agent to search
             
         Returns:
             ToolResult with updated agent data or error

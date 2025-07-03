@@ -28,7 +28,8 @@ class KnowledgeSearchTool(Tool):
         Args:
             thread_manager: ThreadManager instance for context
             knowledge_bases: List of knowledge base configurations, each containing:
-                - index_name: Name of the LlamaCloud index
+                - name: Name of the tool (used for method name generation)
+                - index_name: Name of the LlamaCloud index (used for API calls)
                 - description: Description of what this knowledge base contains
         """
         # Don't call super().__init__() yet - we need to set up dynamic methods first
@@ -51,14 +52,15 @@ class KnowledgeSearchTool(Tool):
     def _create_dynamic_methods(self):
         """Create dynamic search methods for each configured knowledge base."""
         for kb in self.knowledge_bases:
+            name = kb.get('name', '')
             index_name = kb.get('index_name', '')
             description = kb.get('description', '')
             
-            if not index_name:
+            if not name or not index_name:
                 continue
             
-            # Create a safe method name from the index name
-            method_name = f"search_{index_name.replace('-', '_').replace(' ', '_').lower()}"
+            # Create a safe method name from the tool name
+            method_name = f"search_{name.replace('-', '_').replace(' ', '_').lower()}"
             
             # Create the search function for this specific index
             async def search_function(self, query: str, index_name=index_name, kb_description=description) -> ToolResult:
@@ -70,7 +72,7 @@ class KnowledgeSearchTool(Tool):
                 "type": "function",
                 "function": {
                     "name": method_name,
-                    "description": f"Search the '{index_name}' knowledge base. {description}",
+                    "description": f"Search the '{name}' knowledge base. {description}",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -103,7 +105,7 @@ class KnowledgeSearchTool(Tool):
             decorated_method = openapi_decorator(xml_decorator(search_function))
             setattr(self, method_name, decorated_method.__get__(self, type(self)))
             
-            logger.info(f"Created dynamic search method: {method_name} for index: {index_name}")
+            logger.info(f"Created dynamic search method: {method_name} for tool: {name} (index: {index_name})")
     
     async def _search_index(self, query: str, index_name: str, description: str) -> ToolResult:
         """
@@ -211,9 +213,10 @@ class KnowledgeSearchTool(Tool):
             kb_list = []
             for kb in self.knowledge_bases:
                 kb_info = {
+                    "name": kb.get('name'),
                     "index_name": kb.get('index_name'),
                     "description": kb.get('description', 'No description provided'),
-                    "search_method": f"search_{kb.get('index_name', '').replace('-', '_').replace(' ', '_').lower()}"
+                    "search_method": f"search_{kb.get('name', '').replace('-', '_').replace(' ', '_').lower()}"
                 }
                 kb_list.append(kb_info)
             

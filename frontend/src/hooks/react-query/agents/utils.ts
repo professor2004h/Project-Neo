@@ -32,7 +32,7 @@ export type Agent = {
   updated_at?: string;
   avatar?: string;
   avatar_color?: string;
-  knowledge_bases?: Array<{ index_name: string; description: string }>;
+  knowledge_bases?: Array<{ name: string; index_name: string; description: string }>;
 };
 
 export type PaginationInfo = {
@@ -82,7 +82,7 @@ export type AgentCreateRequest = {
   }>;
   agentpress_tools?: Record<string, any>;
   is_default?: boolean;
-  knowledge_bases?: Array<{ index_name: string; description: string }>;
+  knowledge_bases?: Array<{ name: string; index_name: string; description: string }>;
 };
 
 export type AgentUpdateRequest = {
@@ -101,7 +101,7 @@ export type AgentUpdateRequest = {
   }>;
   agentpress_tools?: Record<string, any>;
   is_default?: boolean;
-  knowledge_bases?: Array<{ index_name: string; description: string }>;
+  knowledge_bases?: Array<{ name: string; index_name: string; description: string }>;
 };
 
 export const getAgents = async (params: AgentsParams = {}): Promise<AgentsResponse> => {

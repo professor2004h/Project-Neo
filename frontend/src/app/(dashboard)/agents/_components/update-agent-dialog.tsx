@@ -22,7 +22,7 @@ interface AgentUpdateRequest {
   custom_mcps?: Array<{ name: string; type: 'json' | 'sse'; config: any; enabledTools: string[] }>;
   agentpress_tools?: Record<string, { enabled: boolean; description: string }>;
   is_default?: boolean;
-  knowledge_bases?: Array<{ index_name: string; description: string }>;
+  knowledge_bases?: Array<{ name: string; index_name: string; description: string }>;
 }
 
 interface UpdateAgentDialogProps {
