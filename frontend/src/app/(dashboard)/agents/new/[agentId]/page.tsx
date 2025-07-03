@@ -113,7 +113,8 @@ export default function AgentConfigurationPage() {
     }
     if (JSON.stringify(newData.agentpress_tools) !== JSON.stringify(originalData.agentpress_tools) ||
         JSON.stringify(newData.configured_mcps) !== JSON.stringify(originalData.configured_mcps) ||
-        JSON.stringify(newData.custom_mcps) !== JSON.stringify(originalData.custom_mcps)) {
+        JSON.stringify(newData.custom_mcps) !== JSON.stringify(originalData.custom_mcps) ||
+        JSON.stringify(newData.knowledge_bases) !== JSON.stringify(originalData.knowledge_bases)) {
       return true;
     }
     return false;
