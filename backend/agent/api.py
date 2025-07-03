@@ -1743,14 +1743,14 @@ async def publish_agent_to_marketplace(
         if publish_data.visibility == "teams" and publish_data.team_ids:
             # Query user's team memberships from basejump schema (no complex joins)
             # Get user's owner memberships
-            memberships_result = await client.table('account_user').select('account_id, account_role').eq('user_id', user_id).eq('account_role', 'owner').execute()
+            memberships_result = await client.from_('basejump.account_user').select('account_id, account_role').eq('user_id', user_id).eq('account_role', 'owner').execute()
             
             if not memberships_result.data:
                 raise HTTPException(status_code=403, detail="Unable to verify team permissions - no owner memberships found")
             
             # Get account details for these memberships
             member_account_ids = [m['account_id'] for m in memberships_result.data]
-            accounts_result = await client.table('accounts').select('id, personal_account').in_('id', member_account_ids).execute()
+            accounts_result = await client.from_('basejump.accounts').select('id, personal_account').in_('id', member_account_ids).execute()
             
             if not accounts_result.data:
                 raise HTTPException(status_code=403, detail="Unable to verify account details")
