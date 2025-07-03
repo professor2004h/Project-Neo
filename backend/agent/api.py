@@ -1748,7 +1748,7 @@ async def publish_agent_to_marketplace(
             
             admin_team_ids = set()
             for account in teams_result.data:
-                if not account.get('personal_account') and account.get('role') == 'owner':
+                if not account.get('personal_account') and account.get('account_role') == 'owner':
                     admin_team_ids.add(account['account_id'])
             
             # Check if all requested teams are in admin list

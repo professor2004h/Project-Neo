@@ -44,7 +44,7 @@ export function PublishAgentDialog({
   
   // Filter teams where user is an admin (owner)
   const adminTeams = accounts?.filter(
-    account => !account.personal_account && account.role === 'owner'
+    account => !account.personal_account && (account as any).account_role === 'owner'
   ) || [];
 
   const handlePublish = async () => {
