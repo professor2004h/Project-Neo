@@ -1436,6 +1436,7 @@ export const getPublicProjects = async (): Promise<Project[]> => {
 
 export const initiateAgent = async (
   formData: FormData,
+  accountId?: string,  // Add optional account_id parameter
 ): Promise<InitiateAgentResponse> => {
   try {
     const supabase = createClient();
@@ -1451,6 +1452,11 @@ export const initiateAgent = async (
       throw new Error(
         'Backend URL is not configured. Set NEXT_PUBLIC_BACKEND_URL in your environment.',
       );
+    }
+
+    // Add account_id to formData if provided
+    if (accountId) {
+      formData.append('account_id', accountId);
     }
 
     console.log(

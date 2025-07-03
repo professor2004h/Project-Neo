@@ -869,6 +869,7 @@ async def initiate_agent_with_files(
     is_agent_builder: Optional[bool] = Form(False),
     target_agent_id: Optional[str] = Form(None),
     user_name: Optional[str] = Form(None),
+    account_id: Optional[str] = Form(None),  # Add account_id parameter for team context
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Initiate a new agent session with optional file attachments."""
@@ -895,28 +896,41 @@ async def initiate_agent_with_files(
 
     logger.info(f"[\033[91mDEBUG\033[0m] Initiating new agent with prompt and {len(files)} files (Instance: {instance_id}), model: {model_name}, enable_thinking: {enable_thinking}")
     client = await db.client
-    account_id = user_id # In Basejump, personal account_id is the same as user_id
+    
+    # Determine the account_id to use
+    effective_account_id = account_id if account_id else user_id  # Default to personal account if not specified
+    
+    # Verify user has access to the specified account (if different from personal)
+    if account_id and account_id != user_id:
+        # Check if user has access to this account via basejump account_user table
+        account_access = await client.schema('basejump').from_('account_user').select('account_role').eq('user_id', user_id).eq('account_id', account_id).execute()
+        if not (account_access.data and len(account_access.data) > 0):
+            logger.warning(f"User {user_id} attempted to access account {account_id} without permission")
+            raise HTTPException(status_code=403, detail="Not authorized to access this account")
+        logger.info(f"User {user_id} has access to account {account_id} with role: {account_access.data[0]['account_role']}")
+    else:
+        logger.info(f"Using personal account {user_id} for agent initiation")
     
     # Load agent configuration if agent_id is provided
     agent_config = None
     if agent_id:
-        agent_result = await client.table('agents').select('*').eq('agent_id', agent_id).eq('account_id', account_id).execute()
+        agent_result = await client.table('agents').select('*').eq('agent_id', agent_id).eq('account_id', effective_account_id).execute()
         if not agent_result.data:
             raise HTTPException(status_code=404, detail="Agent not found or access denied")
         agent_config = agent_result.data[0]
         logger.info(f"Using custom agent: {agent_config['name']} ({agent_id})")
     else:
         # Try to get default agent for the account
-        default_agent_result = await client.table('agents').select('*').eq('account_id', account_id).eq('is_default', True).execute()
+        default_agent_result = await client.table('agents').select('*').eq('account_id', effective_account_id).eq('is_default', True).execute()
         if default_agent_result.data:
             agent_config = default_agent_result.data[0]
             logger.info(f"Using default agent: {agent_config['name']} ({agent_config['agent_id']})")
     
-    can_use, model_message, allowed_models = await can_use_model(client, account_id, model_name)
+    can_use, model_message, allowed_models = await can_use_model(client, effective_account_id, model_name)
     if not can_use:
         raise HTTPException(status_code=403, detail={"message": model_message, "allowed_models": allowed_models})
 
-    can_run, message, subscription = await check_billing_status(client, account_id)
+    can_run, message, subscription = await check_billing_status(client, effective_account_id)
     if not can_run:
         raise HTTPException(status_code=402, detail={"message": message, "subscription": subscription})
 
@@ -924,11 +938,11 @@ async def initiate_agent_with_files(
         # 1. Create Project
         placeholder_name = f"{prompt[:30]}..." if len(prompt) > 30 else prompt
         project = await client.table('projects').insert({
-            "project_id": str(uuid.uuid4()), "account_id": account_id, "name": placeholder_name,
+            "project_id": str(uuid.uuid4()), "account_id": effective_account_id, "name": placeholder_name,
             "created_at": datetime.now(timezone.utc).isoformat()
         }).execute()
         project_id = project.data[0]['project_id']
-        logger.info(f"Created new project: {project_id}")
+        logger.info(f"Created new project: {project_id} for account: {effective_account_id}")
 
         # 2. Create Sandbox
         sandbox_id = None
@@ -976,14 +990,14 @@ async def initiate_agent_with_files(
         thread_data = {
             "thread_id": str(uuid.uuid4()), 
             "project_id": project_id, 
-            "account_id": account_id,
+            "account_id": effective_account_id,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
 
         structlog.contextvars.bind_contextvars(
             thread_id=thread_data["thread_id"],
             project_id=project_id,
-            account_id=account_id,
+            account_id=effective_account_id,
         )
         
         # Store the agent_id in the thread if we have one
@@ -1007,7 +1021,7 @@ async def initiate_agent_with_files(
         
         thread = await client.table('threads').insert(thread_data).execute()
         thread_id = thread.data[0]['thread_id']
-        logger.info(f"Created new thread: {thread_id}")
+        logger.info(f"Created new thread: {thread_id} for account: {effective_account_id}")
 
         # Trigger Background Naming Task
         asyncio.create_task(generate_and_update_project_name(project_id=project_id, prompt=prompt))
