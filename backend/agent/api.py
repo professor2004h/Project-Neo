@@ -79,6 +79,7 @@ class AgentResponse(BaseModel):
     agentpress_tools: Dict[str, Any]
     is_default: bool
     is_public: Optional[bool] = False
+    visibility: Optional[str] = "private"  # "public", "teams", or "private"
     marketplace_published_at: Optional[str] = None
     download_count: Optional[int] = 0
     tags: Optional[List[str]] = []
@@ -604,6 +605,7 @@ async def get_thread_agent(thread_id: str, user_id: str = Depends(get_current_us
                 agentpress_tools=agent_data.get('agentpress_tools', {}),
                 is_default=agent_data.get('is_default', False),
                 is_public=agent_data.get('is_public', False),
+                visibility=agent_data.get('visibility', 'private'),
                 marketplace_published_at=agent_data.get('marketplace_published_at'),
                 download_count=agent_data.get('download_count', 0),
                 tags=agent_data.get('tags', []),
@@ -1150,7 +1152,8 @@ async def get_agents(
     has_default: Optional[bool] = Query(None, description="Filter by default agents"),
     has_mcp_tools: Optional[bool] = Query(None, description="Filter by agents with MCP tools"),
     has_agentpress_tools: Optional[bool] = Query(None, description="Filter by agents with AgentPress tools"),
-    tools: Optional[str] = Query(None, description="Comma-separated list of tools to filter by")
+    tools: Optional[str] = Query(None, description="Comma-separated list of tools to filter by"),
+    account_id: Optional[str] = Query(None, description="Filter by specific account ID (for team contexts)")
 ):
     """Get agents for the current user with pagination, search, sort, and filter support."""
     if not await is_enabled("custom_agents"):
@@ -1165,8 +1168,32 @@ async def get_agents(
         # Calculate offset
         offset = (page - 1) * limit
         
-        # Start building the query
-        query = client.table('agents').select('*', count='exact').eq("account_id", user_id)
+        # Use account_id if provided (for team contexts), otherwise use user_id
+        filter_account_id = account_id if account_id else user_id
+        
+        # If account_id is provided, we need to use a different query that includes team-shared agents
+        if account_id and account_id != user_id:
+            # Check if the user has access to this account
+            accounts_result = await client.rpc('get_accounts').execute()
+            if not accounts_result.data:
+                raise HTTPException(status_code=403, detail="Access denied")
+            
+            account_ids = [acc['account_id'] for acc in accounts_result.data]
+            if account_id not in account_ids:
+                raise HTTPException(status_code=403, detail="Access denied to this account")
+            
+            # For team accounts, we need to use a custom query that includes:
+            # 1. Agents owned by the team
+            # 2. Agents shared with the team
+            # 3. Default/public agents
+            # This requires using the RLS policies we set up in the database
+            query = client.table('agents').select('*', count='exact')
+            
+            # Use raw SQL filter to handle the complex visibility logic
+            query = query.or_(f"account_id.eq.{account_id},and(visibility.eq.teams,team_agents.team_account_id.eq.{account_id}),is_default.eq.true,visibility.eq.public")
+        else:
+            # For personal accounts, just show their own agents
+            query = client.table('agents').select('*', count='exact').eq("account_id", filter_account_id)
         
         # Apply search filter
         if search:
@@ -1279,7 +1306,7 @@ async def get_agents(
         # Format the response
         agent_list = []
         for agent in agents_data:
-            agent_list.append(AgentResponse(
+                            agent_list.append(AgentResponse(
                 agent_id=agent['agent_id'],
                 account_id=agent['account_id'],
                 name=agent['name'],
@@ -1290,6 +1317,7 @@ async def get_agents(
                 agentpress_tools=agent.get('agentpress_tools', {}),
                 is_default=agent.get('is_default', False),
                 is_public=agent.get('is_public', False),
+                visibility=agent.get('visibility', 'private'),
                 marketplace_published_at=agent.get('marketplace_published_at'),
                 download_count=agent.get('download_count', 0),
                 tags=agent.get('tags', []),
@@ -1352,6 +1380,7 @@ async def get_agent(agent_id: str, user_id: str = Depends(get_current_user_id_fr
             agentpress_tools=agent_data.get('agentpress_tools', {}),
             is_default=agent_data.get('is_default', False),
             is_public=agent_data.get('is_public', False),
+            visibility=agent_data.get('visibility', 'private'),
             marketplace_published_at=agent_data.get('marketplace_published_at'),
             download_count=agent_data.get('download_count', 0),
             tags=agent_data.get('tags', []),
@@ -1424,6 +1453,7 @@ async def create_agent(
             agentpress_tools=agent.get('agentpress_tools', {}),
             is_default=agent.get('is_default', False),
             is_public=agent.get('is_public', False),
+            visibility=agent.get('visibility', 'private'),
             marketplace_published_at=agent.get('marketplace_published_at'),
             download_count=agent.get('download_count', 0),
             tags=agent.get('tags', []),
@@ -1524,6 +1554,7 @@ async def update_agent(
             agentpress_tools=agent.get('agentpress_tools', {}),
             is_default=agent.get('is_default', False),
             is_public=agent.get('is_public', False),
+            visibility=agent.get('visibility', 'private'),
             marketplace_published_at=agent.get('marketplace_published_at'),
             download_count=agent.get('download_count', 0),
             tags=agent.get('tags', []),
@@ -1598,6 +1629,8 @@ class MarketplaceAgentsResponse(BaseModel):
 
 class PublishAgentRequest(BaseModel):
     tags: Optional[List[str]] = []
+    visibility: Optional[str] = "public"  # "public", "teams", or "private"
+    team_ids: Optional[List[str]] = []  # Team account IDs to share with
 
 @router.get("/marketplace/agents", response_model=MarketplaceAgentsResponse)
 async def get_marketplace_agents(
@@ -1606,7 +1639,8 @@ async def get_marketplace_agents(
     search: Optional[str] = Query(None, description="Search in name and description"),
     tags: Optional[str] = Query(None, description="Comma-separated string of tags"),
     sort_by: Optional[str] = Query("newest", description="Sort by: newest, popular, most_downloaded, name"),
-    creator: Optional[str] = Query(None, description="Filter by creator name")
+    creator: Optional[str] = Query(None, description="Filter by creator name"),
+    account_id: Optional[str] = Query(None, description="Filter by specific account ID for team-specific marketplace")
 ):
     """Get public agents from the marketplace with pagination, search, sort, and filter support."""
     if not await is_enabled("agent_marketplace"):
@@ -1628,7 +1662,8 @@ async def get_marketplace_agents(
             'p_search': search,
             'p_tags': tags_array,
             'p_limit': limit + 1,
-            'p_offset': offset
+            'p_offset': offset,
+            'p_account_id': account_id  # Pass account_id for team-specific filtering
         }).execute()
         
         if result.data is None:
@@ -1680,14 +1715,14 @@ async def publish_agent_to_marketplace(
     publish_data: PublishAgentRequest,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    """Publish an agent to the marketplace."""
+    """Publish an agent to the marketplace or share with specific teams."""
     if not await is_enabled("agent_marketplace"):
         raise HTTPException(
             status_code=403, 
             detail="Custom agent currently disabled. This feature is not available at the moment."
         )
     
-    logger.info(f"Publishing agent {agent_id} to marketplace")
+    logger.info(f"Publishing agent {agent_id} with visibility: {publish_data.visibility}")
     client = await db.client
     
     try:
@@ -1700,19 +1735,54 @@ async def publish_agent_to_marketplace(
         if agent['account_id'] != user_id:
             raise HTTPException(status_code=403, detail="Access denied")
         
-        # Update agent with marketplace data
-        update_data = {
-            'is_public': True,
-            'marketplace_published_at': datetime.now(timezone.utc).isoformat()
-        }
+        # Validate visibility
+        if publish_data.visibility not in ["public", "teams", "private"]:
+            raise HTTPException(status_code=400, detail="Invalid visibility. Must be 'public', 'teams', or 'private'")
         
+        # If sharing with teams, validate user has admin access to those teams
+        if publish_data.visibility == "teams" and publish_data.team_ids:
+            # Get user's teams where they are owner
+            teams_result = await client.rpc('get_accounts').execute()
+            if not teams_result.data:
+                raise HTTPException(status_code=403, detail="Unable to verify team permissions")
+            
+            admin_team_ids = set()
+            for account in teams_result.data:
+                if not account.get('personal_account') and account.get('role') == 'owner':
+                    admin_team_ids.add(account['account_id'])
+            
+            # Check if all requested teams are in admin list
+            requested_team_ids = set(publish_data.team_ids)
+            if not requested_team_ids.issubset(admin_team_ids):
+                raise HTTPException(status_code=403, detail="You must be an admin of all teams you're sharing with")
+        
+        # Use the new database function with visibility support
+        if publish_data.visibility == "teams" and publish_data.team_ids:
+            # Call the new function with team visibility
+            await client.rpc('publish_agent_with_visibility', {
+                'p_agent_id': agent_id,
+                'p_visibility': publish_data.visibility,
+                'p_team_ids': publish_data.team_ids
+            }).execute()
+        else:
+            # For public or private visibility
+            await client.rpc('publish_agent_with_visibility', {
+                'p_agent_id': agent_id,
+                'p_visibility': publish_data.visibility
+            }).execute()
+        
+        # Update tags if provided
         if publish_data.tags:
-            update_data['tags'] = publish_data.tags
+            await client.table('agents').update({'tags': publish_data.tags}).eq('agent_id', agent_id).execute()
         
-        await client.table('agents').update(update_data).eq('agent_id', agent_id).execute()
+        message = {
+            "public": "Agent published to marketplace successfully",
+            "teams": f"Agent shared with {len(publish_data.team_ids)} team(s)",
+            "private": "Agent set to private"
+        }.get(publish_data.visibility, "Agent visibility updated")
         
-        logger.info(f"Successfully published agent {agent_id} to marketplace")
-        return {"message": "Agent published to marketplace successfully"}
+        logger.info(f"Successfully updated agent {agent_id} visibility to {publish_data.visibility}")
+        return {"message": message}
         
     except HTTPException:
         raise
@@ -1745,11 +1815,11 @@ async def unpublish_agent_from_marketplace(
         if agent['account_id'] != user_id:
             raise HTTPException(status_code=403, detail="Access denied")
         
-        # Update agent to remove from marketplace
-        await client.table('agents').update({
-            'is_public': False,
-            'marketplace_published_at': None
-        }).eq('agent_id', agent_id).execute()
+        # Update agent to remove from marketplace using the visibility function
+        await client.rpc('publish_agent_with_visibility', {
+            'p_agent_id': agent_id,
+            'p_visibility': 'private'
+        }).execute()
         
         logger.info(f"Successfully unpublished agent {agent_id} from marketplace")
         return {"message": "Agent removed from marketplace successfully"}

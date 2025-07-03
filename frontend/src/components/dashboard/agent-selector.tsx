@@ -36,8 +36,7 @@ export function AgentSelector({
     limit: 100,
     sort_by: 'name',
     sort_order: 'asc',
-    // TODO: Add account_id filter when backend supports it
-    // account_id: currentAccount?.account_id
+    account_id: currentAccount?.account_id
   });
 
   
@@ -50,23 +49,7 @@ export function AgentSelector({
 
   // Filter agents based on account context
   const allAgents = agentsResponse?.agents || [];
-  const agents = useMemo(() => {
-    if (!currentAccount) return allAgents;
-    
-    // In team context, only show team-specific agents
-    if (currentAccount.is_team_context) {
-      // TODO: Filter based on team ownership when backend supports it
-      // For now, we'll show all agents but this should be filtered
-      return allAgents.filter(agent => {
-        // Only show default agents and team-owned agents
-        // This is a placeholder - real implementation needs backend support
-        return agent.is_default || agent.account_id === currentAccount.account_id;
-      });
-    }
-    
-    // In personal context, show all personal agents
-    return allAgents;
-  }, [allAgents, currentAccount]);
+  const agents = allAgents; // Backend now handles filtering via account_id parameter
   
   const defaultAgent = agents.find(agent => agent.is_default);
   const currentAgent = selectedAgentId 

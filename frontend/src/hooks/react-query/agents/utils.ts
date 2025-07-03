@@ -22,6 +22,7 @@ export type Agent = {
   agentpress_tools: Record<string, any>;
   is_default: boolean;
   is_public?: boolean;
+  visibility?: 'public' | 'teams' | 'private';
   marketplace_published_at?: string;
   download_count?: number;
   tags?: string[];
@@ -53,6 +54,7 @@ export type AgentsParams = {
   has_mcp_tools?: boolean;
   has_agentpress_tools?: boolean;
   tools?: string;
+  account_id?: string;
 };
 
 export type ThreadAgentResponse = {
@@ -120,6 +122,7 @@ export const getAgents = async (params: AgentsParams = {}): Promise<AgentsRespon
     if (params.has_mcp_tools !== undefined) queryParams.append('has_mcp_tools', params.has_mcp_tools.toString());
     if (params.has_agentpress_tools !== undefined) queryParams.append('has_agentpress_tools', params.has_agentpress_tools.toString());
     if (params.tools) queryParams.append('tools', params.tools);
+    if (params.account_id) queryParams.append('account_id', params.account_id);
 
     const url = `${API_URL}/agents${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
 
