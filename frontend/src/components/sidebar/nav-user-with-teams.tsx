@@ -173,19 +173,33 @@ export function NavUserWithTeams({
   const handleTeamSwitch = async (team: any) => {
     console.log('Switching to:', team.personal_account ? 'Personal' : `Team: ${team.name}`);
     
-    // Clear team context from sessionStorage when switching to personal account
-    if (team.personal_account) {
+    // Store team context in sessionStorage BEFORE navigation
+    if (!team.personal_account) {
+      try {
+        sessionStorage.setItem(TEAM_CONTEXT_KEY, JSON.stringify({
+          account_id: team.account_id,
+          name: team.name,
+          slug: team.slug,
+          timestamp: Date.now()
+        }));
+        console.log('Stored team context for:', team.name);
+      } catch (error) {
+        console.warn('Failed to store team context:', error);
+      }
+    } else {
+      // Clear team context when switching to personal account
       try {
         sessionStorage.removeItem(TEAM_CONTEXT_KEY);
+        console.log('Cleared team context');
       } catch (error) {
         console.warn('Failed to clear team context:', error);
       }
     }
     
-    // Navigate first to ensure URL changes
-    const targetUrl = team.personal_account ? '/dashboard' : `/${team.slug}/settings`;
+    // Both personal and team accounts now navigate to /dashboard for consistency
+    const targetUrl = '/dashboard';
     
-    // Force navigation even if URL is the same by adding a timestamp query param temporarily
+    // Force navigation even if URL is the same by adding a temporary query param
     const currentUrl = window.location.pathname;
     const isUrlChanging = currentUrl !== targetUrl;
     
@@ -200,11 +214,12 @@ export function NavUserWithTeams({
       }, 100);
     }
     
-    // Wait a bit for navigation to complete before invalidating queries
+    // Wait longer for navigation and account context to update before invalidating queries
     setTimeout(() => {
+      console.log('Invalidating queries after account switch');
       queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
       queryClient.invalidateQueries({ queryKey: threadKeys.lists() });
-    }, 100);
+    }, 200);
   };
 
   const displayedUser = currentAccount || {
@@ -314,6 +329,20 @@ export function NavUserWithTeams({
                   )}
                 </DropdownMenuItem>
               ))}
+              
+              {/* Add settings link for current team */}
+              {currentAccount && !currentAccount.personal_account && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => router.push(`/${currentAccount.slug}/settings`)}
+                    className="gap-2 p-2 cursor-pointer text-muted-foreground"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <div className="font-medium">Team Settings</div>
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
 
