@@ -75,9 +75,50 @@ export function NavUserWithTeams({
   // Add state to track the current account and prevent flickering
   const [currentAccountState, setCurrentAccountState] = React.useState<any>(null);
 
+  // Initialize account state from sessionStorage on component mount
+  React.useEffect(() => {
+    if (!accounts) return;
+
+    try {
+      const storedContext = sessionStorage.getItem(TEAM_CONTEXT_KEY);
+      if (storedContext) {
+        const context = JSON.parse(storedContext);
+        const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+        
+        if (context.timestamp > fiveMinutesAgo) {
+          const teamAccount = accounts.find(
+            (account) => !account.personal_account && account.account_id === context.account_id
+          );
+          
+          if (teamAccount) {
+            const teamAccountState = {
+              ...teamAccount,
+              email: `Team: ${teamAccount.name}`,
+              avatar: user.avatar,
+            };
+            setCurrentAccountState(teamAccountState);
+            return;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to read team context on mount:', error);
+    }
+
+    // Default to personal account if no team context
+    const personalAccount = accounts.find((account) => account.personal_account);
+    if (personalAccount) {
+      setCurrentAccountState({
+        ...personalAccount,
+        email: user.email,
+        avatar: user.avatar,
+      });
+    }
+  }, [accounts, user]);
+
   // Determine current account with team context persistence
   const currentAccount = React.useMemo(() => {
-    if (!accounts) return null;
+    if (!accounts) return currentAccountState;
 
     // Extract team slug from URL path
     const teamMatch = pathname?.match(/^\/([^\/]+)(?:\/|$)/);
@@ -137,7 +178,7 @@ export function NavUserWithTeams({
     }
 
     return determinedAccount;
-  }, [pathname, accounts, user]);
+  }, [pathname, accounts, user, currentAccountState]);
 
   // Update state when currentAccount changes
   React.useEffect(() => {
