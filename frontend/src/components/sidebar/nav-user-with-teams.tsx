@@ -96,8 +96,8 @@ export function NavUserWithTeams({
       }
     }
 
-    // If we're on dashboard or no team found in URL, check for stored team context
-    if (!determinedAccount && (teamSlug === 'dashboard' || !teamSlug)) {
+    // If no team found in URL, check for stored team context
+    if (!determinedAccount) {
       try {
         const storedContext = sessionStorage.getItem(TEAM_CONTEXT_KEY);
         if (storedContext) {
