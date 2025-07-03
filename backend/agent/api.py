@@ -1742,10 +1742,10 @@ async def publish_agent_to_marketplace(
         # If sharing with teams, validate user has admin access to those teams
         if publish_data.visibility == "teams" and publish_data.team_ids:
             # Query user's team memberships directly instead of using get_accounts() which relies on auth.uid()
-            teams_result = await client.table('basejump.account_user').select('''
+            teams_result = await client.table('account_user').select('''
                 account_id,
                 account_role,
-                basejump.accounts!inner(name, personal_account)
+                accounts!inner(name, personal_account)
             ''').eq('user_id', user_id).eq('account_role', 'owner').execute()
             
             if not teams_result.data:
@@ -1754,7 +1754,7 @@ async def publish_agent_to_marketplace(
             # Get team IDs where user is owner (excluding personal accounts)
             admin_team_ids = set()
             for membership in teams_result.data:
-                account = membership.get('basejump.accounts')
+                account = membership.get('accounts')
                 if account and not account.get('personal_account'):
                     admin_team_ids.add(membership['account_id'])
             
