@@ -99,23 +99,21 @@ export function NavUserWithTeams({
     // If we're on dashboard or no team found in URL, check for stored team context
     if (!determinedAccount && (teamSlug === 'dashboard' || !teamSlug)) {
       try {
-        const storedContext = sessionStorage.getItem(TEAM_CONTEXT_KEY);
+        const storedContext = localStorage.getItem(TEAM_CONTEXT_KEY);
         if (storedContext) {
           const context = JSON.parse(storedContext);
-          const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
           
-          if (context.timestamp > fiveMinutesAgo) {
-            const teamAccount = accounts.find(
-              (account) => !account.personal_account && account.account_id === context.account_id
-            );
-            
-            if (teamAccount) {
-              determinedAccount = {
-                ...teamAccount,
-                email: `Team: ${teamAccount.name}`,
-                avatar: user.avatar,
-              };
-            }
+          // Find the stored team account (removed expiry check for better persistence)
+          const teamAccount = accounts.find(
+            (account) => !account.personal_account && account.account_id === context.account_id
+          );
+          
+          if (teamAccount) {
+            determinedAccount = {
+              ...teamAccount,
+              email: `Team: ${teamAccount.name}`,
+              avatar: user.avatar,
+            };
           }
         }
       } catch (error) {
@@ -123,18 +121,74 @@ export function NavUserWithTeams({
       }
     }
 
-    // Default to personal account only if no team context found
+    // Only fall back to personal account if no team context exists at all
     if (!determinedAccount) {
-      const personalAccount = accounts.find((account) => account.personal_account);
-      determinedAccount = personalAccount ? {
-        ...personalAccount,
-        email: user.email,
-        avatar: user.avatar,
-      } : null;
+      // Check if we have any stored team context first
+      try {
+        const storedContext = localStorage.getItem(TEAM_CONTEXT_KEY);
+        if (!storedContext) {
+          // No team context stored, use personal account
+          const personalAccount = accounts.find((account) => account.personal_account);
+          determinedAccount = personalAccount ? {
+            ...personalAccount,
+            email: user.email,
+            avatar: user.avatar,
+          } : null;
+        } else {
+          // Team context exists but team not found, maybe team was deleted
+          // In this case, we should clear the invalid context and use personal account
+          const context = JSON.parse(storedContext);
+          const teamStillExists = accounts.find(
+            (account) => !account.personal_account && account.account_id === context.account_id
+          );
+          
+          if (!teamStillExists) {
+            // Clear invalid team context
+            localStorage.removeItem(TEAM_CONTEXT_KEY);
+            // Use personal account
+            const personalAccount = accounts.find((account) => account.personal_account);
+            determinedAccount = personalAccount ? {
+              ...personalAccount,
+              email: user.email,
+              avatar: user.avatar,
+            } : null;
+          }
+        }
+      } catch (error) {
+        // Error reading storage, fall back to personal account
+        console.warn('Failed to read team context:', error);
+        const personalAccount = accounts.find((account) => account.personal_account);
+        determinedAccount = personalAccount ? {
+          ...personalAccount,
+          email: user.email,
+          avatar: user.avatar,
+        } : null;
+      }
     }
 
     return determinedAccount;
   }, [pathname, accounts, user]);
+
+  // Ensure team context is preserved during component re-renders
+  React.useEffect(() => {
+    // This effect helps maintain team context stability during sidebar transitions
+    if (accounts && currentAccount && !currentAccount.personal_account) {
+      try {
+        const storedContext = localStorage.getItem(TEAM_CONTEXT_KEY);
+        if (!storedContext) {
+          // If we have a team account but no stored context, save it
+          localStorage.setItem(TEAM_CONTEXT_KEY, JSON.stringify({
+            account_id: currentAccount.account_id,
+            name: currentAccount.name,
+            slug: currentAccount.slug,
+            timestamp: Date.now()
+          }));
+        }
+      } catch (error) {
+        console.warn('Failed to preserve team context:', error);
+      }
+    }
+  }, [accounts, currentAccount]);
 
   // Prepare personal account and team accounts
   const personalAccount = React.useMemo(
@@ -179,11 +233,11 @@ export function NavUserWithTeams({
   const handleTeamSwitch = (team: any) => {
     console.log('Switching to:', team.personal_account ? 'Personal' : `Team: ${team.name}`);
     
-    // Update sessionStorage immediately
+    // Update localStorage immediately for better persistence
     if (!team.personal_account) {
       // Store team context
       try {
-        sessionStorage.setItem(TEAM_CONTEXT_KEY, JSON.stringify({
+        localStorage.setItem(TEAM_CONTEXT_KEY, JSON.stringify({
           account_id: team.account_id,
           name: team.name,
           slug: team.slug,
@@ -195,7 +249,7 @@ export function NavUserWithTeams({
     } else {
       // Clear team context for personal account
       try {
-        sessionStorage.removeItem(TEAM_CONTEXT_KEY);
+        localStorage.removeItem(TEAM_CONTEXT_KEY);
       } catch (error) {
         console.warn('Failed to clear team context:', error);
       }
