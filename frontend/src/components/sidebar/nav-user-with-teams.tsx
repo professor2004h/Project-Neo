@@ -49,6 +49,8 @@ import {
 import { useModal } from '@/hooks/use-modal-store';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from 'next-themes';
+import { useQueryClient } from '@tanstack/react-query';
+import { projectKeys, threadKeys } from '@/hooks/react-query/sidebar/keys';
 
 const TEAM_CONTEXT_KEY = 'current_team_context';
 
@@ -68,6 +70,7 @@ export function NavUserWithTeams({
   const [showNewTeamDialog, setShowNewTeamDialog] = React.useState(false);
   const { theme, setTheme } = useTheme();
   const { onOpen } = useModal();
+  const queryClient = useQueryClient();
 
   // Determine current account with team context persistence
   const currentAccount = React.useMemo(() => {
@@ -168,6 +171,10 @@ export function NavUserWithTeams({
   };
 
   const handleTeamSwitch = (team: any) => {
+    // Invalidate all sidebar queries to force refresh when switching accounts
+    queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+    queryClient.invalidateQueries({ queryKey: threadKeys.lists() });
+    
     if (team.personal_account) {
       router.push('/dashboard');
     } else {
