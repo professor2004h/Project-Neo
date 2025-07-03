@@ -74,11 +74,10 @@ export function NavUserWithTeams({
 
   // Add state to track the current account and prevent flickering
   const [currentAccountState, setCurrentAccountState] = React.useState<any>(null);
-  const [isInitialized, setIsInitialized] = React.useState(false);
 
   // Determine current account with team context persistence
   const currentAccount = React.useMemo(() => {
-    if (!accounts) return currentAccountState;
+    if (!accounts) return null;
 
     // Extract team slug from URL path
     const teamMatch = pathname?.match(/^\/([^\/]+)(?:\/|$)/);
@@ -137,16 +136,15 @@ export function NavUserWithTeams({
       } : null;
     }
 
-    // Update state and mark as initialized
-    if (determinedAccount !== currentAccountState) {
-      setCurrentAccountState(determinedAccount);
-    }
-    if (!isInitialized) {
-      setIsInitialized(true);
-    }
-
     return determinedAccount;
-  }, [pathname, accounts, user, currentAccountState, isInitialized]);
+  }, [pathname, accounts, user]);
+
+  // Update state when currentAccount changes
+  React.useEffect(() => {
+    if (currentAccount && currentAccount !== currentAccountState) {
+      setCurrentAccountState(currentAccount);
+    }
+  }, [currentAccount, currentAccountState]);
 
   // Prepare personal account and team accounts
   const personalAccount = React.useMemo(
@@ -224,7 +222,7 @@ export function NavUserWithTeams({
     }, 100);
   };
 
-  const displayedUser = currentAccount || {
+  const displayedUser = currentAccount || currentAccountState || {
     name: user.name,
     email: user.email,
     avatar: user.avatar,
