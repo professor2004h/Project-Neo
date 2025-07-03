@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { getAgentAvatar } from '../_utils/get-agent-style';
 import { usePublishAgent, useUnpublishAgent } from '@/hooks/react-query/marketplace/use-marketplace';
 import { toast } from 'sonner';
+import { PublishAgentDialog } from './publish-agent-dialog';
 
 interface Agent {
   agent_id: string;
@@ -170,9 +171,9 @@ export const AgentsGrid = ({
   deleteAgentMutation 
 }: AgentsGridProps) => {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [publishDialogAgent, setPublishDialogAgent] = useState<Agent | null>(null);
   const router = useRouter();
   
-  const publishAgentMutation = usePublishAgent();
   const unpublishAgentMutation = useUnpublishAgent();
 
   const handleAgentClick = (agent: Agent) => {
@@ -189,13 +190,11 @@ export const AgentsGrid = ({
     setSelectedAgent(null);
   };
 
-  const handlePublish = async (agentId: string) => {
-    try {
-      await publishAgentMutation.mutateAsync({ agentId, tags: [] });
-      toast.success('Agent published to marketplace successfully!');
+  const handlePublish = (agentId: string) => {
+    const agent = agents.find(a => a.agent_id === agentId);
+    if (agent) {
+      setPublishDialogAgent(agent);
       setSelectedAgent(null);
-    } catch (error: any) {
-      toast.error('Failed to publish agent to marketplace');
     }
   };
 
@@ -331,8 +330,20 @@ export const AgentsGrid = ({
           onChat={handleChat}
           onPublish={handlePublish}
           onUnpublish={handleUnpublish}
-          isPublishing={publishAgentMutation.isPending}
+          isPublishing={false}
           isUnpublishing={unpublishAgentMutation.isPending}
+        />
+      )}
+      
+      {publishDialogAgent && (
+        <PublishAgentDialog
+          agent={publishDialogAgent}
+          isOpen={!!publishDialogAgent}
+          onClose={() => setPublishDialogAgent(null)}
+          onSuccess={() => {
+            setPublishDialogAgent(null);
+            // TODO: Refresh agents list
+          }}
         />
       )}
     </>

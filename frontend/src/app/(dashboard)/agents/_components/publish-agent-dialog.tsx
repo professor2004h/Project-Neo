@@ -1,0 +1,205 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Globe, Users, Check } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAccounts } from '@/hooks/use-accounts';
+import { usePublishAgent } from '@/hooks/react-query/marketplace/use-marketplace';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+
+interface PublishAgentDialogProps {
+  agent: {
+    agent_id: string;
+    name: string;
+    description?: string;
+  };
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
+}
+
+export function PublishAgentDialog({ 
+  agent, 
+  isOpen, 
+  onClose,
+  onSuccess 
+}: PublishAgentDialogProps) {
+  const [publishType, setPublishType] = useState<'marketplace' | 'teams'>('marketplace');
+  const [selectedTeams, setSelectedTeams] = useState<Set<string>>(new Set());
+  const { data: accounts } = useAccounts();
+  const publishAgentMutation = usePublishAgent();
+  
+  // Filter teams where user is an admin (owner)
+  const adminTeams = accounts?.filter(
+    account => !account.personal_account && account.role === 'owner'
+  ) || [];
+
+  const handlePublish = async () => {
+    try {
+      if (publishType === 'teams' && selectedTeams.size === 0) {
+        toast.error('Please select at least one team');
+        return;
+      }
+
+      // TODO: Update backend API to support team-specific publishing
+      // For now, we only support marketplace publishing
+      if (publishType === 'teams') {
+        toast.error('Team-specific publishing is coming soon!');
+        return;
+      }
+      
+      await publishAgentMutation.mutateAsync({
+        agentId: agent.agent_id,
+        tags: []
+      });
+      
+      const message = publishType === 'marketplace' 
+        ? 'Agent published to marketplace successfully!'
+        : `Agent shared with ${selectedTeams.size} team${selectedTeams.size > 1 ? 's' : ''}`;
+      
+      toast.success(message);
+      onSuccess?.();
+      onClose();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to publish agent');
+    }
+  };
+
+  const toggleTeam = (teamId: string) => {
+    setSelectedTeams(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(teamId)) {
+        newSet.delete(teamId);
+      } else {
+        newSet.add(teamId);
+      }
+      return newSet;
+    });
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Publish Agent</DialogTitle>
+          <DialogDescription>
+            Choose how you want to share "{agent.name}"
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <RadioGroup value={publishType} onValueChange={(value: any) => setPublishType(value)}>
+            <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
+              <RadioGroupItem value="marketplace" id="marketplace" className="mt-1" />
+              <Label htmlFor="marketplace" className="flex-1 cursor-pointer">
+                <div className="flex items-center gap-2 mb-1">
+                  <Globe className="h-4 w-4" />
+                  <span className="font-medium">Public Marketplace</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Share with everyone. Your agent will be discoverable by all users.
+                </p>
+              </Label>
+            </div>
+
+            <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
+              <RadioGroupItem value="teams" id="teams" className="mt-1" />
+              <Label htmlFor="teams" className="flex-1 cursor-pointer">
+                <div className="flex items-center gap-2 mb-1">
+                  <Users className="h-4 w-4" />
+                  <span className="font-medium">Specific Teams</span>
+                  {adminTeams.length === 0 && (
+                    <Badge variant="secondary" className="text-xs">No teams available</Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Share only with teams where you're an admin.
+                </p>
+              </Label>
+            </div>
+          </RadioGroup>
+
+          {publishType === 'teams' && adminTeams.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Select teams to share with:</Label>
+              <ScrollArea className="h-[200px] rounded-md border p-2">
+                <div className="space-y-2">
+                  {adminTeams.map(team => (
+                    <div
+                      key={team.account_id}
+                      className="flex items-center space-x-2 p-2 rounded hover:bg-muted/50 cursor-pointer"
+                      onClick={() => toggleTeam(team.account_id)}
+                    >
+                      <Checkbox
+                        id={team.account_id}
+                        checked={selectedTeams.has(team.account_id)}
+                        onCheckedChange={() => toggleTeam(team.account_id)}
+                      />
+                      <Label
+                        htmlFor={team.account_id}
+                        className="flex-1 cursor-pointer"
+                      >
+                        {team.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+              {selectedTeams.size > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedTeams.size} team{selectedTeams.size > 1 ? 's' : ''} selected
+                </p>
+              )}
+            </div>
+          )}
+
+          {publishType === 'teams' && adminTeams.length === 0 && (
+            <div className="p-4 rounded-lg bg-muted/50 text-center">
+              <p className="text-sm text-muted-foreground">
+                You need to be an admin of at least one team to share agents with teams.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handlePublish}
+            disabled={
+              publishAgentMutation.isPending ||
+              (publishType === 'teams' && (adminTeams.length === 0 || selectedTeams.size === 0))
+            }
+          >
+            {publishAgentMutation.isPending ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2" />
+                Publishing...
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Publish
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+} 

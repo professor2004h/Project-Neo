@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ChevronDown, Plus, Star, Bot, Edit, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { CreateAgentDialog } from '@/app/(dashboard)/agents/_components/create-agent-dialog';
 import { useFeatureFlags } from '@/lib/feature-flags';
+import { useCurrentAccount } from '@/hooks/use-current-account';
 
 interface AgentSelectorProps {
   onAgentSelect?: (agentId: string | undefined) => void;
@@ -30,10 +31,13 @@ export function AgentSelector({
   className,
   variant = 'default',
 }: AgentSelectorProps) {
+  const currentAccount = useCurrentAccount();
   const { data: agentsResponse, isLoading, refetch: loadAgents } = useAgents({
     limit: 100,
     sort_by: 'name',
-    sort_order: 'asc'
+    sort_order: 'asc',
+    // TODO: Add account_id filter when backend supports it
+    // account_id: currentAccount?.account_id
   });
 
   
@@ -44,7 +48,26 @@ export function AgentSelector({
   const [isOpen, setIsOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  const agents = agentsResponse?.agents || [];
+  // Filter agents based on account context
+  const allAgents = agentsResponse?.agents || [];
+  const agents = useMemo(() => {
+    if (!currentAccount) return allAgents;
+    
+    // In team context, only show team-specific agents
+    if (currentAccount.is_team_context) {
+      // TODO: Filter based on team ownership when backend supports it
+      // For now, we'll show all agents but this should be filtered
+      return allAgents.filter(agent => {
+        // Only show default agents and team-owned agents
+        // This is a placeholder - real implementation needs backend support
+        return agent.is_default || agent.account_id === currentAccount.account_id;
+      });
+    }
+    
+    // In personal context, show all personal agents
+    return allAgents;
+  }, [allAgents, currentAccount]);
+  
   const defaultAgent = agents.find(agent => agent.is_default);
   const currentAgent = selectedAgentId 
     ? agents.find(agent => agent.agent_id === selectedAgentId)
@@ -192,8 +215,9 @@ export function AgentSelector({
                 </>
               ) : null}
 
-              <DropdownMenuSeparator />
-              
+                          <DropdownMenuSeparator />
+            
+            {!currentAccount?.is_team_context && (
               <DropdownMenuItem onClick={handleCreateAgent} className="cursor-pointer">
                 <div className="flex items-center justify-between w-full">
                   Agent Playground
@@ -202,6 +226,7 @@ export function AgentSelector({
                   </Badge>
                 </div>
               </DropdownMenuItem>
+            )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -312,15 +337,19 @@ export function AgentSelector({
             
             <DropdownMenuSeparator />
             
-            <DropdownMenuItem onClick={handleCreateAgent} className="cursor-pointer">
-              <Plus className="h-4 w-4" />
-              Create New Agent
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem onClick={handleManageAgents} className="cursor-pointer">
-              <Bot className="h-4 w-4" />
-              Manage All Agents
-            </DropdownMenuItem>
+            {!currentAccount?.is_team_context && (
+              <>
+                <DropdownMenuItem onClick={handleCreateAgent} className="cursor-pointer">
+                  <Plus className="h-4 w-4" />
+                  Create New Agent
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={handleManageAgents} className="cursor-pointer">
+                  <Bot className="h-4 w-4" />
+                  Manage All Agents
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

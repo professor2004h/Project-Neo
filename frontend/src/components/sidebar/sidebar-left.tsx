@@ -32,6 +32,7 @@ import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import { useFeatureFlags } from '@/lib/feature-flags';
+import { useCurrentAccount } from '@/hooks/use-current-account';
 
 export function SidebarLeft({
   ...props
@@ -49,10 +50,14 @@ export function SidebarLeft({
   });
 
   const pathname = usePathname();
+  const currentAccount = useCurrentAccount();
   const { flags, loading: flagsLoading } = useFeatureFlags(['custom_agents', 'agent_marketplace', 'enterprise_demo']);
   const customAgentsEnabled = flags.custom_agents;
   const marketplaceEnabled = flags.agent_marketplace;
   const enterpriseDemoEnabled = flags.enterprise_demo;
+  
+  // Hide agent playground for team accounts
+  const showAgentPlayground = customAgentsEnabled && !currentAccount?.is_team_context;
 
   // Fetch user data
   useEffect(() => {
@@ -139,9 +144,9 @@ export function SidebarLeft({
         </div>
       </SidebarHeader>
       <SidebarContent className="[&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-        {!flagsLoading && (customAgentsEnabled || marketplaceEnabled) && (
+        {!flagsLoading && (showAgentPlayground || marketplaceEnabled) && (
           <SidebarGroup>
-            {customAgentsEnabled && (
+            {showAgentPlayground && (
               <Link href="/agents">
                 <SidebarMenuButton className={cn({
                   'bg-primary/10 font-medium': pathname === '/agents',
