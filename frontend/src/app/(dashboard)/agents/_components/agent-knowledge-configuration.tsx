@@ -179,21 +179,6 @@ export const AgentKnowledgeConfiguration = ({
             </Button>
           </div>
         </div>
-
-        {/* Configuration Help */}
-        <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-          <h4 className="text-sm font-medium flex items-center gap-2">
-            <Info className="h-4 w-4" />
-            Configuration Required
-          </h4>
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>To use knowledge bases, ensure these environment variables are set:</p>
-            <ul className="list-disc list-inside ml-2 space-y-1">
-              <li><code className="bg-muted px-1 py-0.5 rounded">LLAMA_CLOUD_API_KEY</code> - Your LlamaCloud API key</li>
-              <li><code className="bg-muted px-1 py-0.5 rounded">LLAMA_CLOUD_PROJECT_NAME</code> - Your project name (default: "Default")</li>
-            </ul>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );

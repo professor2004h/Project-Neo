@@ -34,6 +34,7 @@ The Knowledge Search Tool allows agents to search through configured LlamaCloud 
 - Clean UI for adding/editing knowledge bases
 - Key-value pair interface for index name and description
 - Integrated into agent builder UI
+- Environment variables configuration is handled enterprise-side
 
 #### 2. Type Updates
 - Agent interfaces updated to include `knowledge_bases` field
