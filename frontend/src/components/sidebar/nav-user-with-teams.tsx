@@ -170,11 +170,12 @@ export function NavUserWithTeams({
     router.push('/');
   };
 
-  const handleTeamSwitch = async (team: any) => {
+  const handleTeamSwitch = (team: any) => {
     console.log('Switching to:', team.personal_account ? 'Personal' : `Team: ${team.name}`);
     
-    // Store team context in sessionStorage BEFORE navigation
+    // Update sessionStorage immediately
     if (!team.personal_account) {
+      // Store team context
       try {
         sessionStorage.setItem(TEAM_CONTEXT_KEY, JSON.stringify({
           account_id: team.account_id,
@@ -182,44 +183,21 @@ export function NavUserWithTeams({
           slug: team.slug,
           timestamp: Date.now()
         }));
-        console.log('Stored team context for:', team.name);
       } catch (error) {
         console.warn('Failed to store team context:', error);
       }
     } else {
-      // Clear team context when switching to personal account
+      // Clear team context for personal account
       try {
         sessionStorage.removeItem(TEAM_CONTEXT_KEY);
-        console.log('Cleared team context');
       } catch (error) {
         console.warn('Failed to clear team context:', error);
       }
     }
     
-    // Both personal and team accounts now navigate to /dashboard for consistency
-    const targetUrl = '/dashboard';
-    
-    // Force navigation even if URL is the same by adding a temporary query param
-    const currentUrl = window.location.pathname;
-    const isUrlChanging = currentUrl !== targetUrl;
-    
-    if (isUrlChanging) {
-      await router.push(targetUrl);
-    } else {
-      // Force a URL change by adding a temporary query param, then remove it
-      await router.push(`${targetUrl}?switch=${Date.now()}`);
-      // Remove the query param after a short delay
-      setTimeout(() => {
-        window.history.replaceState({}, '', targetUrl);
-      }, 100);
-    }
-    
-    // Wait longer for navigation and account context to update before invalidating queries
-    setTimeout(() => {
-      console.log('Invalidating queries after account switch');
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: threadKeys.lists() });
-    }, 200);
+    // Navigate to dashboard and force a full refresh
+    router.push('/dashboard');
+    router.refresh();
   };
 
   const displayedUser = currentAccount || {
