@@ -54,6 +54,7 @@ class AgentCreateRequest(BaseModel):
     custom_mcps: Optional[List[Dict[str, Any]]] = []
     agentpress_tools: Optional[Dict[str, Any]] = {}
     is_default: Optional[bool] = False
+    knowledge_bases: Optional[List[Dict[str, Any]]] = []
     avatar: Optional[str] = None
     avatar_color: Optional[str] = None
 
@@ -65,6 +66,7 @@ class AgentUpdateRequest(BaseModel):
     custom_mcps: Optional[List[Dict[str, Any]]] = None
     agentpress_tools: Optional[Dict[str, Any]] = None
     is_default: Optional[bool] = None
+    knowledge_bases: Optional[List[Dict[str, Any]]] = None
     avatar: Optional[str] = None
     avatar_color: Optional[str] = None
 
@@ -80,6 +82,7 @@ class AgentResponse(BaseModel):
     is_default: bool
     is_public: Optional[bool] = False
     visibility: Optional[str] = "private"  # "public", "teams", or "private"
+    knowledge_bases: Optional[List[Dict[str, Any]]] = []
     marketplace_published_at: Optional[str] = None
     download_count: Optional[int] = 0
     tags: Optional[List[str]] = []
@@ -1761,6 +1764,7 @@ async def get_agent(agent_id: str, user_id: str = Depends(get_current_user_id_fr
             is_default=agent_data.get('is_default', False),
             is_public=agent_data.get('is_public', False),
             visibility=agent_data.get('visibility', 'private'),
+            knowledge_bases=agent_data.get('knowledge_bases', []),
             marketplace_published_at=agent_data.get('marketplace_published_at'),
             download_count=agent_data.get('download_count', 0),
             tags=agent_data.get('tags', []),
@@ -1810,6 +1814,7 @@ async def create_agent(
             "custom_mcps": agent_data.custom_mcps or [],
             "agentpress_tools": agent_data.agentpress_tools or {},
             "is_default": agent_data.is_default or False,
+            "knowledge_bases": agent_data.knowledge_bases or [],
             "avatar": agent_data.avatar,
             "avatar_color": agent_data.avatar_color
         }
@@ -1834,6 +1839,7 @@ async def create_agent(
             is_default=agent.get('is_default', False),
             is_public=agent.get('is_public', False),
             visibility=agent.get('visibility', 'private'),
+            knowledge_bases=agent.get('knowledge_bases', []),
             marketplace_published_at=agent.get('marketplace_published_at'),
             download_count=agent.get('download_count', 0),
             tags=agent.get('tags', []),
@@ -1898,6 +1904,8 @@ async def update_agent(
             # If setting as default, unset other defaults first
             if agent_data.is_default:
                 await client.table('agents').update({"is_default": False}).eq("account_id", user_id).eq("is_default", True).neq("agent_id", agent_id).execute()
+        if agent_data.knowledge_bases is not None:
+            update_data["knowledge_bases"] = agent_data.knowledge_bases
         if agent_data.avatar is not None:
             update_data["avatar"] = agent_data.avatar
         if agent_data.avatar_color is not None:
@@ -1935,6 +1943,7 @@ async def update_agent(
             is_default=agent.get('is_default', False),
             is_public=agent.get('is_public', False),
             visibility=agent.get('visibility', 'private'),
+            knowledge_bases=agent.get('knowledge_bases', []),
             marketplace_published_at=agent.get('marketplace_published_at'),
             download_count=agent.get('download_count', 0),
             tags=agent.get('tags', []),
