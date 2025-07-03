@@ -1739,36 +1739,11 @@ async def publish_agent_to_marketplace(
         if publish_data.visibility not in ["public", "teams", "private"]:
             raise HTTPException(status_code=400, detail="Invalid visibility. Must be 'public', 'teams', or 'private'")
         
-        # If sharing with teams, validate user has admin access to those teams
-        if publish_data.visibility == "teams" and publish_data.team_ids:
-            # Query user's team memberships from basejump schema (no complex joins)
-            # Get user's owner memberships
-            memberships_result = await client.from_('basejump.account_user').select('account_id, account_role').eq('user_id', user_id).eq('account_role', 'owner').execute()
-            
-            if not memberships_result.data:
-                raise HTTPException(status_code=403, detail="Unable to verify team permissions - no owner memberships found")
-            
-            # Get account details for these memberships
-            member_account_ids = [m['account_id'] for m in memberships_result.data]
-            accounts_result = await client.from_('basejump.accounts').select('id, personal_account').in_('id', member_account_ids).execute()
-            
-            if not accounts_result.data:
-                raise HTTPException(status_code=403, detail="Unable to verify account details")
-            
-            # Get team IDs where user is owner (excluding personal accounts)
-            admin_team_ids = set()
-            for account in accounts_result.data:
-                if not account.get('personal_account'):
-                    admin_team_ids.add(account['id'])
-            
-            # Check if all requested teams are in admin list
-            requested_team_ids = set(publish_data.team_ids)
-            if not requested_team_ids.issubset(admin_team_ids):
-                missing_teams = requested_team_ids - admin_team_ids
-                raise HTTPException(
-                    status_code=403, 
-                    detail=f"You must be an admin of all teams you're sharing with. Missing permissions for: {', '.join(missing_teams)}"
-                )
+        # Note: Team permission validation is handled by the database function
+        # publish_agent_with_visibility_by_user() which validates:
+        # 1. User owns the agent
+        # 2. User is owner of their account  
+        # 3. User is owner of all target teams (if sharing with teams)
         
         # Use the new database function that accepts user_id explicitly
         await client.rpc('publish_agent_with_visibility_by_user', {
