@@ -72,13 +72,19 @@ export function NavUserWithTeams({
   const { onOpen } = useModal();
   const queryClient = useQueryClient();
 
+  // Add state to track the current account and prevent flickering
+  const [currentAccountState, setCurrentAccountState] = React.useState<any>(null);
+  const [isInitialized, setIsInitialized] = React.useState(false);
+
   // Determine current account with team context persistence
   const currentAccount = React.useMemo(() => {
-    if (!accounts) return null;
+    if (!accounts) return currentAccountState;
 
     // Extract team slug from URL path
     const teamMatch = pathname?.match(/^\/([^\/]+)(?:\/|$)/);
     const teamSlug = teamMatch?.[1];
+
+    let determinedAccount = null;
 
     // If we're on a team page, use that team
     if (teamSlug && teamSlug !== 'dashboard') {
@@ -86,7 +92,7 @@ export function NavUserWithTeams({
         (account) => !account.personal_account && account.slug === teamSlug
       );
       if (teamAccount) {
-        return {
+        determinedAccount = {
           ...teamAccount,
           email: `Team: ${teamAccount.name}`,
           avatar: user.avatar,
@@ -94,8 +100,8 @@ export function NavUserWithTeams({
       }
     }
 
-    // If we're on dashboard, check for stored team context
-    if (teamSlug === 'dashboard') {
+    // If we're on dashboard or no team found in URL, check for stored team context
+    if (!determinedAccount && (teamSlug === 'dashboard' || !teamSlug)) {
       try {
         const storedContext = sessionStorage.getItem(TEAM_CONTEXT_KEY);
         if (storedContext) {
@@ -108,7 +114,7 @@ export function NavUserWithTeams({
             );
             
             if (teamAccount) {
-              return {
+              determinedAccount = {
                 ...teamAccount,
                 email: `Team: ${teamAccount.name}`,
                 avatar: user.avatar,
@@ -121,14 +127,26 @@ export function NavUserWithTeams({
       }
     }
 
-    // Default to personal account
-    const personalAccount = accounts.find((account) => account.personal_account);
-    return personalAccount ? {
-      ...personalAccount,
-      email: user.email,
-      avatar: user.avatar,
-    } : null;
-  }, [pathname, accounts, user]);
+    // Default to personal account only if no team context found
+    if (!determinedAccount) {
+      const personalAccount = accounts.find((account) => account.personal_account);
+      determinedAccount = personalAccount ? {
+        ...personalAccount,
+        email: user.email,
+        avatar: user.avatar,
+      } : null;
+    }
+
+    // Update state and mark as initialized
+    if (determinedAccount !== currentAccountState) {
+      setCurrentAccountState(determinedAccount);
+    }
+    if (!isInitialized) {
+      setIsInitialized(true);
+    }
+
+    return determinedAccount;
+  }, [pathname, accounts, user, currentAccountState, isInitialized]);
 
   // Prepare personal account and team accounts
   const personalAccount = React.useMemo(
@@ -172,6 +190,9 @@ export function NavUserWithTeams({
 
   const handleTeamSwitch = (team: any) => {
     console.log('Switching to:', team.personal_account ? 'Personal' : `Team: ${team.name}`);
+    
+    // Update local state immediately to prevent flickering
+    setCurrentAccountState(team);
     
     // Update sessionStorage immediately
     if (!team.personal_account) {
