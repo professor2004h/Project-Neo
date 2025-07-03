@@ -135,17 +135,22 @@ export function NavUserWithTeams({
             avatar: user.avatar,
           } : null;
         } else {
-          // Team context exists but team not found, maybe team was deleted
-          // In this case, we should clear the invalid context and use personal account
+          // Team context exists, validate and use it
           const context = JSON.parse(storedContext);
           const teamStillExists = accounts.find(
             (account) => !account.personal_account && account.account_id === context.account_id
           );
           
-          if (!teamStillExists) {
-            // Clear invalid team context
+          if (teamStillExists) {
+            // Team exists, use it
+            determinedAccount = {
+              ...teamStillExists,
+              email: `Team: ${teamStillExists.name}`,
+              avatar: user.avatar,
+            };
+          } else {
+            // Clear invalid team context and use personal account
             localStorage.removeItem(TEAM_CONTEXT_KEY);
-            // Use personal account
             const personalAccount = accounts.find((account) => account.personal_account);
             determinedAccount = personalAccount ? {
               ...personalAccount,
