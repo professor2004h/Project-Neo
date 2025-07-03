@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   BadgeCheck,
@@ -60,6 +60,7 @@ export function NavUserWithTeams({
   };
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isMobile } = useSidebar();
   const { data: accounts } = useAccounts();
   const [showNewTeamDialog, setShowNewTeamDialog] = React.useState(false);
@@ -78,12 +79,14 @@ export function NavUserWithTeams({
   // Create a default list of teams with logos for the UI (will show until real data loads)
   const defaultTeams = [
     {
-      name: personalAccount?.name || 'Personal Account',
+      name: personalAccount?.name || user.name,
       logo: Command,
       plan: 'Personal',
       account_id: personalAccount?.account_id,
       slug: personalAccount?.slug,
       personal_account: true,
+      email: user.email,
+      avatar: user.avatar,
     },
     ...(teamAccounts?.map((team) => ({
       name: team.name,
@@ -92,41 +95,58 @@ export function NavUserWithTeams({
       account_id: team.account_id,
       slug: team.slug,
       personal_account: false,
+      email: `Team: ${team.name}`,
+      avatar: user.avatar, // Keep same avatar for teams
     })) || []),
   ];
 
-  // Use the first team or first entry in defaultTeams as activeTeam
-  const [activeTeam, setActiveTeam] = React.useState(defaultTeams[0]);
-
-  // Update active team when accounts load
-  React.useEffect(() => {
-    if (accounts?.length) {
-      const currentTeam = accounts.find(
-        (account) => account.account_id === activeTeam.account_id,
+  // Detect current team from URL
+  const currentTeamFromUrl = React.useMemo(() => {
+    if (!accounts) return null;
+    
+    // Check if we're on a team route like /team-slug/...
+    const pathSegments = pathname.split('/').filter(Boolean);
+    if (pathSegments.length > 0) {
+      const possibleSlug = pathSegments[0];
+      const teamFromUrl = accounts.find(account => 
+        !account.personal_account && account.slug === possibleSlug
       );
-      if (currentTeam) {
-        setActiveTeam({
-          name: currentTeam.name,
-          logo: currentTeam.personal_account ? Command : AudioWaveform,
-          plan: currentTeam.personal_account ? 'Personal' : 'Team',
-          account_id: currentTeam.account_id,
-          slug: currentTeam.slug,
-          personal_account: currentTeam.personal_account,
-        });
-      } else {
-        // If current team not found, set first available account as active
-        const firstAccount = accounts[0];
-        setActiveTeam({
-          name: firstAccount.name,
-          logo: firstAccount.personal_account ? Command : AudioWaveform,
-          plan: firstAccount.personal_account ? 'Personal' : 'Team',
-          account_id: firstAccount.account_id,
-          slug: firstAccount.slug,
-          personal_account: firstAccount.personal_account,
-        });
+      if (teamFromUrl) {
+        return {
+          name: teamFromUrl.name,
+          logo: AudioWaveform,
+          plan: 'Team',
+          account_id: teamFromUrl.account_id,
+          slug: teamFromUrl.slug,
+          personal_account: false,
+          email: `Team: ${teamFromUrl.name}`,
+          avatar: user.avatar,
+        };
       }
     }
-  }, [accounts, activeTeam.account_id]);
+    
+    // Default to personal account
+    return {
+      name: personalAccount?.name || user.name,
+      logo: Command,
+      plan: 'Personal',
+      account_id: personalAccount?.account_id,
+      slug: personalAccount?.slug,
+      personal_account: true,
+      email: user.email,
+      avatar: user.avatar,
+    };
+  }, [pathname, accounts, personalAccount, user]);
+
+  // Use the detected team from URL as activeTeam
+  const [activeTeam, setActiveTeam] = React.useState(currentTeamFromUrl);
+
+  // Update active team when URL changes or accounts load
+  React.useEffect(() => {
+    if (currentTeamFromUrl) {
+      setActiveTeam(currentTeamFromUrl);
+    }
+  }, [currentTeamFromUrl]);
 
   // Handle team selection
   const handleTeamSelect = (team) => {
@@ -159,6 +179,11 @@ export function NavUserWithTeams({
     return null;
   }
 
+  // Use team info for display when in team context
+  const displayName = activeTeam.name;
+  const displayEmail = activeTeam.email;
+  const displayAvatar = activeTeam.avatar;
+
   return (
     <Dialog open={showNewTeamDialog} onOpenChange={setShowNewTeamDialog}>
       <SidebarMenu>
@@ -170,14 +195,14 @@ export function NavUserWithTeams({
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarImage src={displayAvatar} alt={displayName} />
                   <AvatarFallback className="rounded-lg">
-                    {getInitials(user.name)}
+                    {getInitials(displayName)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
+                  <span className="truncate font-medium">{displayName}</span>
+                  <span className="truncate text-xs">{displayEmail}</span>
                 </div>
                 <ChevronsUpDown className="ml-auto size-4" />
               </SidebarMenuButton>
@@ -191,14 +216,14 @@ export function NavUserWithTeams({
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarImage src={displayAvatar} alt={displayName} />
                     <AvatarFallback className="rounded-lg">
-                      {getInitials(user.name)}
+                      {getInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{user.name}</span>
-                    <span className="truncate text-xs">{user.email}</span>
+                    <span className="truncate font-medium">{displayName}</span>
+                    <span className="truncate text-xs">{displayEmail}</span>
                   </div>
                 </div>
               </DropdownMenuLabel>
@@ -220,6 +245,8 @@ export function NavUserWithTeams({
                         account_id: personalAccount.account_id,
                         slug: personalAccount.slug,
                         personal_account: true,
+                        email: user.email,
+                        avatar: user.avatar,
                       })
                     }
                     className="gap-2 p-2"
@@ -249,6 +276,8 @@ export function NavUserWithTeams({
                           account_id: team.account_id,
                           slug: team.slug,
                           personal_account: false,
+                          email: `Team: ${team.name}`,
+                          avatar: user.avatar,
                         })
                       }
                       className="gap-2 p-2"
