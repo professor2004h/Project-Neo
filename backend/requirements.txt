@@ -46,4 +46,4 @@ resend>=2.4.0
 structlog==25.4.0
 pydub>=0.25.1
 mem0ai>=0.1
-llama-index>=0.10.0
+llama-index>=0.12.46
