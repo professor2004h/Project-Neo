@@ -23,7 +23,7 @@ interface ReasoningControlProps {
 const REASONING_LEVELS = [
   {
     value: 'none',
-    label: 'Normal',
+    label: 'Chill Mode',
     description: 'Standard speed, no enhanced reasoning',
     icon: Zap,
     color: 'text-white',
@@ -176,17 +176,16 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
 
         {!isFreePlan && (
           <div className="flex items-center gap-2 animate-in slide-in-from-left-2 duration-300">
-            {/* Dot Tower */}
-            <div className="flex flex-col items-center gap-0.5 py-1">
-              {REASONING_LEVELS.slice().reverse().map((level, reverseIndex) => {
-                const originalIndex = REASONING_LEVELS.length - 1 - reverseIndex;
-                // Light up dots from bottom to top: bottom = reverseIndex 2, middle = 1, top = 0
-                const isActive = reverseIndex >= (REASONING_LEVELS.length - 1 - currentLevelIndex);
+            {/* Horizontal Dot Row */}
+            <div className="flex items-center gap-0.5 px-1">
+              {REASONING_LEVELS.map((level, index) => {
+                // Light up dots from left to right: left = index 0, middle = 1, right = 2
+                const isActive = index <= currentLevelIndex;
                 
                 // Determine which dot should be highlighted (have the ring)
-                const isHighlighted = (currentLevelIndex === 0 && reverseIndex === 2) || // Normal: bottom dot (reverseIndex 2)
-                                     (currentLevelIndex === 1 && reverseIndex === 1) || // Boost: middle dot (reverseIndex 1)  
-                                     (currentLevelIndex === 2 && reverseIndex === 0);   // Turbo: top dot (reverseIndex 0)
+                const isHighlighted = (currentLevelIndex === 0 && index === 0) || // Chill Mode: left dot (index 0)
+                                     (currentLevelIndex === 1 && index === 1) || // Boost: middle dot (index 1)  
+                                     (currentLevelIndex === 2 && index === 2);   // Turbo: right dot (index 2)
                 
                 // Get the color based on current level (all lit dots use same color)
                 const currentDotColor = currentLevelIndex === 0 ? 'bg-white' : 
@@ -203,7 +202,7 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
                   <Tooltip key={level.value}>
                     <TooltipTrigger asChild>
                       <button
-                        onClick={() => handleDotClick(level, originalIndex)}
+                        onClick={() => handleDotClick(level, index)}
                         disabled={isReasoningDisabled}
                         className={cn(
                           "w-2 h-2 rounded-full transition-all duration-200 hover:scale-125",
@@ -217,7 +216,7 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
                         aria-label={`Set reasoning to ${level.label}`}
                       />
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="text-xs">
+                    <TooltipContent side="top" className="text-xs">
                       <p className="font-medium">{level.label}</p>
                     </TooltipContent>
                   </Tooltip>
