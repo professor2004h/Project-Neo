@@ -177,7 +177,7 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
         {!isFreePlan && (
           <div className="flex items-center gap-2 animate-in slide-in-from-left-2 duration-300">
             {/* Horizontal Dot Row */}
-            <div className="flex items-center gap-0.5 px-1">
+            <div className="flex items-center gap-1.5 px-1">
               {REASONING_LEVELS.map((level, index) => {
                 // Light up dots from left to right: left = index 0, middle = 1, right = 2
                 const isActive = index <= currentLevelIndex;
