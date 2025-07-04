@@ -32,6 +32,9 @@ import { useThreadQuery } from '@/hooks/react-query/threads/use-threads';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { TypingText } from '@/components/animate-ui/text/typing';
+import { GradientText } from '@/components/animate-ui/text/gradient';
+import { useAgents } from '@/hooks/react-query/agents/use-agents';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
@@ -60,6 +63,24 @@ export function DashboardContent() {
   const { onOpen } = useModal();
 
   const threadQuery = useThreadQuery(initiatedThreadId || '');
+  
+  // Get agents to access selected agent's name
+  const { data: agentsResponse } = useAgents({
+    limit: 100,
+    sort_by: 'name',
+    sort_order: 'asc'
+  });
+  
+  const agents = agentsResponse?.agents || [];
+  const selectedAgent = agents?.find(a => a.agent_id === selectedAgentId);
+  const defaultAgent = agents?.find(a => a.is_default);
+  
+  // Set default agent if no agent is selected
+  useEffect(() => {
+    if (!selectedAgentId && defaultAgent && agents.length > 0) {
+      setSelectedAgentId(defaultAgent.agent_id);
+    }
+  }, [selectedAgentId, defaultAgent, agents.length]);
 
   // Load user name from Supabase auth and listen for changes
   useEffect(() => {
@@ -371,22 +392,32 @@ ${meeting.transcript || '(No transcript available)'}`;
                 />
               </div>
             ) : (
-              <div className="flex items-center gap-2 flex-wrap justify-center">
-                <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
-                  Hey{userName ? ' ' : ''}
-                </h1>
-                {userName ? (
-                  <span className="tracking-tight text-4xl text-foreground leading-tight font-medium">
-                    {userName}
+              <div className="flex flex-col items-center justify-center gap-4">
+                <div className="text-center">
+                  <TypingText
+                    text={`Hey ${userName || 'there'}, my name is `}
+                    className="tracking-tight text-4xl text-muted-foreground leading-tight"
+                    duration={80}
+                    delay={500}
+                  />
+                  <span className="tracking-tight text-4xl leading-tight font-medium">
+                    <GradientText 
+                      text={selectedAgent?.name || defaultAgent?.name || 'Operator'} 
+                      gradient="linear-gradient(90deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%)"
+                      transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+                    />
                   </span>
-                ) : (
+                </div>
+                
+                {/* Name editing section */}
+                {!userName && (
                   <div className="relative">
                     {!isNameFocused ? (
                       <button
                         onClick={() => setIsNameFocused(true)}
-                        className="tracking-tight text-4xl text-muted-foreground hover:text-foreground leading-tight underline decoration-dashed underline-offset-4 transition-colors duration-200"
+                        className="tracking-tight text-2xl text-muted-foreground hover:text-foreground leading-tight underline decoration-dashed underline-offset-4 transition-colors duration-200"
                       >
-                        there
+                        Click here to set your name
                       </button>
                     ) : (
                       <div className="relative">
@@ -400,7 +431,7 @@ ${meeting.transcript || '(No transcript available)'}`;
                             }
                           }}
                           placeholder="your name"
-                          className="h-12 w-40 text-4xl text-center font-medium bg-transparent border-0 border-b-2 border-muted-foreground/30 focus:border-primary rounded-none shadow-none focus:shadow-none transition-colors duration-200 px-0"
+                          className="h-12 w-40 text-2xl text-center font-medium bg-transparent border-0 border-b-2 border-muted-foreground/30 focus:border-primary rounded-none shadow-none focus:shadow-none transition-colors duration-200 px-0"
                           autoFocus
                         />
                         {nameInput.trim() && (
@@ -415,14 +446,15 @@ ${meeting.transcript || '(No transcript available)'}`;
                     )}
                   </div>
                 )}
-                <span className="tracking-tight text-4xl text-muted-foreground leading-tight">
-                  , I am
-                </span>
-                <AgentSelector
-                  selectedAgentId={selectedAgentId}
-                  onAgentSelect={setSelectedAgentId}
-                  variant="heading"
-                />
+                
+                {/* Agent selector */}
+                <div className="mt-4">
+                  <AgentSelector
+                    selectedAgentId={selectedAgentId}
+                    onAgentSelect={setSelectedAgentId}
+                    variant="heading"
+                  />
+                </div>
               </div>
             )}
             <p className="tracking-tight text-3xl font-normal text-muted-foreground/80 mt-2">
