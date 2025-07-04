@@ -189,8 +189,21 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
             <div className="flex flex-col items-center gap-0.5 py-1">
               {REASONING_LEVELS.slice().reverse().map((level, reverseIndex) => {
                 const originalIndex = REASONING_LEVELS.length - 1 - reverseIndex;
-                const isActive = originalIndex <= currentLevelIndex;
+                const dotsToLight = currentLevelIndex + 1; // +1 because we want 1 dot for level 0, 2 for level 1, etc.
+                const isActive = reverseIndex < dotsToLight;
                 const isSelected = originalIndex === currentLevelIndex;
+                
+                // Get the color based on current level (all lit dots use same color)
+                const currentDotColor = currentLevelIndex === 0 ? 'bg-gray-500' : 
+                                       currentLevelIndex === 1 ? 'bg-blue-500' : 
+                                       'bg-purple-500';
+                const currentRingColor = currentLevelIndex === 0 ? 'ring-gray-500' : 
+                                        currentLevelIndex === 1 ? 'ring-blue-500' : 
+                                        'ring-purple-500';
+                const currentHoverColor = currentLevelIndex === 0 ? 'hover:bg-gray-600' : 
+                                         currentLevelIndex === 1 ? 'hover:bg-blue-600' : 
+                                         'hover:bg-purple-600';
+                
                 return (
                   <Tooltip key={level.value}>
                     <TooltipTrigger asChild>
@@ -200,11 +213,11 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
                         className={cn(
                           "w-2 h-2 rounded-full transition-all duration-200 hover:scale-125",
                           isActive 
-                            ? "bg-white shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 dark:bg-gray-100" 
+                            ? `${currentDotColor} shadow-sm ring-1 ring-gray-200 dark:ring-gray-700` 
                             : "bg-gray-300 dark:bg-gray-600",
-                          isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
+                          isSelected && `ring-2 ${currentRingColor} dark:${currentRingColor}`,
                           isReasoningDisabled && "opacity-50 cursor-not-allowed",
-                          !isReasoningDisabled && "hover:bg-white dark:hover:bg-gray-100"
+                          !isReasoningDisabled && currentHoverColor
                         )}
                         aria-label={`Set reasoning to ${level.label}`}
                       />
