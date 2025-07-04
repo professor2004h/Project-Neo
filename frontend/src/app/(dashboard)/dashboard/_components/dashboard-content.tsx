@@ -35,6 +35,7 @@ import { createClient } from '@/lib/supabase/client';
 import { TypingText } from '@/components/animate-ui/text/typing';
 import { GradientText } from '@/components/animate-ui/text/gradient';
 import { useAgents } from '@/hooks/react-query/agents/use-agents';
+import Dither from '@/Backgrounds/Dither/Dither';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
@@ -358,9 +359,24 @@ ${meeting.transcript || '(No transcript available)'}`;
   return (
     <>
       <ModalProviders />
-      <div className="flex flex-col h-screen w-full">
+      <div className="flex flex-col h-screen w-full relative">
+        {/* Dither Background */}
+        <div className="absolute inset-0 z-0">
+          <Dither
+            waveSpeed={0.02}
+            waveFrequency={2}
+            waveAmplitude={0.4}
+            waveColor={[0.3, 0.4, 0.6]}
+            colorNum={6}
+            pixelSize={3}
+            disableAnimation={false}
+            enableMouseInteraction={true}
+            mouseRadius={0.8}
+          />
+        </div>
+        
         {isMobile && (
-          <div className="absolute top-4 left-4 z-10">
+          <div className="absolute top-4 left-4 z-20">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -378,8 +394,8 @@ ${meeting.transcript || '(No transcript available)'}`;
           </div>
         )}
 
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[650px] max-w-[90%]">
-          <div className="flex flex-col items-center text-center w-full">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[650px] max-w-[90%] z-10 relative">
+          <div className="flex flex-col items-center text-center w-full bg-background/80 backdrop-blur-sm rounded-2xl p-8 border border-border/20">
             {isLoadingUserName ? (
               <div className="flex items-center gap-2 flex-wrap justify-center">
                 <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
@@ -392,22 +408,22 @@ ${meeting.transcript || '(No transcript available)'}`;
                 />
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center gap-4">
-                <div className="text-center">
-                  <TypingText
-                    text={`Hey ${userName || 'there'}, my name is `}
-                    className="tracking-tight text-4xl text-muted-foreground leading-tight"
-                    duration={80}
-                    delay={500}
-                  />
-                  <span className="tracking-tight text-4xl leading-tight font-medium text-foreground">
-                    {selectedAgent?.name || defaultAgent?.name || 'Operator'}
-                  </span>
-                </div>
+              <div className="flex items-center gap-2 flex-wrap justify-center">
+                <TypingText
+                  text={`Hey ${userName || 'there'}, my name is `}
+                  className="tracking-tight text-4xl text-muted-foreground leading-tight"
+                  duration={80}
+                  delay={500}
+                />
+                <AgentSelector
+                  selectedAgentId={selectedAgentId}
+                  onAgentSelect={setSelectedAgentId}
+                  variant="heading"
+                />
                 
-                {/* Name editing section */}
+                {/* Name editing section for users without a name */}
                 {!userName && (
-                  <div className="relative">
+                  <div className="relative mt-4">
                     {!isNameFocused ? (
                       <button
                         onClick={() => setIsNameFocused(true)}
@@ -442,15 +458,6 @@ ${meeting.transcript || '(No transcript available)'}`;
                     )}
                   </div>
                 )}
-                
-                {/* Agent selector */}
-                <div className="mt-4">
-                  <AgentSelector
-                    selectedAgentId={selectedAgentId}
-                    onAgentSelect={setSelectedAgentId}
-                    variant="heading"
-                  />
-                </div>
               </div>
             )}
             <p className="tracking-tight text-3xl font-normal text-muted-foreground/80 mt-2">
@@ -473,14 +480,16 @@ ${meeting.transcript || '(No transcript available)'}`;
           <Examples onSelectPrompt={setInputValue} />
         </div>
 
-        <BillingErrorAlert
-          message={billingError?.message}
-          currentUsage={billingError?.currentUsage}
-          limit={billingError?.limit}
-          accountId={personalAccount?.account_id}
-          onDismiss={clearBillingError}
-          isOpen={!!billingError}
-        />
+        <div className="relative z-20">
+          <BillingErrorAlert
+            message={billingError?.message}
+            currentUsage={billingError?.currentUsage}
+            limit={billingError?.limit}
+            accountId={personalAccount?.account_id}
+            onDismiss={clearBillingError}
+            isOpen={!!billingError}
+          />
+        </div>
       </div>
     </>
   );
