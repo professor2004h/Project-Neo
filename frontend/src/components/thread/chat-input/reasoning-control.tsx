@@ -28,6 +28,9 @@ const REASONING_LEVELS = [
     icon: Zap,
     color: 'text-gray-500',
     bgColor: 'bg-gray-50 dark:bg-gray-900/20',
+    dotColor: 'bg-gray-500',
+    ringColor: 'ring-gray-500',
+    hoverColor: 'hover:bg-gray-600',
     isReasoning: false,
   },
   {
@@ -37,6 +40,9 @@ const REASONING_LEVELS = [
     icon: Brain,
     color: 'text-blue-500',
     bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+    dotColor: 'bg-blue-500',
+    ringColor: 'ring-blue-500',
+    hoverColor: 'hover:bg-blue-600',
     isReasoning: true,
   },
   {
@@ -46,6 +52,9 @@ const REASONING_LEVELS = [
     icon: Rocket,
     color: 'text-purple-500',
     bgColor: 'bg-purple-50 dark:bg-purple-900/20',
+    dotColor: 'bg-purple-500',
+    ringColor: 'ring-purple-500',
+    hoverColor: 'hover:bg-purple-600',
     isReasoning: true,
   },
 ] as const;
@@ -178,23 +187,24 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
           <div className="flex items-center gap-2 animate-in slide-in-from-left-2 duration-300">
             {/* Dot Tower */}
             <div className="flex flex-col items-center gap-0.5 py-1">
-              {REASONING_LEVELS.map((level, index) => {
-                const isActive = index <= currentLevelIndex;
-                const isSelected = index === currentLevelIndex;
+              {REASONING_LEVELS.slice().reverse().map((level, reverseIndex) => {
+                const originalIndex = REASONING_LEVELS.length - 1 - reverseIndex;
+                const isActive = originalIndex <= currentLevelIndex;
+                const isSelected = originalIndex === currentLevelIndex;
                 return (
                   <Tooltip key={level.value}>
                     <TooltipTrigger asChild>
                       <button
-                        onClick={() => handleDotClick(level, index)}
+                        onClick={() => handleDotClick(level, originalIndex)}
                         disabled={isReasoningDisabled}
                         className={cn(
                           "w-2 h-2 rounded-full transition-all duration-200 hover:scale-125",
                           isActive 
-                            ? "bg-white shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 dark:bg-gray-100" 
+                            ? `${level.dotColor} shadow-sm ring-1 ring-gray-200 dark:ring-gray-700` 
                             : "bg-gray-300 dark:bg-gray-600",
-                          isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
+                          isSelected && `ring-2 ${level.ringColor} dark:${level.ringColor}`,
                           isReasoningDisabled && "opacity-50 cursor-not-allowed",
-                          "hover:bg-white dark:hover:bg-gray-100"
+                          !isReasoningDisabled && level.hoverColor
                         )}
                         aria-label={`Set reasoning to ${level.label}`}
                       />
@@ -207,7 +217,7 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
               })}
             </div>
             <span className={cn(
-              "text-xs font-medium whitespace-nowrap",
+              "text-xs font-medium min-w-[5rem] text-left",
               currentLevel.color,
               isReasoningDisabled && "opacity-50"
             )}>
