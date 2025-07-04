@@ -403,9 +403,9 @@ ${meeting.transcript || '(No transcript available)'}`;
                 />
               </div>
             ) : (
-              <div className="flex items-center gap-2 flex-wrap justify-center">
+              <div className="flex flex-col items-center gap-4 justify-center">
                 <TypingText
-                  text={`Hey ${userName || 'there'}, my name is `}
+                  text={`Hey ${userName || 'there'}, I'm`}
                   className="tracking-tight text-4xl text-muted-foreground leading-tight"
                   duration={80}
                   delay={500}
@@ -455,9 +455,18 @@ ${meeting.transcript || '(No transcript available)'}`;
                 )}
               </div>
             )}
-            <p className="tracking-tight text-3xl font-normal text-muted-foreground/80 mt-2">
-              What would you like to do today?
-            </p>
+            {/* Dynamic time-of-day prompt */}
+            <TypingText
+              text={`What would you like to do this ${(() => {
+                const hour = new Date().getHours();
+                if (hour < 12) return 'morning';
+                if (hour < 18) return 'afternoon';
+                return 'evening';
+              })()}?`}
+              className="tracking-tight text-3xl font-normal text-muted-foreground/80 mt-2"
+              duration={60}
+              delay={1200}
+            />
           </div>
 
           <div className={cn('w-full mb-2', 'max-w-full', 'sm:max-w-3xl')}>
