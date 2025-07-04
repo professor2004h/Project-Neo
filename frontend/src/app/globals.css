@@ -40,6 +40,14 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-card-title: var(--card-foreground);
+  --color-card-bg: var(--card);
+  --color-background-secondary: var(--card);
+  --color-hover-bg: var(--accent);
+  --color-hover-bg-dark: var(--accent);
+  --color-subtle: var(--border);
+  --color-border-subtle: var(--border);
+  --shadow-custom: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -293,6 +301,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+  --shadow-custom: 0 1px 3px 0 rgb(255 255 255 / 0.1), 0 1px 2px -1px rgb(255 255 255 / 0.1);
 }
 
 @layer base {

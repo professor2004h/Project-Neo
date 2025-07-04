@@ -83,7 +83,7 @@ export const AgentKnowledgeConfiguration = ({
                   <p>
                     Connect vector indices to give your agent access to specialized knowledge bases. 
                     Each knowledge base will appear as a separate search tool that the agent can use.
-                    The tool name (lowercase letters and dashes only) determines how the agent refers to it, while the index name is for LlamaCloud API calls.
+                    The index name (lowercase letters and dashes only) determines how the agent refers to it, while the index name is for LlamaCloud API calls.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -112,7 +112,7 @@ export const AgentKnowledgeConfiguration = ({
                 <div className="flex-1 space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor={`name-${index}`} className="text-xs text-muted-foreground">
-                      Tool Name <span className="text-muted-foreground/70">(lowercase letters and dashes only)</span>
+                      Index Name <span className="text-muted-foreground/70">(lowercase letters and dashes only)</span>
                     </Label>
                     <Input
                       id={`name-${index}`}
@@ -124,7 +124,7 @@ export const AgentKnowledgeConfiguration = ({
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`index-${index}`} className="text-xs text-muted-foreground">
-                      Index Name
+                      Index Key
                     </Label>
                     <Input
                       id={`index-${index}`}

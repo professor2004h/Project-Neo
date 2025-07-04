@@ -9,30 +9,14 @@ import { getAgentAvatar } from '../_utils/get-agent-style';
 import { usePublishAgent, useUnpublishAgent } from '@/hooks/react-query/marketplace/use-marketplace';
 import { toast } from 'sonner';
 import { PublishAgentDialog } from './publish-agent-dialog';
-
-interface Agent {
-  agent_id: string;
-  name: string;
-  description?: string;
-  is_default: boolean;
-  is_public?: boolean;
-  marketplace_published_at?: string;
-  download_count?: number;
-  tags?: string[];
-  created_at: string;
-  updated_at?: string;
-  configured_mcps?: Array<{ name: string }>;
-  agentpress_tools?: Record<string, any>;
-  avatar?: string;
-  avatar_color?: string;
-}
+import { Agent } from '@/hooks/react-query/agents/utils';
 
 interface AgentsGridProps {
   agents: Agent[];
   onEditAgent: (agentId: string) => void;
   onDeleteAgent: (agentId: string) => void;
-  onToggleDefault: (agentId: string, currentDefault: boolean) => void;
-  deleteAgentMutation: { isPending: boolean };
+  onToggleDefault: (agentId: string, isDefault: boolean) => void;
+  deleteAgentMutation: any;
 }
 
 const AgentModal = ({ agent, isOpen, onClose, onCustomize, onChat, onPublish, onUnpublish, isPublishing, isUnpublishing }) => {

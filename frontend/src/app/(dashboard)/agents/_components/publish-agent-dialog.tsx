@@ -19,16 +19,10 @@ import { useAccounts } from '@/hooks/use-accounts';
 import { usePublishAgent } from '@/hooks/react-query/marketplace/use-marketplace';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { Agent } from '@/hooks/react-query/agents/utils';
 
 interface PublishAgentDialogProps {
-  agent: {
-    agent_id: string;
-    name: string;
-    description?: string;
-    knowledge_bases?: any[];
-    configured_mcps?: any[];
-    custom_mcps?: any[];
-  };
+  agent: Agent;
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;

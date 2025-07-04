@@ -18,7 +18,7 @@ import { DataProviderEndpointsToolView } from '../data-provider-tool/DataProvide
 import { DeployToolView } from '../DeployToolView';
 import { ExcelToolView } from '../excel-tool/ExcelToolView';
 import { KnowledgeSearchToolView } from '../knowledge-search-tool/KnowledgeSearchToolView';
-// import { ListKnowledgeBasesToolView } from '../list-knowledge-bases-tool/ListKnowledgeBasesToolView';
+import { ListKnowledgeBasesToolView } from '../list-knowledge-bases-tool/ListKnowledgeBasesToolView';
 
 
 export type ToolViewComponent = React.ComponentType<ToolViewProps>;
@@ -79,9 +79,7 @@ const defaultRegistry: ToolViewRegistryType = {
   'list-sheets': ExcelToolView,
 
   // Knowledge base tools
-  // TODO: Fix ListKnowledgeBasesToolView props interface
-  // 'list-available-knowledge-bases': ListKnowledgeBasesToolView,
-  'list-available-knowledge-bases': GenericToolView,
+  'list-available-knowledge-bases': ListKnowledgeBasesToolView,
 
   'default': GenericToolView,
 };
