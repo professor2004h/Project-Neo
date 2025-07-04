@@ -1137,7 +1137,6 @@ ${transcript}`;
             variant="ghost"
             size="sm"
             onClick={() => router.push('/meetings')}
-            className="hover:bg-accent/80 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -1165,23 +1164,20 @@ ${transcript}`;
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-card/60 backdrop-blur border border-border/50 rounded-xl p-1 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="flex items-center gap-3">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={downloadTranscript}
               disabled={!transcript}
-              className="hover:bg-blue-50 dark:hover:bg-blue-950/30 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50"
             >
               <Download className="h-4 w-4 mr-2" />
               Download
             </Button>
-            <div className="w-px h-6 bg-gradient-to-t from-transparent via-border to-transparent mx-1" />
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => toast.info('Sharing coming soon')}
-              className="hover:bg-purple-50 dark:hover:bg-purple-950/30 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 transition-all duration-200 shadow-sm hover:shadow-md"
             >
               <Share2 className="h-4 w-4 mr-2" />
               Share
@@ -1191,7 +1187,6 @@ ${transcript}`;
             size="sm"
             onClick={startChatWithTranscript}
             disabled={isOpeningChat}
-            className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50"
           >
             {isOpeningChat ? (
               <>
@@ -1359,73 +1354,51 @@ ${transcript}`;
                         <p className="text-sm font-medium text-foreground/90 mb-1">Meeting Completed</p>
                         <p className="text-xs text-muted-foreground/80">Start a new recording session to continue adding to this transcript</p>
                       </div>
-                      <div className="flex items-center gap-1 bg-card/60 backdrop-blur border border-border/50 rounded-2xl p-1.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
-                        <button
+                      <div className="flex items-center gap-3">
+                        <Button
                           onClick={() => continueRecording('local')}
-                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all duration-200 text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 shadow-sm hover:shadow-md active:shadow-sm"
+                          variant="outline"
+                          className="flex items-center gap-2"
                         >
-                          <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center transition-all duration-200 shadow-sm group-hover:shadow-md">
-                              <User className="h-5 w-5" />
-                            </div>
-                          </div>
-                          <span className="text-sm font-semibold">Continue In Person</span>
-                        </button>
+                          <User className="h-4 w-4" />
+                          Continue In Person
+                        </Button>
                         
-                        <div className="w-px h-8 bg-gradient-to-t from-transparent via-border to-transparent" />
-                        
-                        <button
+                        <Button
                           onClick={() => continueRecording('online')}
-                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 shadow-sm hover:shadow-md active:shadow-sm"
+                          className="flex items-center gap-2"
                         >
-                          <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center transition-all duration-200 shadow-sm group-hover:shadow-md">
-                              <Monitor className="h-5 w-5" />
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold">Continue Online</span>
-                            <Badge variant="beta" className="bg-blue-600/20 text-blue-600 border-blue-400/30 dark:text-blue-300">
-                              Beta
-                            </Badge>
-                          </div>
-                        </button>
+                          <Monitor className="h-4 w-4" />
+                          Continue Online
+                          <Badge variant="beta" className="bg-blue-600/20 text-blue-600 border-blue-400/30 dark:text-blue-300">
+                            Beta
+                          </Badge>
+                        </Button>
                       </div>
                     </>
                   ) : (
                     /* Initial Recording Section */
                     <>
-                      <div className="flex items-center gap-1 bg-card/60 backdrop-blur border border-border/50 rounded-2xl p-1.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
-                        <button
+                      <div className="flex items-center gap-3">
+                        <Button
                           onClick={() => startRecording('local')}
-                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-950/30 transition-all duration-200 text-slate-700 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-200 shadow-sm hover:shadow-md active:shadow-sm"
+                          variant="outline"
+                          className="flex items-center gap-2"
                         >
-                          <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center transition-all duration-200 shadow-sm group-hover:shadow-md">
-                              <User className="h-5 w-5" />
-                            </div>
-                          </div>
-                          <span className="text-sm font-semibold">In Person</span>
-                        </button>
+                          <User className="h-4 w-4" />
+                          In Person
+                        </Button>
                         
-                        <div className="w-px h-8 bg-gradient-to-t from-transparent via-border to-transparent" />
-                        
-                        <button
+                        <Button
                           onClick={() => startRecording('online')}
-                          className="group flex items-center gap-3 px-6 py-3 rounded-xl hover:bg-green-50 dark:hover:bg-green-950/30 transition-all duration-200 text-green-700 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 shadow-sm hover:shadow-md active:shadow-sm"
+                          className="flex items-center gap-2"
                         >
-                          <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center transition-all duration-200 shadow-sm group-hover:shadow-md">
-                              <Monitor className="h-5 w-5" />
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold">Online</span>
-                            <Badge variant="beta" className="bg-blue-600/20 text-blue-600 border-blue-400/30 dark:text-blue-300">
-                              Beta
-                            </Badge>
-                          </div>
-                        </button>
+                          <Monitor className="h-4 w-4" />
+                          Online
+                          <Badge variant="beta" className="bg-blue-600/20 text-blue-600 border-blue-400/30 dark:text-blue-300">
+                            Beta
+                          </Badge>
+                        </Button>
                       </div>
                       
                       <div className="text-center">
@@ -1488,12 +1461,7 @@ ${transcript}`;
                         <Button
                           onClick={isPaused ? resumeRecording : pauseRecording}
                           size="sm"
-                          className={cn(
-                            "h-9 px-4 gap-2 font-medium transition-all duration-200 shadow-sm",
-                            isPaused
-                              ? "bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/20 hover:shadow-blue-500/30"
-                              : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20 hover:shadow-amber-500/30"
-                          )}
+                          variant={isPaused ? "default" : "secondary"}
                         >
                           {isPaused ? (
                             <>
@@ -1513,7 +1481,7 @@ ${transcript}`;
                         <Button
                           onClick={stopRecording}
                           size="sm"
-                          className="h-9 px-4 gap-2 bg-red-500 hover:bg-red-600 text-white font-medium transition-all duration-200 shadow-sm shadow-red-500/20 hover:shadow-red-500/30"
+                          variant="destructive"
                         >
                           <Square className="h-3.5 w-3.5 fill-current" />
                           Stop
@@ -1567,14 +1535,12 @@ ${transcript}`;
             <Button 
               variant="outline" 
               onClick={() => setShowMeetingUrlDialog(false)}
-              className="shadow-sm hover:shadow-md transition-all duration-200"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleStartOnlineRecording} 
               disabled={!meetingUrl.trim()}
-              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500/20"
             >
               <Monitor className="h-4 w-4 mr-2" />
               <span className="flex items-center gap-2">

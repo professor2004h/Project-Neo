@@ -784,7 +784,6 @@ ${meeting.transcript}`;
             </p>
             <Button 
               onClick={() => setShowNewMeetingDialog(true)}
-              className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-md hover:shadow-lg transition-all duration-200"
             >
               <Plus className="h-4 w-4 mr-2" />
               Create First Meeting
@@ -822,14 +821,12 @@ ${meeting.transcript}`;
               <Button 
                 variant="outline" 
                 onClick={() => setShowNewMeetingDialog(false)}
-                className="shadow-sm hover:shadow-md transition-all duration-200"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleCreateMeeting} 
                 disabled={!newMeetingTitle.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 Create Meeting
               </Button>
@@ -867,14 +864,12 @@ ${meeting.transcript}`;
               <Button 
                 variant="outline" 
                 onClick={() => setShowNewFolderDialog(false)}
-                className="shadow-sm hover:shadow-md transition-all duration-200"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleCreateFolder} 
                 disabled={!newFolderName.trim()}
-                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500/20"
               >
                 Create Folder
               </Button>
