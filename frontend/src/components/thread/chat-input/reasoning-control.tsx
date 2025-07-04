@@ -132,50 +132,35 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
   return (
     <TooltipProvider>
       <div className="flex items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleToggle}
-              disabled={isReasoningDisabled}
-              className={cn(
-                "h-8 w-8 p-0 rounded-full transition-all duration-200",
-                !isFreePlan ? currentLevel.bgColor : "hover:bg-muted",
-                isReasoningDisabled && "opacity-50 cursor-not-allowed",
-                isFreePlan && "opacity-60" // Special styling for free plan
-              )}
-            >
-              <IconToShow 
+        {isFreePlan ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToggle}
+                disabled={isReasoningDisabled}
                 className={cn(
-                  "h-4 w-4 transition-colors",
-                  !isFreePlan ? currentLevel.color : "text-muted-foreground",
-                  isFreePlan && "text-amber-500" // Crown icon in amber for free plan
-                )} 
-              />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs">
-            <div className="flex flex-col gap-1">
-              {isFreePlan ? (
-                <>
-                  <p className="font-medium">Big Brain Mode</p>
-                  <p className="text-muted-foreground">
-                    Upgrade to unlock enhanced reasoning capabilities
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="font-medium">{currentLevel.label}</p>
-                  <p className="text-muted-foreground">{currentLevel.description}</p>
-                </>
-              )}
-            </div>
-          </TooltipContent>
-        </Tooltip>
-
-        {!isFreePlan && (
-          <div className="flex items-center animate-in slide-in-from-left-2 duration-300 -ml-2">
+                  "h-8 w-8 p-0 rounded-full transition-all duration-200",
+                  "hover:bg-muted opacity-60"
+                )}
+              >
+                <Crown 
+                  className="h-4 w-4 transition-colors text-amber-500"
+                /> 
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              <div className="flex flex-col gap-1">
+                <p className="font-medium">Big Brain Mode</p>
+                <p className="text-muted-foreground">
+                  Upgrade to unlock enhanced reasoning capabilities
+                </p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <div className="flex items-center animate-in slide-in-from-left-2 duration-300 -ml-4">
             {/* Pill-shaped Sand Timer Component */}
             <Tooltip>
               <TooltipTrigger asChild>
