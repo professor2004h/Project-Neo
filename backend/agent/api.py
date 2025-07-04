@@ -2006,6 +2006,7 @@ class MarketplaceAgent(BaseModel):
     description: Optional[str]
     system_prompt: str
     configured_mcps: List[Dict[str, Any]]
+    custom_mcps: Optional[List[Dict[str, Any]]] = []
     agentpress_tools: Dict[str, Any]
     knowledge_bases: Optional[List[Dict[str, Any]]] = []
     tags: Optional[List[str]]
@@ -2091,9 +2092,9 @@ async def get_marketplace_agents(
             
             # If custom MCP tools are not to be shared, filter them out
             if not sharing_preferences.get('include_custom_mcp_tools', True):
-                # For now, we'll remove all custom MCPs
-                # You can implement more sophisticated filtering based on MCP type
+                # Remove all custom MCPs and configured MCPs
                 agent['custom_mcps'] = []
+                agent['configured_mcps'] = []
         
         estimated_total = (page - 1) * limit + len(agents_data)
         if has_more:

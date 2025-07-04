@@ -10,6 +10,7 @@ export interface MarketplaceAgent {
   description: string;
   system_prompt: string;
   configured_mcps: any[];
+  custom_mcps?: any[];
   agentpress_tools: Record<string, any>;
   knowledge_bases?: any[];
   tags: string[];

@@ -17,6 +17,7 @@ RETURNS TABLE (
     description TEXT,
     system_prompt TEXT,
     configured_mcps JSONB,
+    custom_mcps JSONB,
     agentpress_tools JSONB,
     knowledge_bases JSONB,
     sharing_preferences JSONB,
@@ -39,6 +40,7 @@ BEGIN
         a.description,
         a.system_prompt,
         a.configured_mcps,
+        COALESCE(a.custom_mcps, '[]'::jsonb) as custom_mcps,
         a.agentpress_tools,
         COALESCE(a.knowledge_bases, '[]'::jsonb) as knowledge_bases,
         COALESCE(a.sharing_preferences, '{"include_knowledge_bases": true, "include_custom_mcp_tools": true}'::jsonb) as sharing_preferences,
@@ -80,6 +82,7 @@ DECLARE
     v_sharing_prefs JSONB;
     v_knowledge_bases JSONB;
     v_configured_mcps JSONB;
+    v_custom_mcps JSONB;
 BEGIN
     SELECT * INTO v_original_agent
     FROM agents 
@@ -113,12 +116,19 @@ BEGIN
         ELSE '[]'::jsonb
     END;
     
+    v_custom_mcps := CASE 
+        WHEN (v_sharing_prefs->>'include_custom_mcp_tools')::boolean = true 
+        THEN COALESCE(v_original_agent.custom_mcps, '[]'::jsonb)
+        ELSE '[]'::jsonb
+    END;
+    
     INSERT INTO agents (
         account_id,
         name,
         description,
         system_prompt,
         configured_mcps,
+        custom_mcps,
         agentpress_tools,
         knowledge_bases,
         is_default,
@@ -132,6 +142,7 @@ BEGIN
         v_original_agent.description,
         v_original_agent.system_prompt,
         v_configured_mcps,
+        v_custom_mcps,
         v_original_agent.agentpress_tools,
         v_knowledge_bases,
         false,
