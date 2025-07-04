@@ -366,6 +366,10 @@ export function NavUserWithTeams({
                 <CreditCard />
                 Billing
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/settings/personalization')}>
+                <User />
+                Personalization
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
                 {theme === 'dark' ? <Sun /> : <Moon />}
                 Toggle theme

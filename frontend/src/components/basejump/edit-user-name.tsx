@@ -63,7 +63,7 @@ export default function EditUserName({ currentName, onUpdate }: Props) {
           id="name"
           placeholder="Enter your name"
           required
-          className="h-10 rounded-lg border-subtle dark:border-white/10 bg-white dark:bg-background-secondary"
+          className="h-10"
         />
       </div>
       <div className="flex justify-end">
