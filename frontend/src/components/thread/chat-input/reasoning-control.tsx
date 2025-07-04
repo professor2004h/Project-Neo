@@ -23,7 +23,7 @@ interface ReasoningControlProps {
 const REASONING_LEVELS = [
   {
     value: 'none',
-    label: 'Chill Mode',
+    label: 'Chill',
     description: 'Standard speed, no enhanced reasoning',
     icon: Zap,
     color: 'text-white',
