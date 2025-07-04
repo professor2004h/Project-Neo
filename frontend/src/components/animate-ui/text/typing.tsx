@@ -30,7 +30,7 @@ function CursorBlinker({ className }: { className?: string }) {
   );
 }
 
-type TypingTextProps = Omit<React.ComponentProps<'span'>, 'children'> & {
+type TypingTextProps = Omit<React.ComponentProps<'span'>, 'children' | 'ref'> & {
   duration?: number;
   delay?: number;
   inView?: boolean;
@@ -44,8 +44,7 @@ type TypingTextProps = Omit<React.ComponentProps<'span'>, 'children'> & {
   animateOnChange?: boolean;
 };
 
-function TypingText({
-  ref,
+const TypingText = React.forwardRef<HTMLSpanElement, TypingTextProps>(({
   duration = 100,
   delay = 0,
   inView = false,
@@ -58,7 +57,7 @@ function TypingText({
   cursorClassName,
   animateOnChange = true,
   ...props
-}: TypingTextProps) {
+}, ref) => {
   const localRef = React.useRef<HTMLSpanElement>(null);
   React.useImperativeHandle(ref, () => localRef.current as HTMLSpanElement);
 
@@ -155,6 +154,8 @@ function TypingText({
       {cursor && <CursorBlinker className={cursorClassName} />}
     </span>
   );
-}
+});
+
+TypingText.displayName = 'TypingText';
 
 export { TypingText, type TypingTextProps };

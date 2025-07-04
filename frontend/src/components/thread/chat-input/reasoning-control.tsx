@@ -24,7 +24,7 @@ const REASONING_LEVELS = [
   {
     value: 'none',
     label: 'Chill',
-    description: 'Standard speed, no enhanced reasoning',
+    description: 'Standard speed, relaxed thinking',
     icon: Zap,
     color: 'text-white',
     bgColor: 'bg-gray-50 dark:bg-gray-900/20',
@@ -32,8 +32,8 @@ const REASONING_LEVELS = [
   },
   {
     value: 'medium',
-    label: 'Boost',
-    description: 'Enhanced reasoning for complex problems (+credits)',
+    label: 'Focus',
+    description: 'Concentrated reasoning for complex problems (+credits)',
     icon: Brain,
     color: 'text-blue-500',
     bgColor: 'bg-blue-50 dark:bg-blue-900/20',
@@ -41,8 +41,8 @@ const REASONING_LEVELS = [
   },
   {
     value: 'high',
-    label: 'Turbo',
-    description: 'Maximum reasoning power (+more credits)',
+    label: 'Deep',
+    description: 'Intensive deep thinking for maximum insight (+more credits)',
     icon: Rocket,
     color: 'text-purple-500',
     bgColor: 'bg-purple-50 dark:bg-purple-900/20',
