@@ -39,6 +39,15 @@ export function extractKnowledgeSearchData(
   let actualToolTimestamp: string | null = toolTimestamp || null;
   let actualAssistantTimestamp: string | null = assistantTimestamp || null;
 
+  // Debug logging
+  console.log('Knowledge Search Debug:', {
+    assistantContent,
+    toolContent,
+    isSuccess,
+    toolTimestamp,
+    assistantTimestamp
+  });
+
   // Extract query from assistant content
   const assistantToolData = extractToolData(assistantContent);
   if (assistantToolData.toolResult) {
@@ -52,11 +61,19 @@ export function extractKnowledgeSearchData(
       if (queryMatch) {
         query = queryMatch[1];
       }
+      
+      // Try to extract from function call arguments
+      const argsMatch = contentStr.match(/query['":\s]*['"]([^'"]+)['"]/);
+      if (argsMatch) {
+        query = argsMatch[1];
+      }
     }
   }
 
   // Extract data from tool content
   const toolContentStr = normalizeContentToString(toolContent);
+  console.log('Tool Content String:', toolContentStr);
+  
   if (toolContentStr) {
     try {
       // Try to parse as JSON first
@@ -64,6 +81,7 @@ export function extractKnowledgeSearchData(
       
       // Handle different response formats
       if (toolContentStr.includes('ToolResult')) {
+        console.log('Found ToolResult format');
         // Extract ToolResult content
         const toolResultMatch = toolContentStr.match(/ToolResult\([^)]*output=['"](.*?)['"][^)]*\)/);
         if (toolResultMatch) {
@@ -79,9 +97,12 @@ export function extractKnowledgeSearchData(
           }
         }
       } else {
+        console.log('Trying direct JSON parsing');
         // Try direct JSON parsing
         toolData = JSON.parse(toolContentStr);
       }
+
+      console.log('Parsed tool data:', toolData);
 
       if (toolData) {
         // Extract from direct format
@@ -99,6 +120,19 @@ export function extractKnowledgeSearchData(
           description = toolData.description || null;
           query = query || toolData.query || null;
           actualIsSuccess = toolData.success !== false;
+        } else {
+          // Check if toolData itself contains the result fields
+          if (Array.isArray(toolData)) {
+            // toolData is an array of results
+            results = toolData;
+          } else {
+            // Check for other possible formats
+            results = toolData.data || toolData.search_results || [];
+            indexName = toolData.index || toolData.index_name || null;
+            description = toolData.description || null;
+            query = query || toolData.query || null;
+            actualIsSuccess = toolData.success !== false;
+          }
         }
 
         // Try to extract knowledge base name from description or index name
@@ -159,7 +193,7 @@ export function extractKnowledgeSearchData(
     results = [];
   }
 
-  return {
+  const finalResult = {
     query,
     results,
     indexName,
@@ -169,4 +203,8 @@ export function extractKnowledgeSearchData(
     actualToolTimestamp,
     actualAssistantTimestamp
   };
+
+  console.log('Final Knowledge Search Result:', finalResult);
+  
+  return finalResult;
 } 
