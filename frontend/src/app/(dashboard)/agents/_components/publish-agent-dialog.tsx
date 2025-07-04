@@ -185,7 +185,7 @@ export function PublishAgentDialog({
                 <Checkbox
                   id="include-knowledge-bases"
                   checked={includeKnowledgeBases}
-                  onCheckedChange={setIncludeKnowledgeBases}
+                  onCheckedChange={(checked) => setIncludeKnowledgeBases(checked === true)}
                 />
                 <div className="flex-1">
                   <Label htmlFor="include-knowledge-bases" className="cursor-pointer font-medium">
@@ -208,7 +208,7 @@ export function PublishAgentDialog({
                 <Checkbox
                   id="include-custom-mcp-tools"
                   checked={includeCustomMcpTools}
-                  onCheckedChange={setIncludeCustomMcpTools}
+                  onCheckedChange={(checked) => setIncludeCustomMcpTools(checked === true)}
                 />
                 <div className="flex-1">
                   <Label htmlFor="include-custom-mcp-tools" className="cursor-pointer font-medium">
