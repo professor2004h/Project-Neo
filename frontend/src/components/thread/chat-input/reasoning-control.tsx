@@ -175,123 +175,115 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
         </Tooltip>
 
         {!isFreePlan && (
-          <div className="flex items-center gap-3 animate-in slide-in-from-left-2 duration-300">
-            {/* Unified Reasoning Component */}
-            <div className="relative flex items-end gap-6 py-2 px-3 rounded-lg transition-all duration-500 ease-out">
-              {/* Liquid Flow Background */}
-              <div 
-                className="absolute inset-0 rounded-lg transition-all duration-700 ease-out opacity-20"
-                style={{
-                  background: currentLevelIndex === 0 
-                    ? 'linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)'
-                    : currentLevelIndex === 1 
-                    ? 'linear-gradient(90deg, rgba(59,130,246,0.1) 0%, rgba(59,130,246,0.05) 100%)'
-                    : 'linear-gradient(90deg, rgba(168,85,247,0.1) 0%, rgba(168,85,247,0.05) 100%)',
-                  transform: `scaleX(${(currentLevelIndex + 1) / 3})`,
-                  transformOrigin: 'left',
-                }}
-              />
-              
-              {/* Flowing Connection Line */}
-              <div 
-                className="absolute top-3 left-0 h-0.5 transition-all duration-700 ease-out"
-                style={{
-                  width: `${20 + (currentLevelIndex * 24)}px`,
-                  background: currentLevelIndex === 0 
-                    ? 'linear-gradient(90deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 100%)'
-                    : currentLevelIndex === 1 
-                    ? 'linear-gradient(90deg, rgba(59,130,246,0.8) 0%, rgba(59,130,246,0.3) 100%)'
-                    : 'linear-gradient(90deg, rgba(168,85,247,0.8) 0%, rgba(168,85,247,0.3) 100%)',
-                  boxShadow: currentLevelIndex === 0 
-                    ? '0 0 8px rgba(255,255,255,0.3)'
-                    : currentLevelIndex === 1 
-                    ? '0 0 8px rgba(59,130,246,0.4)'
-                    : '0 0 8px rgba(168,85,247,0.4)',
-                }}
-              />
+          <div className="flex items-center animate-in slide-in-from-left-2 duration-300">
+            {/* Pill-shaped Sand Timer Component */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleToggle}
+                  disabled={isReasoningDisabled}
+                  className={cn(
+                    "relative flex items-center gap-3 px-4 py-2 rounded-full transition-all duration-500 ease-out",
+                    "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700",
+                    "border border-gray-200 dark:border-gray-700",
+                    "hover:scale-105 active:scale-95 group",
+                    isReasoningDisabled && "opacity-50 cursor-not-allowed"
+                  )}
+                  aria-label={`Current mode: ${currentLevel.label}. Click to cycle through modes.`}
+                >
+                  {/* Three Bulb Sand Timer */}
+                  <div className="flex items-center gap-1">
+                    {REASONING_LEVELS.map((level, index) => {
+                      const isFilled = index <= currentLevelIndex;
+                      const isActive = index === currentLevelIndex;
+                      
+                      // Get current theme colors
+                      const fillColor = currentLevelIndex === 0 
+                        ? 'bg-white shadow-white/40' 
+                        : currentLevelIndex === 1 
+                        ? 'bg-blue-500 shadow-blue-500/40' 
+                        : 'bg-purple-500 shadow-purple-500/40';
+                      
+                      const glowEffect = currentLevelIndex === 0 
+                        ? 'drop-shadow-[0_0_3px_rgba(255,255,255,0.8)]' 
+                        : currentLevelIndex === 1 
+                        ? 'drop-shadow-[0_0_3px_rgba(59,130,246,0.8)]' 
+                        : 'drop-shadow-[0_0_3px_rgba(168,85,247,0.8)]';
 
-              {REASONING_LEVELS.map((level, index) => {
-                const isActive = index <= currentLevelIndex;
-                const isHighlighted = index === currentLevelIndex;
-                
-                // Dynamic colors based on current level
-                const dotColor = isActive
-                  ? currentLevelIndex === 0 ? 'bg-white' 
-                    : currentLevelIndex === 1 ? 'bg-blue-500' 
-                    : 'bg-purple-500'
-                  : 'bg-gray-300 dark:bg-gray-600';
-                
-                const textColor = isActive
-                  ? currentLevelIndex === 0 ? 'text-white' 
-                    : currentLevelIndex === 1 ? 'text-blue-500' 
-                    : 'text-purple-500'
-                  : 'text-gray-400 dark:text-gray-500';
-                
-                const glowColor = isActive
-                  ? currentLevelIndex === 0 ? 'drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]' 
-                    : currentLevelIndex === 1 ? 'drop-shadow-[0_0_4px_rgba(59,130,246,0.6)]' 
-                    : 'drop-shadow-[0_0_4px_rgba(168,85,247,0.6)]'
-                  : '';
-
-                return (
-                  <Tooltip key={level.value}>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => handleDotClick(level, index)}
-                        disabled={isReasoningDisabled}
-                        className={cn(
-                          "relative flex flex-col items-center gap-1 transition-all duration-500 ease-out group",
-                          "hover:scale-105 active:scale-95",
-                          isReasoningDisabled && "opacity-50 cursor-not-allowed"
-                        )}
-                        aria-label={`Set reasoning to ${level.label}`}
-                      >
-                        {/* Dot with liquid effect */}
-                        <div className="relative">
-                          <div
-                            className={cn(
-                              "w-2.5 h-2.5 rounded-full transition-all duration-500 ease-out",
-                              dotColor,
-                              glowColor,
-                              isHighlighted && "scale-125 animate-pulse",
-                              isActive && "shadow-lg",
-                              "group-hover:scale-110"
-                            )}
-                          />
-                          {/* Liquid ripple effect */}
-                          {isHighlighted && (
+                      return (
+                        <div
+                          key={level.value}
+                          className={cn(
+                            "relative w-3 h-3 rounded-full transition-all duration-700 ease-out",
+                            "border border-gray-300 dark:border-gray-600",
+                            isFilled 
+                              ? `${fillColor} ${glowEffect} shadow-lg` 
+                              : "bg-gray-200 dark:bg-gray-700",
+                            isActive && "animate-pulse scale-110",
+                            // Staggered animation delay for liquid fill effect
+                            isFilled && `animate-in fill-mode-both duration-700`,
+                            index === 0 && "delay-0",
+                            index === 1 && "delay-150", 
+                            index === 2 && "delay-300"
+                          )}
+                          style={{
+                            animationDelay: isFilled ? `${index * 150}ms` : '0ms',
+                          }}
+                        >
+                          {/* Liquid fill animation */}
+                          {isFilled && (
                             <div 
-                              className="absolute inset-0 rounded-full animate-ping opacity-30"
+                              className="absolute inset-0 rounded-full opacity-30 animate-ping"
                               style={{
-                                background: currentLevelIndex === 0 ? 'rgba(255,255,255,0.6)' 
-                                  : currentLevelIndex === 1 ? 'rgba(59,130,246,0.6)' 
+                                background: currentLevelIndex === 0 
+                                  ? 'rgba(255,255,255,0.6)' 
+                                  : currentLevelIndex === 1 
+                                  ? 'rgba(59,130,246,0.6)' 
                                   : 'rgba(168,85,247,0.6)',
+                                animationDelay: `${index * 200}ms`,
+                                animationDuration: '2s',
                               }}
                             />
                           )}
                         </div>
-                        
-                        {/* Text label */}
-                        <span className={cn(
-                          "text-xs font-medium transition-all duration-500 ease-out whitespace-nowrap",
-                          textColor,
-                          isActive && "font-semibold",
-                          isHighlighted && "text-shadow-sm"
-                        )}>
-                          {level.label}
-                        </span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      <div className="flex flex-col gap-1">
-                        <p className="font-medium">{level.label}</p>
-                        <p className="text-muted-foreground text-[10px]">{level.description}</p>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Current Mode Label */}
+                  <span className={cn(
+                    "text-sm font-medium transition-all duration-500 ease-out",
+                    currentLevelIndex === 0 
+                      ? "text-gray-700 dark:text-white" 
+                      : currentLevelIndex === 1 
+                      ? "text-blue-600 dark:text-blue-400" 
+                      : "text-purple-600 dark:text-purple-400",
+                    "group-hover:scale-105"
+                  )}>
+                    {currentLevel.label}
+                  </span>
+                  
+                  {/* Subtle background glow */}
+                  <div 
+                    className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-10 transition-opacity duration-300"
+                    style={{
+                      background: currentLevelIndex === 0 
+                        ? 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)'
+                        : currentLevelIndex === 1 
+                        ? 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%)'
+                        : 'radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 70%)',
+                    }}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <div className="flex flex-col gap-1">
+                  <p className="font-medium">{currentLevel.label}</p>
+                  <p className="text-muted-foreground">{currentLevel.description}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Click to cycle modes</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
           </div>
         )}
       </div>
