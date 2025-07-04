@@ -162,6 +162,10 @@ export const getToolIcon = (toolName: string): ElementType => {
     case 'call-mcp-tool':
       return PlugIcon;
 
+    // Knowledge base tools
+    case 'list-available-knowledge-bases':
+      return BookOpen;
+
     // Default case
     default:
       // Handle dynamic knowledge search tools
@@ -354,6 +358,9 @@ const TOOL_DISPLAY_NAMES = new Map([
   ['configure-mcp-server', 'Configuring MCP Server'],
   ['get-popular-mcp-servers', 'Getting Popular MCP Servers'],
   ['test-mcp-server-connection', 'Testing MCP Server Connection'],
+  
+  // Knowledge base tools
+  ['list-available-knowledge-bases', 'Listing Knowledge Bases'],
 
 
   //V2

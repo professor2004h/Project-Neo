@@ -60,6 +60,9 @@ export function getToolTitle(toolName: string): string {
     'get-data-provider-endpoints': 'Data Endpoints',
     'deploy': 'Deploy',
 
+    // Knowledge base tools
+    'list-available-knowledge-bases': 'Available Knowledge Bases',
+
     'generic-tool': 'Tool',
     'default': 'Tool',
   };

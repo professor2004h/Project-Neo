@@ -31,6 +31,16 @@ export const AgentKnowledgeConfiguration = ({
   const [newIndexName, setNewIndexName] = useState('');
   const [newDescription, setNewDescription] = useState('');
 
+  // Helper function to format the name field
+  const formatKnowledgeBaseName = (input: string): string => {
+    return input
+      .toLowerCase() // Convert to lowercase
+      .replace(/\s+/g, '-') // Replace spaces with dashes
+      .replace(/[^a-z-]/g, '') // Remove any character that's not a lowercase letter or dash
+      .replace(/-+/g, '-') // Replace multiple consecutive dashes with single dash
+      .replace(/^-|-$/g, ''); // Remove leading/trailing dashes
+  };
+
   const handleAddKnowledgeBase = () => {
     if (newName.trim() && newIndexName.trim() && newDescription.trim()) {
       const newKnowledgeBase: KnowledgeBase = {
@@ -52,7 +62,9 @@ export const AgentKnowledgeConfiguration = ({
 
   const handleUpdateKnowledgeBase = (index: number, field: keyof KnowledgeBase, value: string) => {
     const updated = [...knowledgeBases];
-    updated[index] = { ...updated[index], [field]: value };
+    // Format the name field to ensure it only contains lowercase letters and dashes
+    const formattedValue = field === 'name' ? formatKnowledgeBaseName(value) : value;
+    updated[index] = { ...updated[index], [field]: formattedValue };
     onKnowledgeBasesChange(updated);
   };
 
@@ -71,7 +83,7 @@ export const AgentKnowledgeConfiguration = ({
                   <p>
                     Connect vector indices to give your agent access to specialized knowledge bases. 
                     Each knowledge base will appear as a separate search tool that the agent can use.
-                    The tool name determines how the agent refers to it, while the index name is for LlamaCloud API calls.
+                    The tool name (lowercase letters and dashes only) determines how the agent refers to it, while the index name is for LlamaCloud API calls.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -100,13 +112,13 @@ export const AgentKnowledgeConfiguration = ({
                 <div className="flex-1 space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor={`name-${index}`} className="text-xs text-muted-foreground">
-                      Tool Name
+                      Tool Name <span className="text-muted-foreground/70">(lowercase letters and dashes only)</span>
                     </Label>
                     <Input
                       id={`name-${index}`}
                       value={kb.name}
                       onChange={(e) => handleUpdateKnowledgeBase(index, 'name', e.target.value)}
-                      placeholder="documentation_search"
+                      placeholder="documentation-search"
                       className="h-9"
                     />
                   </div>
@@ -157,13 +169,13 @@ export const AgentKnowledgeConfiguration = ({
           <div className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="new-name" className="text-xs text-muted-foreground">
-                Tool Name
+                Tool Name <span className="text-muted-foreground/70">(lowercase letters and dashes only)</span>
               </Label>
               <Input
                 id="new-name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="documentation_search"
+                onChange={(e) => setNewName(formatKnowledgeBaseName(e.target.value))}
+                placeholder="documentation-search"
                 className="h-9"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
