@@ -175,7 +175,7 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
         </Tooltip>
 
         {!isFreePlan && (
-          <div className="flex items-center animate-in slide-in-from-left-2 duration-300">
+          <div className="flex items-center animate-in slide-in-from-left-2 duration-300 -ml-2">
             {/* Pill-shaped Sand Timer Component */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -191,6 +191,19 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
                   )}
                   aria-label={`Current mode: ${currentLevel.label}. Click to cycle through modes.`}
                 >
+                  {/* Icon */}
+                  <IconToShow 
+                    className={cn(
+                      "h-4 w-4 transition-all duration-500 ease-out",
+                      currentLevelIndex === 0 
+                        ? "text-gray-600 dark:text-gray-300" 
+                        : currentLevelIndex === 1 
+                        ? "text-blue-500 dark:text-blue-400" 
+                        : "text-purple-500 dark:text-purple-400",
+                      "group-hover:scale-110"
+                    )} 
+                  />
+                  
                   {/* Three Bulb Sand Timer */}
                   <div className="flex items-center gap-1">
                     {REASONING_LEVELS.map((level, index) => {
