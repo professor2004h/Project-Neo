@@ -1,0 +1,166 @@
+BEGIN;
+
+-- Update get_marketplace_agents function to include new fields
+DROP FUNCTION IF EXISTS get_marketplace_agents(INTEGER, INTEGER, TEXT, TEXT[], UUID);
+DROP FUNCTION IF EXISTS get_marketplace_agents(INTEGER, INTEGER, TEXT, TEXT[]);
+
+CREATE OR REPLACE FUNCTION get_marketplace_agents(
+    p_limit INTEGER DEFAULT 50,
+    p_offset INTEGER DEFAULT 0,
+    p_search TEXT DEFAULT NULL,
+    p_tags TEXT[] DEFAULT NULL,
+    p_account_id UUID DEFAULT NULL
+)
+RETURNS TABLE (
+    agent_id UUID,
+    name VARCHAR(255),
+    description TEXT,
+    system_prompt TEXT,
+    configured_mcps JSONB,
+    agentpress_tools JSONB,
+    knowledge_bases JSONB,
+    sharing_preferences JSONB,
+    tags TEXT[],
+    download_count INTEGER,
+    marketplace_published_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ,
+    creator_name TEXT,
+    avatar TEXT,
+    avatar_color TEXT
+)
+SECURITY DEFINER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        a.agent_id,
+        a.name,
+        a.description,
+        a.system_prompt,
+        a.configured_mcps,
+        a.agentpress_tools,
+        COALESCE(a.knowledge_bases, '[]'::jsonb) as knowledge_bases,
+        COALESCE(a.sharing_preferences, '{"include_knowledge_bases": true, "include_custom_mcp_tools": true}'::jsonb) as sharing_preferences,
+        a.tags,
+        a.download_count,
+        a.marketplace_published_at,
+        a.created_at,
+        COALESCE(acc.name, 'Anonymous')::TEXT as creator_name,
+        a.avatar::TEXT,
+        a.avatar_color::TEXT
+    FROM agents a
+    LEFT JOIN basejump.accounts acc ON a.account_id = acc.id
+    WHERE a.is_public = true
+    AND (p_search IS NULL OR 
+         a.name ILIKE '%' || p_search || '%' OR 
+         a.description ILIKE '%' || p_search || '%')
+    AND (p_tags IS NULL OR a.tags && p_tags)
+    AND (p_account_id IS NULL OR a.account_id = p_account_id)
+    ORDER BY a.marketplace_published_at DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$;
+
+-- Update add_agent_to_library function to include knowledge_bases and respect sharing preferences
+DROP FUNCTION IF EXISTS add_agent_to_library(UUID, UUID);
+
+CREATE OR REPLACE FUNCTION add_agent_to_library(
+    p_original_agent_id UUID,
+    p_user_account_id UUID
+)
+RETURNS UUID
+SECURITY DEFINER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_new_agent_id UUID;
+    v_original_agent agents%ROWTYPE;
+    v_sharing_prefs JSONB;
+    v_knowledge_bases JSONB;
+    v_configured_mcps JSONB;
+BEGIN
+    SELECT * INTO v_original_agent
+    FROM agents 
+    WHERE agent_id = p_original_agent_id AND is_public = true;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Agent not found or not public';
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM user_agent_library 
+        WHERE user_account_id = p_user_account_id 
+        AND original_agent_id = p_original_agent_id
+    ) THEN
+        RAISE EXCEPTION 'Agent already in your library';
+    END IF;
+    
+    -- Get sharing preferences
+    v_sharing_prefs := COALESCE(v_original_agent.sharing_preferences, '{"include_knowledge_bases": true, "include_custom_mcp_tools": true}'::jsonb);
+    
+    -- Apply sharing preferences
+    v_knowledge_bases := CASE 
+        WHEN (v_sharing_prefs->>'include_knowledge_bases')::boolean = true 
+        THEN COALESCE(v_original_agent.knowledge_bases, '[]'::jsonb)
+        ELSE '[]'::jsonb
+    END;
+    
+    v_configured_mcps := CASE 
+        WHEN (v_sharing_prefs->>'include_custom_mcp_tools')::boolean = true 
+        THEN COALESCE(v_original_agent.configured_mcps, '[]'::jsonb)
+        ELSE '[]'::jsonb
+    END;
+    
+    INSERT INTO agents (
+        account_id,
+        name,
+        description,
+        system_prompt,
+        configured_mcps,
+        agentpress_tools,
+        knowledge_bases,
+        is_default,
+        is_public,
+        tags,
+        avatar,
+        avatar_color
+    ) VALUES (
+        p_user_account_id,
+        v_original_agent.name || ' (from marketplace)',
+        v_original_agent.description,
+        v_original_agent.system_prompt,
+        v_configured_mcps,
+        v_original_agent.agentpress_tools,
+        v_knowledge_bases,
+        false,
+        false,
+        v_original_agent.tags,
+        v_original_agent.avatar,
+        v_original_agent.avatar_color
+    ) RETURNING agent_id INTO v_new_agent_id;
+    
+    INSERT INTO user_agent_library (
+        user_account_id,
+        original_agent_id,
+        agent_id
+    ) VALUES (
+        p_user_account_id,
+        p_original_agent_id,
+        v_new_agent_id
+    );
+    
+    UPDATE agents 
+    SET download_count = download_count + 1 
+    WHERE agent_id = p_original_agent_id;
+    
+    RETURN v_new_agent_id;
+END;
+$$;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION get_marketplace_agents(INTEGER, INTEGER, TEXT, TEXT[], UUID) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION add_agent_to_library(UUID, UUID) TO authenticated;
+
+COMMIT; 
