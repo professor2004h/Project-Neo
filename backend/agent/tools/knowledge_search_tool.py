@@ -142,7 +142,9 @@ class KnowledgeSearchTool(Tool):
                 dense_similarity_top_k=3,
                 sparse_similarity_top_k=3,
                 alpha=0.5,  # Balance between dense and sparse
-                enable_reranking=False,  # Can be enabled for better results
+                enable_reranking=True,
+                rerank_top_n=3,
+                retrieval_mode="chunks",  # Can be enabled for better results
             )
             
             # Perform the search

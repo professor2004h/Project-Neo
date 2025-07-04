@@ -40,13 +40,13 @@ export function extractKnowledgeSearchData(
   let actualAssistantTimestamp: string | null = assistantTimestamp || null;
 
   // Debug logging
-  console.log('Knowledge Search Debug:', {
-    assistantContent,
-    toolContent,
-    isSuccess,
-    toolTimestamp,
-    assistantTimestamp
-  });
+  // console.log('Knowledge Search Debug:', {
+  //   assistantContent,
+  //   toolContent,
+  //   isSuccess,
+  //   toolTimestamp,
+  //   assistantTimestamp
+  // });
 
   // Extract query from assistant content
   const assistantToolData = extractToolData(assistantContent);
@@ -67,21 +67,33 @@ export function extractKnowledgeSearchData(
       if (argsMatch) {
         query = argsMatch[1];
       }
+      
+      // Try to extract from invoke tags
+      const invokeMatch = contentStr.match(/<invoke[^>]*>[\s\S]*?<parameter name="query">([^<]+)<\/parameter>/);
+      if (invokeMatch) {
+        query = invokeMatch[1];
+      }
+      
+      // Try to extract from search method calls
+      const searchMatch = contentStr.match(/search_[^(]*\(['"]([^'"]+)['"]\)/);
+      if (searchMatch) {
+        query = searchMatch[1];
+      }
     }
   }
 
   // Extract data from tool content
   const toolContentStr = normalizeContentToString(toolContent);
-  console.log('Tool Content String:', toolContentStr);
+  // console.log('Tool Content String:', toolContentStr);
   
   if (toolContentStr) {
     try {
       // Try to parse as JSON first
       let toolData: any;
       
-      // Handle different response formats
-      if (toolContentStr.includes('ToolResult')) {
-        console.log('Found ToolResult format');
+              // Handle different response formats
+        if (toolContentStr.includes('ToolResult')) {
+          // console.log('Found ToolResult format');
         // Extract ToolResult content
         const toolResultMatch = toolContentStr.match(/ToolResult\([^)]*output=['"](.*?)['"][^)]*\)/);
         if (toolResultMatch) {
@@ -96,13 +108,13 @@ export function extractKnowledgeSearchData(
             console.warn('Failed to parse ToolResult output as JSON:', e);
           }
         }
-      } else {
-        console.log('Trying direct JSON parsing');
-        // Try direct JSON parsing
-        toolData = JSON.parse(toolContentStr);
-      }
+              } else {
+          // console.log('Trying direct JSON parsing');
+          // Try direct JSON parsing
+          toolData = JSON.parse(toolContentStr);
+        }
 
-      console.log('Parsed tool data:', toolData);
+        // console.log('Parsed tool data:', toolData);
 
       if (toolData) {
         // Extract from direct format
@@ -120,18 +132,27 @@ export function extractKnowledgeSearchData(
           description = toolData.description || null;
           query = query || toolData.query || null;
           actualIsSuccess = toolData.success !== false;
+        } else if (Array.isArray(toolData)) {
+          // toolData is an array of results
+          results = toolData;
         } else {
-          // Check if toolData itself contains the result fields
-          if (Array.isArray(toolData)) {
-            // toolData is an array of results
-            results = toolData;
-          } else {
-            // Check for other possible formats
-            results = toolData.data || toolData.search_results || [];
-            indexName = toolData.index || toolData.index_name || null;
-            description = toolData.description || null;
-            query = query || toolData.query || null;
-            actualIsSuccess = toolData.success !== false;
+          // Check for other possible formats
+          results = toolData.data || toolData.search_results || toolData.nodes || [];
+          indexName = toolData.index || toolData.index_name || null;
+          description = toolData.description || null;
+          query = query || toolData.query || null;
+          actualIsSuccess = toolData.success !== false;
+          
+          // Handle LlamaIndex format
+          if (toolData.response && toolData.response.source_nodes) {
+            results = toolData.response.source_nodes;
+          }
+          
+          // Handle nested result formats
+          if (toolData.tool_result && toolData.tool_result.results) {
+            results = toolData.tool_result.results;
+            indexName = toolData.tool_result.index || indexName;
+            description = toolData.tool_result.description || description;
           }
         }
 
@@ -152,6 +173,21 @@ export function extractKnowledgeSearchData(
             .split(' ')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' ');
+        }
+        
+        // Try to extract from tool name in content
+        const assistantContentStr = normalizeContentToString(assistantContent);
+        if (!knowledgeBaseName && assistantContentStr) {
+          // Look for patterns like "Searching Tims old contracts" or "Search Neca Mlu"
+          const searchingMatch = assistantContentStr.match(/Searching ([^"]+)/);
+          if (searchingMatch) {
+            knowledgeBaseName = searchingMatch[1].trim();
+          }
+          
+          const searchMatch = assistantContentStr.match(/Search ([^"]+)/);
+          if (searchMatch) {
+            knowledgeBaseName = searchMatch[1].trim();
+          }
         }
       }
 
@@ -183,11 +219,11 @@ export function extractKnowledgeSearchData(
 
   // Ensure results are properly formatted
   if (results && Array.isArray(results)) {
-    results = results.map((result, index) => ({
+    results = results.map((result: any, index) => ({
       rank: result.rank || index + 1,
-      score: result.score || 0,
-      text: result.text || '',
-      metadata: result.metadata || {}
+      score: result.score || result.similarity || result.relevance || 0,
+      text: result.text || result.content || result.node_content || result.get_content?.() || '',
+      metadata: result.metadata || result.node_info || {}
     }));
   } else {
     results = [];
@@ -204,7 +240,7 @@ export function extractKnowledgeSearchData(
     actualAssistantTimestamp
   };
 
-  console.log('Final Knowledge Search Result:', finalResult);
+  // console.log('Final Knowledge Search Result:', finalResult);
   
   return finalResult;
 } 
