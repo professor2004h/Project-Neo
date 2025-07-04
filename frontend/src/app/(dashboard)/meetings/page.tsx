@@ -463,21 +463,16 @@ ${meeting.transcript}`;
                 Go to Root
               </Button>
             )}
-            <div className="flex items-center bg-card/50 backdrop-blur border border-border/50 rounded-xl p-1 shadow-sm">
+            <div className="flex items-center gap-3">
               <Button 
                 onClick={() => setShowNewFolderDialog(true)} 
-                variant="ghost"
-                size="sm"
-                className="hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-all duration-200 focus:bg-amber-50 dark:focus:bg-amber-950/30 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                variant="outline"
               >
                 <Folder className="h-4 w-4 mr-2" />
                 New Folder
               </Button>
-              <div className="w-px h-6 bg-gradient-to-t from-transparent via-border to-transparent mx-1" />
               <Button 
                 onClick={() => setShowNewMeetingDialog(true)}
-                size="sm"
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Meeting
