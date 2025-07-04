@@ -20,6 +20,23 @@ import { useFileDelete } from '@/hooks/react-query/files';
 import { useQueryClient } from '@tanstack/react-query';
 import { ThreeSpinner } from '@/components/ui/three-spinner';
 
+// Helper function to load reasoning settings from localStorage
+const loadReasoningSettings = (): ReasoningSettings => {
+  try {
+    const stored = localStorage.getItem('reasoning-settings');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.warn('Failed to load reasoning settings from localStorage:', error);
+  }
+  // Default settings
+  return {
+    enabled: false,
+    effort: 'none',
+  };
+};
+
 export interface ChatInputHandles {
   getPendingFiles: () => File[];
   clearPendingFiles: () => void;
@@ -99,9 +116,16 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const [isUploading, setIsUploading] = useState(false);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
     
-    const [reasoningSettings, setReasoningSettings] = useState<ReasoningSettings>({
-      enabled: false,
-      effort: 'none',
+    // Initialize reasoning settings from localStorage
+    const [reasoningSettings, setReasoningSettings] = useState<ReasoningSettings>(() => {
+      // Only load from localStorage on client side
+      if (typeof window !== 'undefined') {
+        return loadReasoningSettings();
+      }
+      return {
+        enabled: false,
+        effort: 'none',
+      };
     });
 
     const {

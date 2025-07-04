@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Brain, Zap, Target, Rocket, Crown } from 'lucide-react';
@@ -24,7 +23,7 @@ interface ReasoningControlProps {
 const REASONING_LEVELS = [
   {
     value: 'none',
-    label: 'Quick Think',
+    label: 'Brain',
     description: 'Standard speed, no enhanced reasoning',
     icon: Zap,
     color: 'text-gray-500',
@@ -51,6 +50,31 @@ const REASONING_LEVELS = [
   },
 ] as const;
 
+// localStorage key for persisting reasoning settings
+const REASONING_SETTINGS_KEY = 'reasoning-settings';
+
+// Helper function to save settings to localStorage
+const saveReasoningSettings = (settings: ReasoningSettings) => {
+  try {
+    localStorage.setItem(REASONING_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.warn('Failed to save reasoning settings to localStorage:', error);
+  }
+};
+
+// Helper function to load settings from localStorage
+const loadReasoningSettings = (): ReasoningSettings | null => {
+  try {
+    const stored = localStorage.getItem(REASONING_SETTINGS_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.warn('Failed to load reasoning settings from localStorage:', error);
+  }
+  return null;
+};
+
 export const ReasoningControl: React.FC<ReasoningControlProps> = ({
   value,
   onChange,
@@ -58,8 +82,6 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
   modelName = '',
   subscriptionStatus = '',
 }) => {
-  const [sliderValue, setSliderValue] = useState([0]);
-
   // Check if the model supports reasoning (Claude models)
   const supportsReasoning = modelName.toLowerCase().includes('claude');
   
@@ -69,21 +91,19 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
   // Disable reasoning control for free plan users
   const isReasoningDisabled = disabled || isFreePlan;
 
+  // Save settings whenever they change
   useEffect(() => {
-    const levelIndex = REASONING_LEVELS.findIndex(level => level.value === value.effort);
-    setSliderValue([levelIndex]);
-  }, [value]);
+    if (!isFreePlan) {
+      saveReasoningSettings(value);
+    }
+  }, [value, isFreePlan]);
 
-  const handleSliderChange = (newValue: number[]) => {
+  const handleDotClick = (level: typeof REASONING_LEVELS[number], index: number) => {
     if (isFreePlan) return; // Prevent changes on free plan
     
-    const level = newValue[0];
-    setSliderValue(newValue);
-    
-    const selectedLevel = REASONING_LEVELS[level];
     onChange({ 
-      enabled: selectedLevel.isReasoning,
-      effort: selectedLevel.value as 'none' | 'medium' | 'high'
+      enabled: level.isReasoning,
+      effort: level.value as 'none' | 'medium' | 'high'
     });
   };
 
@@ -99,7 +119,6 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
       enabled: nextLevel.isReasoning,
       effort: nextLevel.value as 'none' | 'medium' | 'high'
     });
-    setSliderValue([nextIndex]);
   };
 
   if (!supportsReasoning) {
@@ -107,6 +126,7 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
   }
 
   const currentLevel = REASONING_LEVELS.find(level => level.value === value.effort) || REASONING_LEVELS[0];
+  const currentLevelIndex = REASONING_LEVELS.findIndex(level => level.value === value.effort);
   const IconToShow = isFreePlan ? Crown : currentLevel.icon;
 
   return (
@@ -156,16 +176,35 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
 
         {!isFreePlan && (
           <div className="flex items-center gap-2 animate-in slide-in-from-left-2 duration-300">
-            <div className="flex items-center gap-1 min-w-0">
-              <Slider
-                value={sliderValue}
-                onValueChange={handleSliderChange}
-                max={2}
-                min={0}
-                step={1}
-                disabled={isReasoningDisabled}
-                className="w-16 flex-shrink-0"
-              />
+            {/* Dot Tower */}
+            <div className="flex flex-col items-center gap-0.5 py-1">
+              {REASONING_LEVELS.map((level, index) => {
+                const isActive = index <= currentLevelIndex;
+                const isSelected = index === currentLevelIndex;
+                return (
+                  <Tooltip key={level.value}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handleDotClick(level, index)}
+                        disabled={isReasoningDisabled}
+                        className={cn(
+                          "w-2 h-2 rounded-full transition-all duration-200 hover:scale-125",
+                          isActive 
+                            ? "bg-white shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 dark:bg-gray-100" 
+                            : "bg-gray-300 dark:bg-gray-600",
+                          isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
+                          isReasoningDisabled && "opacity-50 cursor-not-allowed",
+                          "hover:bg-white dark:hover:bg-gray-100"
+                        )}
+                        aria-label={`Set reasoning to ${level.label}`}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="text-xs">
+                      <p className="font-medium">{level.label}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
             </div>
             <span className={cn(
               "text-xs font-medium whitespace-nowrap",
