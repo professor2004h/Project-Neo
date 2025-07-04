@@ -1543,6 +1543,12 @@ ${transcript}`;
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
+            <Alert className="border-amber-200 bg-amber-50/50 dark:border-amber-800/50 dark:bg-amber-900/20">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <AlertDescription className="text-amber-700 dark:text-amber-300">
+                <strong>Google Meet temporarily unavailable:</strong> Our bot is currently experiencing issues with Google Meet. Please use Zoom or other supported platforms. We're working on a fix!
+              </AlertDescription>
+            </Alert>
             <div className="space-y-2">
               <Label htmlFor="meeting-url" className="text-sm font-medium text-foreground/90">
                 Meeting URL
@@ -1551,7 +1557,7 @@ ${transcript}`;
                 id="meeting-url"
                 value={meetingUrl}
                 onChange={(e) => setMeetingUrl(e.target.value)}
-                placeholder="https://zoom.us/j/123456789 or https://meet.google.com/abc-defg-hij"
+                placeholder="https://zoom.us/j/123456789 (Google Meet temporarily unavailable)"
                 onKeyDown={(e) => e.key === 'Enter' && handleStartOnlineRecording()}
                 className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-colors duration-200 placeholder:text-muted-foreground/60"
               />
