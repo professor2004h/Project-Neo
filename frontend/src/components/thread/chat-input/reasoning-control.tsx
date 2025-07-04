@@ -200,11 +200,11 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
                         className={cn(
                           "w-2 h-2 rounded-full transition-all duration-200 hover:scale-125",
                           isActive 
-                            ? `${level.dotColor} shadow-sm ring-1 ring-gray-200 dark:ring-gray-700` 
+                            ? "bg-white shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 dark:bg-gray-100" 
                             : "bg-gray-300 dark:bg-gray-600",
-                          isSelected && `ring-2 ${level.ringColor} dark:${level.ringColor}`,
+                          isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
                           isReasoningDisabled && "opacity-50 cursor-not-allowed",
-                          !isReasoningDisabled && level.hoverColor
+                          !isReasoningDisabled && "hover:bg-white dark:hover:bg-gray-100"
                         )}
                         aria-label={`Set reasoning to ${level.label}`}
                       />
