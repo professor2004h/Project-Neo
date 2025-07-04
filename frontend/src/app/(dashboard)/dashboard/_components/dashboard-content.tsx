@@ -35,12 +35,6 @@ import { createClient } from '@/lib/supabase/client';
 import { TypingText } from '@/components/animate-ui/text/typing';
 import { GradientText } from '@/components/animate-ui/text/gradient';
 import { useAgents } from '@/hooks/react-query/agents/use-agents';
-import dynamic from 'next/dynamic';
-
-const Dither = dynamic(() => import('@/Backgrounds/Dither/Dither'), {
-  ssr: false,
-  loading: () => <div className="absolute inset-0 bg-gradient-to-br from-background via-background/90 to-background/80" />
-});
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
@@ -365,19 +359,15 @@ ${meeting.transcript || '(No transcript available)'}`;
     <>
       <ModalProviders />
       <div className="flex flex-col h-screen w-full relative">
-        {/* Dither Background */}
-        <div className="absolute inset-0 z-0">
-          <Dither
-            waveSpeed={0.02}
-            waveFrequency={2}
-            waveAmplitude={0.4}
-            waveColor={[0.3, 0.4, 0.6]}
-            colorNum={6}
-            pixelSize={3}
-            disableAnimation={false}
-            enableMouseInteraction={true}
-            mouseRadius={0.8}
-          />
+        {/* Animated Background */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-purple-950/20"></div>
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute top-3/4 right-1/4 w-80 h-80 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-to-r from-indigo-400/15 to-blue-400/15 rounded-full blur-2xl animate-bounce"></div>
+          </div>
+          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,.05)_25%,rgba(255,255,255,.05)_50%,transparent_50%,transparent_75%,rgba(255,255,255,.05)_75%)] bg-[length:60px_60px] animate-pulse"></div>
         </div>
         
         {isMobile && (
