@@ -138,8 +138,7 @@ export function PublishAgentDialog({
                   {adminTeams.map(team => (
                     <div
                       key={team.account_id}
-                      className="flex items-center space-x-2 p-2 rounded hover:bg-muted/50 cursor-pointer"
-                      onClick={() => toggleTeam(team.account_id)}
+                      className="flex items-center space-x-2 p-2 rounded hover:bg-muted/50"
                     >
                       <Checkbox
                         id={team.account_id}
