@@ -2,13 +2,14 @@ import React from 'react';
 import { BookOpen, Database, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ToolViewProps } from '../types';
 import { extractListKnowledgeBasesData, type ListKnowledgeBasesData, type KnowledgeBase } from './_utils';
 
-interface ListKnowledgeBasesToolViewProps {
-  toolResult: any;
+interface KnowledgeBaseCardProps {
+  knowledgeBase: KnowledgeBase;
 }
 
-function KnowledgeBaseCard({ knowledgeBase }: { knowledgeBase: KnowledgeBase }) {
+function KnowledgeBaseCard({ knowledgeBase }: KnowledgeBaseCardProps) {
   return (
     <Card className="border-purple-200 dark:border-purple-800 hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -37,8 +38,8 @@ function KnowledgeBaseCard({ knowledgeBase }: { knowledgeBase: KnowledgeBase }) 
   );
 }
 
-export function ListKnowledgeBasesToolView({ toolResult }: ListKnowledgeBasesToolViewProps) {
-  const data = extractListKnowledgeBasesData(toolResult);
+export function ListKnowledgeBasesToolView({ toolContent }: ToolViewProps) {
+  const data = extractListKnowledgeBasesData(toolContent);
   
   if (!data) {
     return (
@@ -89,9 +90,15 @@ export function ListKnowledgeBasesToolView({ toolResult }: ListKnowledgeBasesToo
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
-          {data.knowledge_bases.map((kb, index) => (
-            <KnowledgeBaseCard knowledgeBase={kb} key={`${kb.index_name}-${index}`} />
-          ))}
+          {data.knowledge_bases.map((kb, index) => {
+            const cardKey = `${kb.index_name}-${index}`;
+            return (
+              <KnowledgeBaseCard 
+                key={cardKey}
+                knowledgeBase={kb} 
+              />
+            );
+          })}
         </div>
       )}
     </div>
