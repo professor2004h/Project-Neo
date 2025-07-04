@@ -530,7 +530,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                 <GradientText 
                   text={selectedLabel} 
                   gradient="linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #f59e0b 100%)"
-                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                  transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
                 />
               </span>
               <ChevronDown className="h-3 w-3 opacity-50 ml-1 flex-shrink-0" />
