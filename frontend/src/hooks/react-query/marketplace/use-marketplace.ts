@@ -11,6 +11,7 @@ export interface MarketplaceAgent {
   system_prompt: string;
   configured_mcps: any[];
   agentpress_tools: Record<string, any>;
+  knowledge_bases?: any[];
   tags: string[];
   download_count: number;
   marketplace_published_at: string;
@@ -153,12 +154,16 @@ export function usePublishAgent() {
       agentId, 
       tags = [], 
       visibility = 'public', 
-      teamIds = [] 
+      teamIds = [],
+      includeKnowledgeBases = true,
+      includeCustomMcpTools = true
     }: { 
       agentId: string; 
       tags?: string[]; 
       visibility?: 'public' | 'teams' | 'private';
       teamIds?: string[];
+      includeKnowledgeBases?: boolean;
+      includeCustomMcpTools?: boolean;
     }): Promise<void> => {
       try {
         const marketplaceEnabled = await isFlagEnabled('agent_marketplace');
@@ -181,7 +186,9 @@ export function usePublishAgent() {
           body: JSON.stringify({ 
             tags,
             visibility,
-            team_ids: teamIds 
+            team_ids: teamIds,
+            include_knowledge_bases: includeKnowledgeBases,
+            include_custom_mcp_tools: includeCustomMcpTools
           }),
         });
 

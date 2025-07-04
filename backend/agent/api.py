@@ -86,6 +86,7 @@ class AgentResponse(BaseModel):
     marketplace_published_at: Optional[str] = None
     download_count: Optional[int] = 0
     tags: Optional[List[str]] = []
+    sharing_preferences: Optional[Dict[str, Any]] = {}
     avatar: Optional[str]
     avatar_color: Optional[str]
     created_at: str
@@ -1843,6 +1844,7 @@ async def create_agent(
             marketplace_published_at=agent.get('marketplace_published_at'),
             download_count=agent.get('download_count', 0),
             tags=agent.get('tags', []),
+            sharing_preferences=agent.get('sharing_preferences', {}),
             avatar=agent.get('avatar'),
             avatar_color=agent.get('avatar_color'),
             created_at=agent['created_at'],
@@ -1947,6 +1949,7 @@ async def update_agent(
             marketplace_published_at=agent.get('marketplace_published_at'),
             download_count=agent.get('download_count', 0),
             tags=agent.get('tags', []),
+            sharing_preferences=agent.get('sharing_preferences', {}),
             avatar=agent.get('avatar'),
             avatar_color=agent.get('avatar_color'),
             created_at=agent['created_at'],
@@ -2004,6 +2007,7 @@ class MarketplaceAgent(BaseModel):
     system_prompt: str
     configured_mcps: List[Dict[str, Any]]
     agentpress_tools: Dict[str, Any]
+    knowledge_bases: Optional[List[Dict[str, Any]]] = []
     tags: Optional[List[str]]
     download_count: int
     marketplace_published_at: str
@@ -2020,6 +2024,8 @@ class PublishAgentRequest(BaseModel):
     tags: Optional[List[str]] = []
     visibility: Optional[str] = "public"  # "public", "teams", or "private"
     team_ids: Optional[List[str]] = []  # Team account IDs to share with
+    include_knowledge_bases: Optional[bool] = True  # Whether to include knowledge bases when sharing
+    include_custom_mcp_tools: Optional[bool] = True  # Whether to include custom MCP tools when sharing
 
 @router.get("/marketplace/agents", response_model=MarketplaceAgentsResponse)
 async def get_marketplace_agents(
@@ -2074,6 +2080,20 @@ async def get_marketplace_agents(
             agents_data = sorted(agents_data, key=lambda x: x.get('name', '').lower())
         else:
             agents_data = sorted(agents_data, key=lambda x: x.get('marketplace_published_at', ''), reverse=True)
+        
+        # Apply sharing preferences to filter out excluded components
+        for agent in agents_data:
+            sharing_preferences = agent.get('sharing_preferences', {})
+            
+            # If knowledge bases are not to be shared, remove them
+            if not sharing_preferences.get('include_knowledge_bases', True):
+                agent['knowledge_bases'] = []
+            
+            # If custom MCP tools are not to be shared, filter them out
+            if not sharing_preferences.get('include_custom_mcp_tools', True):
+                # For now, we'll remove all custom MCPs
+                # You can implement more sophisticated filtering based on MCP type
+                agent['custom_mcps'] = []
         
         estimated_total = (page - 1) * limit + len(agents_data)
         if has_more:
@@ -2133,6 +2153,17 @@ async def publish_agent_to_marketplace(
         # 1. User owns the agent
         # 2. User is owner of their account  
         # 3. User is owner of all target teams (if sharing with teams)
+        
+        # Store sharing preferences for later use when serving marketplace agents
+        sharing_preferences = {
+            'include_knowledge_bases': publish_data.include_knowledge_bases,
+            'include_custom_mcp_tools': publish_data.include_custom_mcp_tools
+        }
+        
+        # Update agent with sharing preferences
+        await client.table('agents').update({
+            'sharing_preferences': sharing_preferences
+        }).eq('agent_id', agent_id).execute()
         
         # Use the new database function that accepts user_id explicitly
         await client.rpc('publish_agent_with_visibility_by_user', {

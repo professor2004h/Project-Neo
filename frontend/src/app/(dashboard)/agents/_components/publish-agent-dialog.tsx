@@ -25,6 +25,9 @@ interface PublishAgentDialogProps {
     agent_id: string;
     name: string;
     description?: string;
+    knowledge_bases?: any[];
+    configured_mcps?: any[];
+    custom_mcps?: any[];
   };
   isOpen: boolean;
   onClose: () => void;
@@ -39,6 +42,8 @@ export function PublishAgentDialog({
 }: PublishAgentDialogProps) {
   const [publishType, setPublishType] = useState<'marketplace' | 'teams'>('marketplace');
   const [selectedTeams, setSelectedTeams] = useState<Set<string>>(new Set());
+  const [includeKnowledgeBases, setIncludeKnowledgeBases] = useState(true);
+  const [includeCustomMcpTools, setIncludeCustomMcpTools] = useState(true);
   const { data: accounts } = useAccounts();
   const publishAgentMutation = usePublishAgent();
   
@@ -58,7 +63,9 @@ export function PublishAgentDialog({
         agentId: agent.agent_id,
         tags: [],
         visibility: publishType === 'marketplace' ? 'public' : 'teams',
-        teamIds: publishType === 'teams' ? Array.from(selectedTeams) : []
+        teamIds: publishType === 'teams' ? Array.from(selectedTeams) : [],
+        includeKnowledgeBases,
+        includeCustomMcpTools
       });
       
       const message = publishType === 'marketplace' 
@@ -168,6 +175,67 @@ export function PublishAgentDialog({
               </p>
             </div>
           )}
+
+          {/* Sharing Options */}
+          <div className="space-y-3 pt-2 border-t">
+            <Label className="text-sm font-medium">What to include when sharing:</Label>
+            
+            <div className="space-y-3">
+              <div className="flex items-start space-x-3 p-3 rounded-lg border bg-muted/20">
+                <Checkbox
+                  id="include-knowledge-bases"
+                  checked={includeKnowledgeBases}
+                  onCheckedChange={setIncludeKnowledgeBases}
+                />
+                <div className="flex-1">
+                  <Label htmlFor="include-knowledge-bases" className="cursor-pointer font-medium">
+                    Knowledge Bases {agent.knowledge_bases && agent.knowledge_bases.length > 0 && (
+                      <Badge variant="secondary" className="ml-2">
+                        {agent.knowledge_bases.length} configured
+                      </Badge>
+                    )}
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Include configured knowledge bases and search tools. Recipients will be able to use the same knowledge sources.
+                    {!agent.knowledge_bases || agent.knowledge_bases.length === 0 && (
+                      <span className="text-amber-600 dark:text-amber-400"> No knowledge bases configured.</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3 p-3 rounded-lg border bg-muted/20">
+                <Checkbox
+                  id="include-custom-mcp-tools"
+                  checked={includeCustomMcpTools}
+                  onCheckedChange={setIncludeCustomMcpTools}
+                />
+                <div className="flex-1">
+                  <Label htmlFor="include-custom-mcp-tools" className="cursor-pointer font-medium">
+                    Custom MCP Tools {(agent.configured_mcps && agent.configured_mcps.length > 0) || (agent.custom_mcps && agent.custom_mcps.length > 0) ? (
+                      <Badge variant="secondary" className="ml-2">
+                        {(agent.configured_mcps?.length || 0) + (agent.custom_mcps?.length || 0)} configured
+                      </Badge>
+                    ) : null}
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Include custom MCP server configurations. Recipients will need access to the same MCP servers.
+                    {(!agent.configured_mcps || agent.configured_mcps.length === 0) && (!agent.custom_mcps || agent.custom_mcps.length === 0) && (
+                      <span className="text-amber-600 dark:text-amber-400"> No custom MCP tools configured.</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {(!includeKnowledgeBases || !includeCustomMcpTools) && (
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  <strong>Note:</strong> Excluded components will not be available to users who add this agent to their library.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         <DialogFooter>
