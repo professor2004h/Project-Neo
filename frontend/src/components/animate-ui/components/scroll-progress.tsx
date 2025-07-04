@@ -10,19 +10,14 @@ import {
 
 import { cn } from '@/lib/utils';
 
-type ScrollProgressProps = React.ComponentProps<'div'> & {
+type ScrollProgressProps = Omit<React.ComponentProps<'div'>, 'ref'> & {
   progressProps?: HTMLMotionProps<'div'>;
 };
 
-function ScrollProgress({
-  ref,
-  className,
-  children,
-  progressProps,
-  ...props
-}: ScrollProgressProps) {
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
-  React.useImperativeHandle(ref, () => containerRef.current as HTMLDivElement);
+const ScrollProgress = React.forwardRef<HTMLDivElement, ScrollProgressProps>(
+  ({ className, children, progressProps, ...props }, ref) => {
+    const containerRef = React.useRef<HTMLDivElement | null>(null);
+    React.useImperativeHandle(ref, () => containerRef.current as HTMLDivElement);
 
   const { scrollYProgress } = useScroll(
     children ? { container: containerRef } : undefined,
@@ -57,6 +52,8 @@ function ScrollProgress({
       )}
     </>
   );
-}
+});
+
+ScrollProgress.displayName = 'ScrollProgress';
 
 export { ScrollProgress, type ScrollProgressProps };
