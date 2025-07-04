@@ -175,29 +175,64 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
         </Tooltip>
 
         {!isFreePlan && (
-          <div className="flex items-center gap-2 animate-in slide-in-from-left-2 duration-300">
-            {/* Horizontal Dot Row */}
-            <div className="flex items-center gap-1.5 px-1">
+          <div className="flex items-center gap-3 animate-in slide-in-from-left-2 duration-300">
+            {/* Unified Reasoning Component */}
+            <div className="relative flex items-end gap-6 py-2 px-3 rounded-lg transition-all duration-500 ease-out">
+              {/* Liquid Flow Background */}
+              <div 
+                className="absolute inset-0 rounded-lg transition-all duration-700 ease-out opacity-20"
+                style={{
+                  background: currentLevelIndex === 0 
+                    ? 'linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)'
+                    : currentLevelIndex === 1 
+                    ? 'linear-gradient(90deg, rgba(59,130,246,0.1) 0%, rgba(59,130,246,0.05) 100%)'
+                    : 'linear-gradient(90deg, rgba(168,85,247,0.1) 0%, rgba(168,85,247,0.05) 100%)',
+                  transform: `scaleX(${(currentLevelIndex + 1) / 3})`,
+                  transformOrigin: 'left',
+                }}
+              />
+              
+              {/* Flowing Connection Line */}
+              <div 
+                className="absolute top-3 left-0 h-0.5 transition-all duration-700 ease-out"
+                style={{
+                  width: `${20 + (currentLevelIndex * 24)}px`,
+                  background: currentLevelIndex === 0 
+                    ? 'linear-gradient(90deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 100%)'
+                    : currentLevelIndex === 1 
+                    ? 'linear-gradient(90deg, rgba(59,130,246,0.8) 0%, rgba(59,130,246,0.3) 100%)'
+                    : 'linear-gradient(90deg, rgba(168,85,247,0.8) 0%, rgba(168,85,247,0.3) 100%)',
+                  boxShadow: currentLevelIndex === 0 
+                    ? '0 0 8px rgba(255,255,255,0.3)'
+                    : currentLevelIndex === 1 
+                    ? '0 0 8px rgba(59,130,246,0.4)'
+                    : '0 0 8px rgba(168,85,247,0.4)',
+                }}
+              />
+
               {REASONING_LEVELS.map((level, index) => {
-                // Light up dots from left to right: left = index 0, middle = 1, right = 2
                 const isActive = index <= currentLevelIndex;
+                const isHighlighted = index === currentLevelIndex;
                 
-                // Determine which dot should be highlighted (have the ring)
-                const isHighlighted = (currentLevelIndex === 0 && index === 0) || // Chill Mode: left dot (index 0)
-                                     (currentLevelIndex === 1 && index === 1) || // Boost: middle dot (index 1)  
-                                     (currentLevelIndex === 2 && index === 2);   // Turbo: right dot (index 2)
+                // Dynamic colors based on current level
+                const dotColor = isActive
+                  ? currentLevelIndex === 0 ? 'bg-white' 
+                    : currentLevelIndex === 1 ? 'bg-blue-500' 
+                    : 'bg-purple-500'
+                  : 'bg-gray-300 dark:bg-gray-600';
                 
-                // Get the color based on current level (all lit dots use same color)
-                const currentDotColor = currentLevelIndex === 0 ? 'bg-white' : 
-                                       currentLevelIndex === 1 ? 'bg-blue-500' : 
-                                       'bg-purple-500';
-                const currentRingColor = currentLevelIndex === 0 ? 'ring-white' : 
-                                        currentLevelIndex === 1 ? 'ring-blue-500' : 
-                                        'ring-purple-500';
-                const currentHoverColor = currentLevelIndex === 0 ? 'hover:bg-gray-100' : 
-                                         currentLevelIndex === 1 ? 'hover:bg-blue-600' : 
-                                         'hover:bg-purple-600';
+                const textColor = isActive
+                  ? currentLevelIndex === 0 ? 'text-white' 
+                    : currentLevelIndex === 1 ? 'text-blue-500' 
+                    : 'text-purple-500'
+                  : 'text-gray-400 dark:text-gray-500';
                 
+                const glowColor = isActive
+                  ? currentLevelIndex === 0 ? 'drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]' 
+                    : currentLevelIndex === 1 ? 'drop-shadow-[0_0_4px_rgba(59,130,246,0.6)]' 
+                    : 'drop-shadow-[0_0_4px_rgba(168,85,247,0.6)]'
+                  : '';
+
                 return (
                   <Tooltip key={level.value}>
                     <TooltipTrigger asChild>
@@ -205,31 +240,58 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
                         onClick={() => handleDotClick(level, index)}
                         disabled={isReasoningDisabled}
                         className={cn(
-                          "w-2 h-2 rounded-full transition-all duration-200 hover:scale-125",
-                          isActive 
-                            ? `${currentDotColor} shadow-sm ring-1 ring-gray-200 dark:ring-gray-700` 
-                            : "bg-gray-300 dark:bg-gray-600",
-                          isHighlighted && `ring-2 ${currentRingColor} dark:${currentRingColor}`,
-                          isReasoningDisabled && "opacity-50 cursor-not-allowed",
-                          !isReasoningDisabled && currentHoverColor
+                          "relative flex flex-col items-center gap-1 transition-all duration-500 ease-out group",
+                          "hover:scale-105 active:scale-95",
+                          isReasoningDisabled && "opacity-50 cursor-not-allowed"
                         )}
                         aria-label={`Set reasoning to ${level.label}`}
-                      />
+                      >
+                        {/* Dot with liquid effect */}
+                        <div className="relative">
+                          <div
+                            className={cn(
+                              "w-2.5 h-2.5 rounded-full transition-all duration-500 ease-out",
+                              dotColor,
+                              glowColor,
+                              isHighlighted && "scale-125 animate-pulse",
+                              isActive && "shadow-lg",
+                              "group-hover:scale-110"
+                            )}
+                          />
+                          {/* Liquid ripple effect */}
+                          {isHighlighted && (
+                            <div 
+                              className="absolute inset-0 rounded-full animate-ping opacity-30"
+                              style={{
+                                background: currentLevelIndex === 0 ? 'rgba(255,255,255,0.6)' 
+                                  : currentLevelIndex === 1 ? 'rgba(59,130,246,0.6)' 
+                                  : 'rgba(168,85,247,0.6)',
+                              }}
+                            />
+                          )}
+                        </div>
+                        
+                        {/* Text label */}
+                        <span className={cn(
+                          "text-xs font-medium transition-all duration-500 ease-out whitespace-nowrap",
+                          textColor,
+                          isActive && "font-semibold",
+                          isHighlighted && "text-shadow-sm"
+                        )}>
+                          {level.label}
+                        </span>
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-xs">
-                      <p className="font-medium">{level.label}</p>
+                      <div className="flex flex-col gap-1">
+                        <p className="font-medium">{level.label}</p>
+                        <p className="text-muted-foreground text-[10px]">{level.description}</p>
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                 );
               })}
             </div>
-            <span className={cn(
-              "text-xs font-medium min-w-[5rem] text-left",
-              currentLevel.color,
-              isReasoningDisabled && "opacity-50"
-            )}>
-              {currentLevel.label}
-            </span>
           </div>
         )}
       </div>
