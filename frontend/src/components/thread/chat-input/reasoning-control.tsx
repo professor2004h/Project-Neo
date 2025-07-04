@@ -23,38 +23,29 @@ interface ReasoningControlProps {
 const REASONING_LEVELS = [
   {
     value: 'none',
-    label: 'Brain',
+    label: 'Normal',
     description: 'Standard speed, no enhanced reasoning',
     icon: Zap,
-    color: 'text-gray-500',
+    color: 'text-white',
     bgColor: 'bg-gray-50 dark:bg-gray-900/20',
-    dotColor: 'bg-gray-500',
-    ringColor: 'ring-gray-500',
-    hoverColor: 'hover:bg-gray-600',
     isReasoning: false,
   },
   {
     value: 'medium',
-    label: 'Big Brain',
+    label: 'Boost',
     description: 'Enhanced reasoning for complex problems (+credits)',
     icon: Brain,
     color: 'text-blue-500',
     bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-    dotColor: 'bg-blue-500',
-    ringColor: 'ring-blue-500',
-    hoverColor: 'hover:bg-blue-600',
     isReasoning: true,
   },
   {
     value: 'high',
-    label: 'Galaxy Brain',
+    label: 'Turbo',
     description: 'Maximum reasoning power (+more credits)',
     icon: Rocket,
     color: 'text-purple-500',
     bgColor: 'bg-purple-50 dark:bg-purple-900/20',
-    dotColor: 'bg-purple-500',
-    ringColor: 'ring-purple-500',
-    hoverColor: 'hover:bg-purple-600',
     isReasoning: true,
   },
 ] as const;
@@ -191,16 +182,20 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
                 const originalIndex = REASONING_LEVELS.length - 1 - reverseIndex;
                 const dotsToLight = currentLevelIndex + 1; // +1 because we want 1 dot for level 0, 2 for level 1, etc.
                 const isActive = reverseIndex < dotsToLight;
-                const isSelected = originalIndex === currentLevelIndex;
+                
+                // Determine which dot should be highlighted (have the ring)
+                const isHighlighted = (currentLevelIndex === 0 && reverseIndex === 2) || // Normal: bottom dot (reverseIndex 2)
+                                     (currentLevelIndex === 1 && reverseIndex === 1) || // Boost: middle dot (reverseIndex 1)  
+                                     (currentLevelIndex === 2 && reverseIndex === 0);   // Turbo: top dot (reverseIndex 0)
                 
                 // Get the color based on current level (all lit dots use same color)
-                const currentDotColor = currentLevelIndex === 0 ? 'bg-gray-500' : 
+                const currentDotColor = currentLevelIndex === 0 ? 'bg-white' : 
                                        currentLevelIndex === 1 ? 'bg-blue-500' : 
                                        'bg-purple-500';
-                const currentRingColor = currentLevelIndex === 0 ? 'ring-gray-500' : 
+                const currentRingColor = currentLevelIndex === 0 ? 'ring-white' : 
                                         currentLevelIndex === 1 ? 'ring-blue-500' : 
                                         'ring-purple-500';
-                const currentHoverColor = currentLevelIndex === 0 ? 'hover:bg-gray-600' : 
+                const currentHoverColor = currentLevelIndex === 0 ? 'hover:bg-gray-100' : 
                                          currentLevelIndex === 1 ? 'hover:bg-blue-600' : 
                                          'hover:bg-purple-600';
                 
@@ -215,7 +210,7 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
                           isActive 
                             ? `${currentDotColor} shadow-sm ring-1 ring-gray-200 dark:ring-gray-700` 
                             : "bg-gray-300 dark:bg-gray-600",
-                          isSelected && `ring-2 ${currentRingColor} dark:${currentRingColor}`,
+                          isHighlighted && `ring-2 ${currentRingColor} dark:${currentRingColor}`,
                           isReasoningDisabled && "opacity-50 cursor-not-allowed",
                           !isReasoningDisabled && currentHoverColor
                         )}
