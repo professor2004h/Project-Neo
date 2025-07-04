@@ -51,13 +51,32 @@ BEGIN
         a.avatar_color::TEXT
     FROM agents a
     LEFT JOIN basejump.accounts acc ON a.account_id = acc.id
-    WHERE a.is_public = true
+    WHERE (
+        -- Public marketplace agents (when no account_id filter)
+        (p_account_id IS NULL AND (a.is_public = true OR a.visibility = 'public'))
+        OR
+        -- Account-specific agents (for teams)
+        (p_account_id IS NOT NULL AND (
+            -- Own agents
+            a.account_id = p_account_id
+            OR
+            -- Public agents
+            a.is_public = true 
+            OR a.visibility = 'public'
+            OR
+            -- Team-shared agents
+            (a.visibility = 'teams' AND EXISTS (
+                SELECT 1 FROM team_agents ta
+                WHERE ta.agent_id = a.agent_id
+                AND ta.team_account_id = p_account_id
+            ))
+        ))
+    )
     AND (p_search IS NULL OR 
          a.name ILIKE '%' || p_search || '%' OR 
          a.description ILIKE '%' || p_search || '%')
     AND (p_tags IS NULL OR a.tags && p_tags)
-    AND (p_account_id IS NULL OR a.account_id = p_account_id)
-    ORDER BY a.marketplace_published_at DESC
+    ORDER BY a.marketplace_published_at DESC NULLS LAST, a.created_at DESC
     LIMIT p_limit
     OFFSET p_offset;
 END;
