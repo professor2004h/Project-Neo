@@ -23,7 +23,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -46,6 +45,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/components/AuthProvider';
+import { ScrollProgress } from '@/components/animate-ui/components/scroll-progress';
 
 // Speech recognition types
 interface SpeechRecognitionEvent extends Event {
@@ -1243,7 +1243,13 @@ ${transcript}`;
 
       {/* Transcript area */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <ScrollArea className="h-full px-6 py-4 bg-gradient-to-b from-background to-muted/10" ref={transcriptRef}>
+        <ScrollProgress 
+          className="h-full px-6 py-4 bg-gradient-to-b from-background to-muted/10"
+          ref={transcriptRef}
+          progressProps={{
+            className: 'bg-gradient-to-r from-blue-500 to-purple-500 h-1'
+          }}
+        >
           <div className="max-w-4xl mx-auto">
           {transcript || interimTranscript ? (
             <div className="bg-card/50 backdrop-blur border rounded-xl p-6 shadow-sm">
@@ -1337,7 +1343,7 @@ ${transcript}`;
             </div>
           )}
         </div>
-        </ScrollArea>
+        </ScrollProgress>
       </div>
 
       {/* Recording controls */}
