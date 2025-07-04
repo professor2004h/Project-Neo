@@ -123,12 +123,14 @@ export function PublishAgentDialog({
                 <div className="flex items-center gap-2 mb-1">
                   <Users className="h-4 w-4" />
                   <span className="font-medium">Specific Teams</span>
-                  {adminTeams.length === 0 && (
-                    <Badge variant="secondary" className="text-xs">No teams available</Badge>
-                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Share only with teams where you're an admin.
+                  {adminTeams.length === 0 && (
+                    <span className="block mt-1">
+                      <Badge variant="secondary" className="text-xs">No teams available</Badge>
+                    </span>
+                  )}
                 </p>
               </Label>
             </div>
