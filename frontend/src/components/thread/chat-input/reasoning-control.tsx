@@ -180,8 +180,8 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
             <div className="flex flex-col items-center gap-0.5 py-1">
               {REASONING_LEVELS.slice().reverse().map((level, reverseIndex) => {
                 const originalIndex = REASONING_LEVELS.length - 1 - reverseIndex;
-                const dotsToLight = currentLevelIndex + 1; // +1 because we want 1 dot for level 0, 2 for level 1, etc.
-                const isActive = reverseIndex < dotsToLight;
+                // Light up dots from bottom to top: bottom = reverseIndex 2, middle = 1, top = 0
+                const isActive = reverseIndex >= (REASONING_LEVELS.length - 1 - currentLevelIndex);
                 
                 // Determine which dot should be highlighted (have the ring)
                 const isHighlighted = (currentLevelIndex === 0 && reverseIndex === 2) || // Normal: bottom dot (reverseIndex 2)
