@@ -35,7 +35,12 @@ import { createClient } from '@/lib/supabase/client';
 import { TypingText } from '@/components/animate-ui/text/typing';
 import { GradientText } from '@/components/animate-ui/text/gradient';
 import { useAgents } from '@/hooks/react-query/agents/use-agents';
-import Dither from '@/Backgrounds/Dither/Dither';
+import dynamic from 'next/dynamic';
+
+const Dither = dynamic(() => import('@/Backgrounds/Dither/Dither'), {
+  ssr: false,
+  loading: () => <div className="absolute inset-0 bg-gradient-to-br from-background via-background/90 to-background/80" />
+});
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
