@@ -400,12 +400,8 @@ ${meeting.transcript || '(No transcript available)'}`;
                     duration={80}
                     delay={500}
                   />
-                  <span className="tracking-tight text-4xl leading-tight font-medium">
-                    <GradientText 
-                      text={selectedAgent?.name || defaultAgent?.name || 'Operator'} 
-                      gradient="linear-gradient(90deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%)"
-                      transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-                    />
+                  <span className="tracking-tight text-4xl leading-tight font-medium text-foreground">
+                    {selectedAgent?.name || defaultAgent?.name || 'Operator'}
                   </span>
                 </div>
                 
