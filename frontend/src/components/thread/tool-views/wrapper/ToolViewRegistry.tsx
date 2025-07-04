@@ -17,6 +17,7 @@ import { ExecuteDataProviderCallToolView } from '../data-provider-tool/ExecuteDa
 import { DataProviderEndpointsToolView } from '../data-provider-tool/DataProviderEndpointsToolView';
 import { DeployToolView } from '../DeployToolView';
 import { ExcelToolView } from '../excel-tool/ExcelToolView';
+import { KnowledgeSearchToolView } from '../knowledge-search-tool/KnowledgeSearchToolView';
 
 
 export type ToolViewComponent = React.ComponentType<ToolViewProps>;
@@ -77,6 +78,7 @@ const defaultRegistry: ToolViewRegistryType = {
   'list-sheets': ExcelToolView,
 
   'default': GenericToolView,
+};
 };
 
 class ToolViewRegistry {
