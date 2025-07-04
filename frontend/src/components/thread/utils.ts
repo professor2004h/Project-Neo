@@ -164,6 +164,11 @@ export const getToolIcon = (toolName: string): ElementType => {
 
     // Default case
     default:
+      // Handle dynamic knowledge search tools
+      if (toolName?.startsWith('search_') || toolName?.startsWith('search-')) {
+        return BookOpen;
+      }
+      
       if (toolName?.startsWith('mcp_')) {
         const parts = toolName.split('_');
         if (parts.length >= 3) {
@@ -431,6 +436,12 @@ const MCP_TOOL_MAPPINGS = new Map([
 ]);
 
 export function getUserFriendlyToolName(toolName: string): string {
+  // Handle dynamic knowledge search tools
+  if (toolName?.startsWith('search_') || toolName?.startsWith('search-')) {
+    const searchTerm = toolName.replace(/^search[-_]/, '').replace(/[-_]/g, ' ');
+    return `Searching ${searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1)}`;
+  }
+  
   if (toolName?.startsWith('mcp_')) {
     const parts = toolName.split('_');
     if (parts.length >= 3) {

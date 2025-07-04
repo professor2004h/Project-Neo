@@ -79,7 +79,6 @@ const defaultRegistry: ToolViewRegistryType = {
 
   'default': GenericToolView,
 };
-};
 
 class ToolViewRegistry {
   private registry: ToolViewRegistryType;
@@ -97,7 +96,18 @@ class ToolViewRegistry {
   }
 
   get(toolName: string): ToolViewComponent {
-    return this.registry[toolName] || this.registry['default'];
+    // Check for exact matches first
+    if (this.registry[toolName]) {
+      return this.registry[toolName];
+    }
+    
+    // Handle dynamic knowledge search tools (start with 'search_')
+    if (toolName.startsWith('search_') || toolName.startsWith('search-')) {
+      return KnowledgeSearchToolView;
+    }
+    
+    // Return default
+    return this.registry['default'];
   }
 
   has(toolName: string): boolean {
