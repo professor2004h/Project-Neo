@@ -570,7 +570,7 @@ ${meeting.transcript || '(No transcript available)'}`;
                       <TypingText
                         text={`Hey ${userName || 'there'}, I'm`}
                         className="tracking-tight text-4xl text-muted-foreground leading-tight"
-                        duration={50}
+                        duration={60}
                         delay={400}
                       />
                       {customAgentEnabled ? (
@@ -589,8 +589,8 @@ ${meeting.transcript || '(No transcript available)'}`;
                     <TypingText
                       text={`What would you like to do this ${getTimeBasedGreeting()}?`}
                       className="tracking-tight text-3xl font-normal text-muted-foreground/80"
-                      duration={80}
-                      delay={2000}
+                      duration={60} // Animation speed: milliseconds per character for typing effect
+                      delay={1500} // Wait time: milliseconds before starting the typing animation
                     />
                     
                     {/* Name editing section for users without a name */}
