@@ -14,6 +14,7 @@ import { isLocalMode } from '@/lib/config';
 import { TooltipContent } from '@/components/ui/tooltip';
 import { Tooltip } from '@/components/ui/tooltip';
 import { TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
+import { LiquidButton } from '@/components/animate-ui/buttons/liquid';
 
 interface MessageInputProps {
   value: string;
@@ -141,8 +142,8 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
         </div>
 
 
-        <div className="flex items-center justify-between mt-1 ml-3 mb-1 pr-2">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-1 ml-3 mb-1 pr-2 gap-2">
+          <div className="flex items-center gap-3 min-w-0">
             {!hideAttachments && (
               <FileUploadHandler
                 ref={fileInputRef}
@@ -178,7 +179,6 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               <Tooltip>
                 <TooltipTrigger>
                   <p className='text-sm text-amber-500 hidden sm:block'>Upgrade for full performance</p>
-
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>The free tier is severely limited by inferior models; upgrade to experience the true full Operator experience.</p>
@@ -186,7 +186,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               </Tooltip>
             </TooltipProvider>
           }
-          <div className='flex items-center gap-3'>
+          <div className='flex items-center gap-2 sm:gap-3 flex-shrink-0'>
             <ModelSelector
               selectedModel={selectedModel}
               onModelChange={onModelChange}
@@ -202,13 +202,14 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               modelName={selectedModel}
               subscriptionStatus={subscriptionStatus}
             />
-            <Button
+            <LiquidButton
               type="submit"
               onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
-              size="sm"
+              size="icon"
+              variant={isAgentRunning ? "secondary" : "default"}
               className={cn(
                 'w-8 h-8 flex-shrink-0 rounded-lg p-0',
-                isAgentRunning ? 'bg-red-500 hover:bg-red-600' : '',
+                isAgentRunning && '[--liquid-button-color:rgb(239_68_68)]',
                 (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
                   loading ||
                   (disabled && !isAgentRunning)
@@ -228,7 +229,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               ) : (
                 <ArrowUp className="h-4 w-4" />
               )}
-            </Button>
+            </LiquidButton>
           </div>
         </div>
         {subscriptionStatus === 'no_subscription' && !isLocalMode() &&

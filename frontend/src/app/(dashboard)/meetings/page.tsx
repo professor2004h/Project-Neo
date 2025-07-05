@@ -797,16 +797,16 @@ ${meeting.transcript}`;
 
         {/* New Meeting Dialog */}
         <Dialog open={showNewMeetingDialog} onOpenChange={setShowNewMeetingDialog}>
-          <DialogContent className="max-w-md bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
+          <DialogContent className="max-w-md mx-4 bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
             <DialogHeader className="space-y-3">
-              <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+              <DialogTitle className="text-lg sm:text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
                 Create New Meeting
               </DialogTitle>
-              <DialogDescription className="text-muted-foreground/80 leading-relaxed">
+              <DialogDescription className="text-muted-foreground/80 leading-relaxed text-sm">
                 Enter a title for your new meeting to get started with recording and transcription
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-6 py-4">
+            <div className="space-y-4 sm:space-y-6 py-4">
               <div className="space-y-2">
                 <Label htmlFor="meeting-title" className="text-sm font-medium text-foreground/90">
                   Meeting Title
@@ -821,16 +821,18 @@ ${meeting.transcript}`;
                 />
               </div>
             </div>
-            <DialogFooter className="gap-3">
+            <DialogFooter className="gap-3 flex-col sm:flex-row">
               <Button 
                 variant="outline" 
                 onClick={() => setShowNewMeetingDialog(false)}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleCreateMeeting} 
                 disabled={!newMeetingTitle.trim()}
+                className="w-full sm:w-auto"
               >
                 Create Meeting
               </Button>
@@ -840,16 +842,16 @@ ${meeting.transcript}`;
 
         {/* New Folder Dialog */}
         <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
-          <DialogContent className="max-w-md bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
+          <DialogContent className="max-w-md mx-4 bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
             <DialogHeader className="space-y-3">
-              <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+              <DialogTitle className="text-lg sm:text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
                 Create New Folder
               </DialogTitle>
-              <DialogDescription className="text-muted-foreground/80 leading-relaxed">
+              <DialogDescription className="text-muted-foreground/80 leading-relaxed text-sm">
                 Organize your meetings by creating a new folder
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-6 py-4">
+            <div className="space-y-4 sm:space-y-6 py-4">
               <div className="space-y-2">
                 <Label htmlFor="folder-name" className="text-sm font-medium text-foreground/90">
                   Folder Name
@@ -864,16 +866,18 @@ ${meeting.transcript}`;
                 />
               </div>
             </div>
-            <DialogFooter className="gap-3">
+            <DialogFooter className="gap-3 flex-col sm:flex-row">
               <Button 
                 variant="outline" 
                 onClick={() => setShowNewFolderDialog(false)}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleCreateFolder} 
                 disabled={!newFolderName.trim()}
+                className="w-full sm:w-auto"
               >
                 Create Folder
               </Button>
@@ -883,16 +887,16 @@ ${meeting.transcript}`;
 
         {/* Edit Dialog */}
         <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-          <DialogContent className="max-w-md bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
+          <DialogContent className="max-w-md mx-4 bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
             <DialogHeader className="space-y-3">
-              <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+              <DialogTitle className="text-lg sm:text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
                 Rename {editingItem?.type === 'meeting' ? 'Meeting' : 'Folder'}
               </DialogTitle>
-              <DialogDescription className="text-muted-foreground/80 leading-relaxed">
+              <DialogDescription className="text-muted-foreground/80 leading-relaxed text-sm">
                 Enter a new name for this {editingItem?.type === 'meeting' ? 'meeting' : 'folder'}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-6 py-4">
+            <div className="space-y-4 sm:space-y-6 py-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-name" className="text-sm font-medium text-foreground/90">
                   {editingItem?.type === 'meeting' ? 'Meeting' : 'Folder'} Name
@@ -906,18 +910,18 @@ ${meeting.transcript}`;
                 />
               </div>
             </div>
-            <DialogFooter className="gap-3">
+            <DialogFooter className="gap-3 flex-col sm:flex-row">
               <Button 
                 variant="outline" 
                 onClick={() => setEditingItem(null)}
-                className="shadow-sm hover:shadow-md transition-all duration-200"
+                className="shadow-sm hover:shadow-md transition-all duration-200 w-full sm:w-auto"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleRename} 
                 disabled={!editingItem?.name.trim()}
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20 w-full sm:w-auto"
               >
                 Save Changes
               </Button>

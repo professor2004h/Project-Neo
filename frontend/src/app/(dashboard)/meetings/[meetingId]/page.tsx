@@ -1531,19 +1531,19 @@ ${transcript}`;
         setShowMeetingUrlDialog(open);
         if (!open) setMeetingUrl('');
       }}>
-        <DialogContent className="max-w-md bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
+        <DialogContent className="max-w-md mx-4 bg-gradient-to-br from-card/95 via-card to-card/90 backdrop-blur border border-border/50 shadow-2xl">
           <DialogHeader className="space-y-3">
-            <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+            <DialogTitle className="text-lg sm:text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
               Join Online Meeting
             </DialogTitle>
-            <DialogDescription className="text-muted-foreground/80 leading-relaxed">
+            <DialogDescription className="text-muted-foreground/80 leading-relaxed text-sm">
               Enter the meeting URL to join with an AI bot that will record and transcribe the conversation
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 py-4">
+          <div className="space-y-4 sm:space-y-6 py-4">
             <Alert className="border-amber-200 bg-amber-50/50 dark:border-amber-800/50 dark:bg-amber-900/20">
-              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              <AlertDescription className="text-amber-700 dark:text-amber-300">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
                 <strong>Google Meet temporarily unavailable:</strong> Our bot is currently experiencing issues with Google Meet. Please use Zoom or other supported platforms. We're working on a fix!
               </AlertDescription>
             </Alert>
@@ -1555,26 +1555,29 @@ ${transcript}`;
                 id="meeting-url"
                 value={meetingUrl}
                 onChange={(e) => setMeetingUrl(e.target.value)}
-                placeholder="https://zoom.us/j/123456789 (Google Meet temporarily unavailable)"
+                placeholder="https://zoom.us/j/123456789"
                 onKeyDown={(e) => e.key === 'Enter' && handleStartOnlineRecording()}
                 className="h-11 bg-background/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-colors duration-200 placeholder:text-muted-foreground/60"
               />
             </div>
           </div>
-          <DialogFooter className="gap-3">
+          <DialogFooter className="gap-3 flex-col sm:flex-row">
             <Button 
               variant="outline" 
               onClick={() => setShowMeetingUrlDialog(false)}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleStartOnlineRecording} 
               disabled={!meetingUrl.trim()}
+              className="w-full sm:w-auto"
             >
               <Monitor className="h-4 w-4 mr-2" />
               <span className="flex items-center gap-2">
-                Start Bot Recording
+                <span className="hidden sm:inline">Start Bot Recording</span>
+                <span className="sm:hidden">Start Recording</span>
                 <Badge variant="beta" className="bg-blue-500 text-white border-blue-500 text-xs px-1.5 py-0.5">
                   Beta
                 </Badge>
