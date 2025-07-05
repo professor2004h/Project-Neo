@@ -38,6 +38,8 @@ import { GradientText } from '@/components/animate-ui/text/gradient';
 import { useAgents } from '@/hooks/react-query/agents/use-agents';
 import { isFlagEnabled } from '@/lib/feature-flags';
 import Waves from '@/Backgrounds/Waves/Waves';
+import { HexagonBackground } from '@/components/animate-ui/backgrounds/hexagon';
+import { VantaWaves } from '@/components/animate-ui/backgrounds/vanta-waves';
 import { useTheme } from 'next-themes';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
@@ -68,6 +70,9 @@ export function DashboardContent() {
   const [showChatInput, setShowChatInput] = useState(false);
   const [showExamples, setShowExamples] = useState(false);
   const [greetingComplete, setGreetingComplete] = useState(false);
+  
+  // Background selection
+  const [backgroundType, setBackgroundType] = useState<'waves' | 'hexagon' | 'vanta'>('waves');
   const { billingError, handleBillingError, clearBillingError } =
     useBillingError();
   const { theme, resolvedTheme } = useTheme();
@@ -108,7 +113,7 @@ export function DashboardContent() {
       const firstTextLength = `Hey ${userName || 'there'}, I'm`.length;
       const secondTextLength = `What would you like to do this ${getTimeBasedGreeting()}?`.length;
       
-      const firstAnimationTime = 500 + (firstTextLength * 60); // delay + duration per char
+      const firstAnimationTime = 400 + (firstTextLength * 50); // delay + duration per char
       const secondAnimationTime = 2000 + (secondTextLength * 80); // delay + duration per char
       
       const totalGreetingTime = Math.max(firstAnimationTime, secondAnimationTime) + 500; // Add buffer
@@ -139,6 +144,19 @@ export function DashboardContent() {
     };
     checkFlag();
   }, []);
+
+  // Random background selection on mount
+  useEffect(() => {
+    const backgrounds = ['waves', 'hexagon'];
+    
+    // Add vanta waves for dark mode only
+    if (resolvedTheme === 'dark') {
+      backgrounds.push('vanta');
+    }
+    
+    const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)] as 'waves' | 'hexagon' | 'vanta';
+    setBackgroundType(randomBg);
+  }, [resolvedTheme]);
 
   // Load user name from Supabase auth and listen for changes
   useEffect(() => {
@@ -420,24 +438,39 @@ ${meeting.transcript || '(No transcript available)'}`;
     }
   }, [autoSubmit, inputValue, isSubmitting]);
 
+  // Render background based on selection
+  const renderBackground = () => {
+    switch (backgroundType) {
+      case 'hexagon':
+        return <HexagonBackground className="absolute inset-0" />;
+      case 'vanta':
+        return <VantaWaves className="absolute inset-0" />;
+      case 'waves':
+      default:
+        return (
+          <Waves
+            lineColor={waveColors.lineColor}
+            backgroundColor={waveColors.backgroundColor}
+            waveSpeedX={0.02}
+            waveSpeedY={0.01}
+            waveAmpX={40}
+            waveAmpY={20}
+            xGap={12}
+            yGap={36}
+            friction={0.9}
+            tension={0.01}
+            maxCursorMove={120}
+          />
+        );
+    }
+  };
+
   return (
     <>
       <ModalProviders />
       <div className="flex flex-col h-screen w-full relative">
-        {/* Waves Background */}
-        <Waves
-          lineColor={waveColors.lineColor}
-          backgroundColor={waveColors.backgroundColor}
-          waveSpeedX={0.02}
-          waveSpeedY={0.01}
-          waveAmpX={40}
-          waveAmpY={20}
-          xGap={12}
-          yGap={36}
-          friction={0.9}
-          tension={0.01}
-          maxCursorMove={120}
-        />
+        {/* Dynamic Background */}
+        {renderBackground()}
         
         {isMobile && (
           <div className="absolute top-4 left-4 z-20">
@@ -462,24 +495,54 @@ ${meeting.transcript || '(No transcript available)'}`;
           {/* Liquid Glass Background Container */}
           <motion.div 
             className="relative group"
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            initial={{ 
+              scale: 0.9, 
+              opacity: 0, 
+              y: 30,
+              filter: "blur(20px)"
+            }}
+            animate={{ 
+              scale: 1, 
+              opacity: 1, 
+              y: 0,
+              filter: "blur(0px)"
+            }}
+            transition={{ 
+              duration: 1.2, 
+              ease: [0.16, 1, 0.3, 1],
+              type: "spring",
+              stiffness: 80,
+              damping: 20
+            }}
           >
             {/* Glass Morphism Background */}
             <motion.div 
-              className="absolute inset-0 bg-gradient-to-br from-background/60 via-background/40 to-background/60 backdrop-blur-xl rounded-3xl border border-white/10 dark:border-white/5 shadow-2xl dark:shadow-black/20"
+              className="absolute inset-0 bg-gradient-to-br from-background/70 via-background/50 to-background/70 backdrop-blur-2xl rounded-3xl border border-white/15 dark:border-white/8 shadow-2xl dark:shadow-black/30"
               animate={{ 
                 height: greetingComplete ? 'auto' : 'auto'
               }}
               transition={{ duration: 1.2, ease: "easeInOut" }}
             />
             
-            {/* Subtle Inner Glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5 rounded-3xl" />
+            {/* Enhanced Inner Glow */}
+            <motion.div 
+              className="absolute inset-0 bg-gradient-to-br from-white/8 via-transparent to-white/8 rounded-3xl"
+              animate={{ opacity: [0.5, 0.8, 0.5] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            />
             
             {/* Animated Gradient Border */}
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl" />
+            <motion.div 
+              className="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl"
+              animate={{ 
+                background: [
+                  "linear-gradient(90deg, rgba(59,130,246,0.2) 0%, rgba(168,85,247,0.2) 50%, rgba(236,72,153,0.2) 100%)",
+                  "linear-gradient(90deg, rgba(168,85,247,0.2) 0%, rgba(236,72,153,0.2) 50%, rgba(59,130,246,0.2) 100%)",
+                  "linear-gradient(90deg, rgba(236,72,153,0.2) 0%, rgba(59,130,246,0.2) 50%, rgba(168,85,247,0.2) 100%)"
+                ]
+              }}
+              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+            />
             
             {/* Main Content Container */}
             <div className="relative flex flex-col items-center p-8 rounded-3xl overflow-hidden">
@@ -491,15 +554,12 @@ ${meeting.transcript || '(No transcript available)'}`;
                 transition={{ duration: 0.8, ease: "easeOut" }}
               >
                 {isLoadingUserName ? (
-                  <div className="flex items-center gap-2 flex-wrap justify-center">
-                    <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
-                      Hey there, I am
-                    </h1>
-                    <AgentSelector
-                      selectedAgentId={selectedAgentId}
-                      onAgentSelect={setSelectedAgentId}
-                      variant="heading"
-                    />
+                  <div className="flex flex-col items-center gap-4 justify-center">
+                    <div className="flex items-center gap-2 flex-wrap justify-center">
+                      <Skeleton className="h-10 w-48 sm:h-8 sm:w-40" />
+                      <Skeleton className="h-10 w-32 sm:h-8 sm:w-28" />
+                    </div>
+                    <Skeleton className="h-8 w-64 sm:h-7 sm:w-56" />
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-4 justify-center">
@@ -507,8 +567,8 @@ ${meeting.transcript || '(No transcript available)'}`;
                       <TypingText
                         text={`Hey ${userName || 'there'}, I'm`}
                         className="tracking-tight text-4xl text-muted-foreground leading-tight"
-                        duration={60}
-                        delay={500}
+                        duration={50}
+                        delay={400}
                       />
                       {customAgentEnabled ? (
                         <AgentSelector
@@ -575,14 +635,25 @@ ${meeting.transcript || '(No transcript available)'}`;
               {showChatInput && (
                 <motion.div 
                   className={cn('w-full mt-8', 'max-w-full', 'sm:max-w-3xl')}
-                  initial={{ y: 50, opacity: 0, scale: 0.95 }}
-                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  initial={{ 
+                    y: 80, 
+                    opacity: 0, 
+                    scale: 0.9,
+                    filter: "blur(10px)"
+                  }}
+                  animate={{ 
+                    y: 0, 
+                    opacity: 1, 
+                    scale: 1,
+                    filter: "blur(0px)"
+                  }}
                   transition={{ 
-                    duration: 1.0, 
-                    ease: [0.25, 0.46, 0.45, 0.94],
+                    duration: 1.4, 
+                    ease: [0.16, 1, 0.3, 1],
                     type: "spring",
-                    stiffness: 100,
-                    damping: 15
+                    stiffness: 60,
+                    damping: 20,
+                    mass: 1
                   }}
                 >
                   <ChatInput
@@ -601,14 +672,25 @@ ${meeting.transcript || '(No transcript available)'}`;
               {showExamples && (
                 <motion.div 
                   className="w-full mt-6"
-                  initial={{ y: 60, opacity: 0, scale: 0.9 }}
-                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  initial={{ 
+                    y: 100, 
+                    opacity: 0, 
+                    scale: 0.85,
+                    filter: "blur(15px)"
+                  }}
+                  animate={{ 
+                    y: 0, 
+                    opacity: 1, 
+                    scale: 1,
+                    filter: "blur(0px)"
+                  }}
                   transition={{ 
-                    duration: 1.2, 
-                    ease: [0.25, 0.46, 0.45, 0.94],
+                    duration: 1.8, 
+                    ease: [0.16, 1, 0.3, 1],
                     type: "spring",
-                    stiffness: 80,
-                    damping: 18
+                    stiffness: 50,
+                    damping: 25,
+                    mass: 1.2
                   }}
                 >
                   <Examples onSelectPrompt={setInputValue} />
