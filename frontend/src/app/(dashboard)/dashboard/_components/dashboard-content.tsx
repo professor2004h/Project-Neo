@@ -95,7 +95,7 @@ export function DashboardContent() {
   // Check custom agent flag
   useEffect(() => {
     const checkFlag = async () => {
-      const enabled = await isFlagEnabled('custom-agents');
+      const enabled = await isFlagEnabled('custom_agents');
       setCustomAgentEnabled(enabled);
     };
     checkFlag();
