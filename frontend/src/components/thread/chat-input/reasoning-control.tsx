@@ -128,12 +128,17 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
     return null;
   }
 
+  // Hide reasoning control completely when on free plan
+  if (isFreePlan) {
+    return null;
+  }
+
   const currentLevel = REASONING_LEVELS.find(level => level.value === value.effort) || REASONING_LEVELS[0];
   const currentLevelIndex = REASONING_LEVELS.findIndex(level => level.value === value.effort);
-  const IconToShow = isFreePlan ? Crown : currentLevel.icon;
+  const IconToShow = currentLevel.icon;
 
   // Mobile-optimized compact version
-  if (isMobile && !isFreePlan) {
+  if (isMobile) {
     return (
       <TooltipProvider>
         <Tooltip>
