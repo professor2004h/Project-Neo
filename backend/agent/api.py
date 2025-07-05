@@ -2009,6 +2009,7 @@ class MarketplaceAgent(BaseModel):
     custom_mcps: Optional[List[Dict[str, Any]]] = []
     agentpress_tools: Dict[str, Any]
     knowledge_bases: Optional[List[Dict[str, Any]]] = []
+    sharing_preferences: Optional[Dict[str, Any]] = {}
     tags: Optional[List[str]]
     download_count: int
     marketplace_published_at: str
