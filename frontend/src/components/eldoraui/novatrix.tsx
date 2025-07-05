@@ -45,11 +45,12 @@ void main() {
   
   vec3 finalColor;
   if (uIsDarkMode > 0.5) {
-      // Dark mode: white pattern on black background
-      finalColor = vec3(gray);
+      // Dark mode: very dark background with subtle light patterns
+      float darkPattern = 0.05 + (gray * 0.2); // Very dark base with subtle light patterns
+      finalColor = vec3(darkPattern);
   } else {
-      // Light mode: white background with higher contrast gray patterns
-      float lightPattern = 0.7 + (gray * 0.3); // White background with more visible patterns
+      // Light mode: light background with darker patterns
+      float lightPattern = 0.7 + (gray * 0.3); // Light background with visible dark patterns
       finalColor = vec3(lightPattern);
   }
   
