@@ -2,6 +2,7 @@
 import type React from "react"
 import { useEffect, useRef } from "react"
 import { Renderer, Program, Mesh, Triangle } from "ogl"
+import { useSidebar } from "@/components/ui/sidebar"
 
 // Vertex Shader
 const vert = `
@@ -47,8 +48,9 @@ void main() {
       // Dark mode: white pattern on black background
       finalColor = vec3(gray);
   } else {
-      // Light mode: black pattern on white background
-      finalColor = vec3(1.0 - gray);
+      // Light mode: white background with subtle gray patterns
+      float lightPattern = 0.9 + (gray * 0.1); // Mostly white with subtle variation
+      finalColor = vec3(lightPattern);
   }
   
   gl_FragColor = vec4(finalColor, 1.0);
@@ -59,6 +61,8 @@ type NovatrixProps = {}
 
 export const Novatrix: React.FC<NovatrixProps> = () => {
   const ctnDom = useRef<HTMLDivElement>(null)
+  const { state, open } = useSidebar()
+  const observerRef = useRef<MutationObserver | null>(null)
 
   useEffect(() => {
     if (!ctnDom.current) {
@@ -68,7 +72,10 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
     const ctn = ctnDom.current
     const renderer = new Renderer()
     const gl = renderer.gl
-    gl.clearColor(1, 1, 1, 1)
+    
+    // Set initial clear color based on system theme
+    const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches
+    gl.clearColor(isDarkMode ? 0 : 1, isDarkMode ? 0 : 1, isDarkMode ? 0 : 1, 1)
 
     const geometry = new Triangle(gl)
 
@@ -91,12 +98,81 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
       renderer.setSize(ctn.offsetWidth * scale, ctn.offsetHeight * scale)
       program.uniforms.uResolution.value = [gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height]
     }
-    window.addEventListener("resize", resize, false)
+
+    // Enhanced resize handler with delay for layout updates
+    const handleResize = () => {
+      // Small delay to ensure layout has updated
+      setTimeout(() => {
+        resize()
+      }, 100);
+    };
+
+    window.addEventListener("resize", handleResize, false)
     resize()
+
+    // Create mutation observer to monitor sidebar changes
+    observerRef.current = new MutationObserver((mutations) => {
+      let shouldResize = false;
+      
+      mutations.forEach((mutation) => {
+        // Check for sidebar-related changes
+        if (mutation.type === 'attributes') {
+          const target = mutation.target as Element;
+          
+          // Monitor data-state changes on sidebar elements
+          if (mutation.attributeName === 'data-state' && 
+              target.matches('[data-slot="sidebar"]')) {
+            shouldResize = true;
+          }
+          
+          // Monitor class changes that might affect layout
+          if (mutation.attributeName === 'class') {
+            const classList = target.classList;
+            // Check for sidebar-related class changes
+            if (Array.from(classList).some(className => 
+                className.includes('sidebar') || 
+                className.includes('collapsed') || 
+                className.includes('expanded'))) {
+              shouldResize = true;
+            }
+          }
+          
+          // Monitor style changes that might affect layout
+          if (mutation.attributeName === 'style') {
+            shouldResize = true;
+          }
+        }
+      });
+      
+      if (shouldResize) {
+        handleResize();
+      }
+    });
+    
+    if (observerRef.current) {
+      // Observe the entire document for sidebar changes
+      observerRef.current.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-state', 'data-collapsible'],
+        subtree: true
+      });
+    }
+
+    // Additional listener for CSS transitions end
+    const handleTransitionEnd = (event: TransitionEvent) => {
+      if (event.propertyName === 'width' || event.propertyName === 'left' || event.propertyName === 'right') {
+        handleResize();
+      }
+    };
+    
+    document.addEventListener('transitionend', handleTransitionEnd);
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
     const updateTheme = () => {
-      program.uniforms.uIsDarkMode.value = mediaQuery.matches ? 1.0 : 0.0
+      const isDark = mediaQuery.matches
+      program.uniforms.uIsDarkMode.value = isDark ? 1.0 : 0.0
+      // Update canvas clear color based on theme
+      gl.clearColor(isDark ? 0 : 1, isDark ? 0 : 1, isDark ? 0 : 1, 1)
     }
 
     updateTheme()
@@ -115,14 +191,43 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
 
     return () => {
       cancelAnimationFrame(animateId)
-      window.removeEventListener("resize", resize)
+      window.removeEventListener("resize", handleResize)
       mediaQuery.removeEventListener("change", updateTheme)
+      document.removeEventListener('transitionend', handleTransitionEnd)
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+      }
       if (ctn.contains(gl.canvas)) {
         ctn.removeChild(gl.canvas)
       }
       gl.getExtension("WEBGL_lose_context")?.loseContext()
     }
   }, [])
+
+  // Effect to handle sidebar state changes
+  useEffect(() => {
+    const ctn = ctnDom.current
+    if (ctn) {
+      // Delay to ensure CSS transitions have time to complete
+      const timer = setTimeout(() => {
+        const scale = 1
+        // Trigger resize to adjust canvas to new dimensions
+        const rect = ctn.getBoundingClientRect()
+        if (rect.width > 0 && rect.height > 0) {
+          // Find the canvas and resize it
+          const canvas = ctn.querySelector('canvas')
+          if (canvas) {
+            canvas.width = rect.width * scale
+            canvas.height = rect.height * scale
+            canvas.style.width = rect.width + 'px'
+            canvas.style.height = rect.height + 'px'
+          }
+        }
+      }, 300); // Slightly longer delay for transitions
+      
+      return () => clearTimeout(timer);
+    }
+  }, [state, open]);
 
   return <div ref={ctnDom} className="gradient-canvas h-full w-full"></div>
 }
