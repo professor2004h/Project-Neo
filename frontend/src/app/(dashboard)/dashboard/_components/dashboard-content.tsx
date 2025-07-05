@@ -147,11 +147,14 @@ export function DashboardContent() {
 
   // Random background selection on mount
   useEffect(() => {
-    const backgrounds = ['waves', 'hexagon'];
+    let backgrounds: string[];
     
-    // Add vanta waves for dark mode only
     if (resolvedTheme === 'dark') {
-      backgrounds.push('vanta');
+      // Dark mode: waves and vanta only
+      backgrounds = ['waves', 'vanta'];
+    } else {
+      // Light mode: waves and hexagon only
+      backgrounds = ['waves', 'hexagon'];
     }
     
     const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)] as 'waves' | 'hexagon' | 'vanta';

@@ -17,6 +17,7 @@ interface VantaWavesProps {
 export function VantaWaves({ children, className }: VantaWavesProps) {
   const vantaRef = useRef<HTMLDivElement>(null);
   const vantaEffect = useRef<any>(null);
+  const observerRef = useRef<MutationObserver | null>(null);
 
   useEffect(() => {
     // Load Three.js
@@ -47,17 +48,47 @@ export function VantaWaves({ children, className }: VantaWavesProps) {
       }
     };
 
+    // Handle resize events to update Vanta
+    const handleResize = () => {
+      if (vantaEffect.current && vantaEffect.current.resize) {
+        // Small delay to ensure layout has updated
+        setTimeout(() => {
+          vantaEffect.current.resize();
+        }, 100);
+      }
+    };
+
     // Load scripts sequentially
     document.head.appendChild(threeScript);
     
     threeScript.onload = () => {
       document.head.appendChild(vantaScript);
-      vantaScript.onload = initVanta;
+      vantaScript.onload = () => {
+        initVanta();
+        // Add resize listener after Vanta is initialized
+        window.addEventListener('resize', handleResize);
+        
+        // Listen for sidebar state changes (common class changes)
+        observerRef.current = new MutationObserver(() => {
+          handleResize();
+        });
+        
+        if (document.body && observerRef.current) {
+          observerRef.current.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['class', 'style']
+          });
+        }
+      };
     };
 
     return () => {
       if (vantaEffect.current) {
         vantaEffect.current.destroy();
+      }
+      window.removeEventListener('resize', handleResize);
+      if (observerRef.current) {
+        observerRef.current.disconnect();
       }
       // Clean up scripts
       if (document.head.contains(threeScript)) {
