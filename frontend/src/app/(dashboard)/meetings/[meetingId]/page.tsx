@@ -1140,81 +1140,88 @@ ${transcript}`;
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b bg-gradient-to-r from-background/95 via-background to-background/95 backdrop-blur-sm px-6 py-5 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/meetings')}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
-              {meeting.title}
-            </h1>
-            <div className="flex items-center gap-2 text-sm mt-2">
-              <span className="text-muted-foreground/80">
-                {format(new Date(meeting.created_at), 'MMM d, yyyy h:mm a')}
-              </span>
-              <Badge 
-                variant={meeting.status === 'active' ? 'default' : 'secondary'}
-                className="shadow-sm"
-              >
-                {meeting.status}
-              </Badge>
-              {botStatus && (
-                <Badge variant="outline" className="shadow-sm">
-                  {botStatus}
+      <div className="flex-shrink-0 border-b bg-gradient-to-r from-background/95 via-background to-background/95 backdrop-blur-sm px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/meetings')}
+              className="flex-shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg sm:text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text truncate">
+                {meeting.title}
+              </h1>
+              <div className="flex items-center gap-2 text-xs sm:text-sm mt-1 sm:mt-2 flex-wrap">
+                <span className="text-muted-foreground/80 flex-shrink-0">
+                  {format(new Date(meeting.created_at), 'MMM d, yyyy h:mm a')}
+                </span>
+                <Badge 
+                  variant={meeting.status === 'active' ? 'default' : 'secondary'}
+                  className="shadow-sm text-xs"
+                >
+                  {meeting.status}
                 </Badge>
-              )}
+                {botStatus && (
+                  <Badge variant="outline" className="shadow-sm text-xs">
+                    {botStatus}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadTranscript}
+                disabled={!transcript}
+                className="flex-shrink-0"
+              >
+                <Download className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Download</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toast.info('Sharing coming soon')}
+                className="flex-shrink-0"
+              >
+                <Share2 className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Share</span>
+              </Button>
+            </div>
             <Button
-              variant="outline"
               size="sm"
-              onClick={downloadTranscript}
-              disabled={!transcript}
+              onClick={startChatWithTranscript}
+              disabled={isOpeningChat}
+              className="flex-shrink-0"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast.info('Sharing coming soon')}
-            >
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
+              {isOpeningChat ? (
+                <>
+                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                  <span className="hidden sm:inline">Opening...</span>
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Open in Chat</span>
+                  <span className="sm:hidden">Chat</span>
+                </>
+              )}
             </Button>
           </div>
-          <Button
-            size="sm"
-            onClick={startChatWithTranscript}
-            disabled={isOpeningChat}
-          >
-            {isOpeningChat ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Opening...
-              </>
-            ) : (
-              <>
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Open in Chat
-              </>
-            )}
-          </Button>
         </div>
       </div>
 
       {/* Search bar */}
-      <div className="flex-shrink-0 px-6 py-4 border-b bg-gradient-to-r from-background/50 to-background/80 backdrop-blur">
-        <div className="relative max-w-lg">
+      <div className="flex-shrink-0 px-4 sm:px-6 py-4 border-b bg-gradient-to-r from-background/50 to-background/80 backdrop-blur">
+        <div className="relative w-full sm:max-w-lg">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60">
             <Search className="h-4 w-4" />
           </div>
@@ -1222,24 +1229,24 @@ ${transcript}`;
             placeholder="Search within transcript..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-24 h-10 bg-card/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-colors duration-200 placeholder:text-muted-foreground/60"
+            className="pl-10 pr-20 sm:pr-24 h-10 bg-card/50 backdrop-blur border-border/50 shadow-sm focus:shadow-md transition-colors duration-200 placeholder:text-muted-foreground/60"
           />
           {searchResults.length > 0 && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground/80 bg-background/80 px-2 py-1 rounded-md font-medium">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2 text-xs">
+              <span className="text-muted-foreground/80 bg-background/80 px-1.5 sm:px-2 py-1 rounded-md font-medium text-xs">
                 {currentSearchIndex + 1}/{searchResults.length}
               </span>
               <div className="flex bg-background/80 backdrop-blur rounded-md border border-border/30 shadow-sm">
                 <button
                   onClick={() => navigateSearch('prev')}
-                  className="p-1.5 hover:bg-accent/80 rounded-l-md transition-all duration-200 shadow-sm hover:shadow-md text-muted-foreground hover:text-foreground"
+                  className="p-1 sm:p-1.5 hover:bg-accent/80 rounded-l-md transition-all duration-200 shadow-sm hover:shadow-md text-muted-foreground hover:text-foreground"
                   aria-label="Previous result"
                 >
                   ↑
                 </button>
                 <button
                   onClick={() => navigateSearch('next')}
-                  className="p-1.5 hover:bg-accent/80 rounded-r-md transition-all duration-200 shadow-sm hover:shadow-md text-muted-foreground hover:text-foreground"
+                  className="p-1 sm:p-1.5 hover:bg-accent/80 rounded-r-md transition-all duration-200 shadow-sm hover:shadow-md text-muted-foreground hover:text-foreground"
                   aria-label="Next result"
                 >
                   ↓
@@ -1253,12 +1260,12 @@ ${transcript}`;
       {/* Transcript area */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <div 
-          className="h-full px-6 py-4 bg-gradient-to-b from-background to-muted/10 overflow-y-auto"
+          className="h-full px-4 sm:px-6 py-4 bg-gradient-to-b from-background to-muted/10 overflow-y-auto"
           ref={transcriptRef}
         >
           <div className="max-w-4xl mx-auto">
           {transcript || interimTranscript ? (
-            <div className="bg-card/50 backdrop-blur border rounded-xl p-6 shadow-sm">
+            <div className="bg-card/50 backdrop-blur border rounded-xl p-4 sm:p-6 shadow-sm">
               <div className="prose dark:prose-invert max-w-none">
                 <div className="whitespace-pre-wrap text-sm leading-relaxed">
                   {transcript.split('\n').map((line, index) => {
@@ -1295,14 +1302,14 @@ ${transcript}`;
               </div>
             </div>
           ) : (
-            <div className="text-center py-20">
+            <div className="text-center py-12 sm:py-20 px-4">
               <div className="mx-auto w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mb-4">
                 <FileAudio className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">
                 {meeting.status === 'active' ? 'Ready to Record' : 'No Transcript Available'}
               </h3>
-              <p className="text-muted-foreground max-w-md mx-auto">
+              <p className="text-muted-foreground max-w-md mx-auto text-sm sm:text-base">
                 {meeting.status === 'active' 
                   ? 'Start recording to see the real-time transcript appear here. Choose between in-person or online meeting recording.'
                   : 'This meeting doesn\'t have any recorded transcript yet.'
@@ -1362,7 +1369,7 @@ ${transcript}`;
               style={{ scaleX }}
             />
           )}
-          <div className="px-6 py-4">
+          <div className="px-4 sm:px-6 py-4">
             <div className="max-w-4xl mx-auto">
               {!isRecording ? (
                 <div className="flex flex-col items-center justify-center space-y-4">
@@ -1373,22 +1380,24 @@ ${transcript}`;
                         <p className="text-sm font-medium text-foreground/90 mb-1">Meeting Completed</p>
                         <p className="text-xs text-muted-foreground/80">Start a new recording session to continue adding to this transcript</p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                         <Button
                           onClick={() => continueRecording('local')}
                           variant="outline"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 w-full sm:w-auto"
                         >
                           <User className="h-4 w-4" />
-                          Continue In Person
+                          <span className="hidden sm:inline">Continue In Person</span>
+                          <span className="sm:hidden">In Person</span>
                         </Button>
                         
                         <Button
                           onClick={() => continueRecording('online')}
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 w-full sm:w-auto"
                         >
                           <Monitor className="h-4 w-4" />
-                          Continue Online
+                          <span className="hidden sm:inline">Continue Online</span>
+                          <span className="sm:hidden">Online</span>
                           <Badge variant="beta" className="bg-blue-500 text-white border-blue-500 text-xs px-1.5 py-0.5">
                             Beta
                           </Badge>
@@ -1398,11 +1407,11 @@ ${transcript}`;
                   ) : (
                     /* Initial Recording Section */
                     <>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                         <Button
                           onClick={() => startRecording('local')}
                           variant="outline"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 w-full sm:w-auto"
                         >
                           <User className="h-4 w-4" />
                           In Person
@@ -1410,7 +1419,7 @@ ${transcript}`;
                         
                         <Button
                           onClick={() => startRecording('online')}
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 w-full sm:w-auto"
                         >
                           <Monitor className="h-4 w-4" />
                           Online
@@ -1421,7 +1430,7 @@ ${transcript}`;
                       </div>
                       
                       <div className="text-center">
-                        <p className="text-xs text-muted-foreground/80 max-w-lg mx-auto leading-relaxed">
+                        <p className="text-xs text-muted-foreground/80 max-w-lg mx-auto leading-relaxed px-4">
                           Choose <span className="font-medium text-blue-600 dark:text-blue-400">In Person</span> for real-time speech-to-text or <span className="font-medium text-green-600 dark:text-green-400">Online</span> to join virtual meetings with a bot
                         </p>
                       </div>
@@ -1430,9 +1439,9 @@ ${transcript}`;
                 </div>
               ) : (
                 <div className="flex items-center justify-center">
-                  <div className="flex items-center gap-6 bg-card/80 backdrop-blur border border-border/50 rounded-2xl px-6 py-4 shadow-lg shadow-black/5">
+                  <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 bg-card/80 backdrop-blur border border-border/50 rounded-2xl px-4 sm:px-6 py-4 shadow-lg shadow-black/5 w-full sm:w-auto">
                     {/* Recording indicator and mode */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 justify-center">
                       {recordingMode === 'local' ? (
                         <div className="flex items-center gap-3">
                           <div className="relative">
@@ -1474,22 +1483,23 @@ ${transcript}`;
                     </div>
                     
                     {/* Control buttons */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 justify-center">
                       {/* Pause/Resume button for local recording */}
                       {recordingMode === 'local' && (
                         <Button
                           onClick={isPaused ? resumeRecording : pauseRecording}
                           size="sm"
                           variant={isPaused ? "default" : "secondary"}
+                          className="min-w-[80px]"
                         >
                           {isPaused ? (
                             <>
-                              <Play className="h-3.5 w-3.5 fill-current" />
+                              <Play className="h-3.5 w-3.5 fill-current mr-1" />
                               Resume
                             </>
                           ) : (
                             <>
-                              <Pause className="h-3.5 w-3.5 fill-current" />
+                              <Pause className="h-3.5 w-3.5 fill-current mr-1" />
                               Pause
                             </>
                           )}
@@ -1501,8 +1511,9 @@ ${transcript}`;
                           onClick={stopRecording}
                           size="sm"
                           variant="destructive"
+                          className="min-w-[70px]"
                         >
-                          <Square className="h-3.5 w-3.5 fill-current" />
+                          <Square className="h-3.5 w-3.5 fill-current mr-1" />
                           Stop
                         </Button>
                       )}

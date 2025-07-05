@@ -425,21 +425,21 @@ ${meeting.transcript}`;
   }
 
   return (
-    <div className="flex-1 p-8">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Meetings</h1>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6 sm:mb-8">
+          <div className="space-y-1 flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Meetings</h1>
             {/* Breadcrumbs */}
-            <div className="flex items-center mt-3 text-sm">
+            <div className="flex items-center mt-3 text-sm overflow-x-auto pb-1">
               {breadcrumbs.map((crumb, index) => (
                 <React.Fragment key={index}>
-                  {index > 0 && <span className="mx-2 text-muted-foreground/50">/</span>}
+                  {index > 0 && <span className="mx-2 text-muted-foreground/50 flex-shrink-0">/</span>}
                   <button
                     onClick={() => navigateToBreadcrumb(index)}
                     className={cn(
-                      "px-2 py-1 rounded-md transition-all duration-200 hover:bg-accent/80",
+                      "px-2 py-1 rounded-md transition-all duration-200 hover:bg-accent/80 flex-shrink-0",
                       index === breadcrumbs.length - 1
                         ? "text-foreground font-medium bg-primary/10"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
@@ -451,13 +451,13 @@ ${meeting.transcript}`;
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             {/* Show "Go to Root" button when in empty folders */}
             {currentFolderId && meetings.length === 0 && folders.length === 0 && (
               <Button 
                 onClick={() => navigateToBreadcrumb(0)} 
                 variant="outline"
-                className="shadow-sm hover:shadow-md transition-all duration-200 hover:bg-accent/80"
+                className="shadow-sm hover:shadow-md transition-all duration-200 hover:bg-accent/80 w-full sm:w-auto"
               >
                 <FolderOpen className="h-4 w-4 mr-2" />
                 Go to Root
@@ -467,22 +467,26 @@ ${meeting.transcript}`;
               <Button 
                 onClick={() => setShowNewFolderDialog(true)} 
                 variant="outline"
+                className="flex-1 sm:flex-none"
               >
                 <Folder className="h-4 w-4 mr-2" />
-                New Folder
+                <span className="hidden sm:inline">New Folder</span>
+                <span className="sm:hidden">Folder</span>
               </Button>
               <Button 
                 onClick={() => setShowNewMeetingDialog(true)}
+                className="flex-1 sm:flex-none"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                New Meeting
+                <span className="hidden sm:inline">New Meeting</span>
+                <span className="sm:hidden">Meeting</span>
               </Button>
             </div>
           </div>
         </div>
 
         {/* Search */}
-        <div className="relative mb-8 max-w-md">
+        <div className="relative mb-6 sm:mb-8 w-full sm:max-w-md">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60">
             <Search className="h-4 w-4" />
           </div>
@@ -501,13 +505,13 @@ ${meeting.transcript}`;
 
         {/* Search Results */}
         {searchQuery && searchResults.length > 0 && (
-          <div className="mb-8 bg-gradient-to-r from-card/80 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-6 shadow-lg">
+          <div className="mb-6 sm:mb-8 bg-gradient-to-r from-card/80 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-4 sm:p-6 shadow-lg">
             <h3 className="font-semibold mb-4 text-foreground/90">Search Results</h3>
             <div className="space-y-3">
               {searchResults.map((result) => (
                 <div
                   key={result.meeting_id}
-                  className="group p-4 bg-background/50 backdrop-blur border border-border/30 rounded-lg hover:bg-accent/50 cursor-pointer transition-all duration-200 hover:shadow-md"
+                  className="group p-3 sm:p-4 bg-background/50 backdrop-blur border border-border/30 rounded-lg hover:bg-accent/50 cursor-pointer transition-all duration-200 hover:shadow-md"
                   onClick={() => router.push(`/meetings/${result.meeting_id}`)}
                 >
                   <div className="font-medium text-foreground group-hover:text-primary transition-colors">
@@ -526,7 +530,7 @@ ${meeting.transcript}`;
         {/* Folders and Meetings Grid */}
         <div 
           className={cn(
-            "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-32 rounded-xl transition-all duration-300",
+            "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 min-h-32 rounded-xl transition-all duration-300",
             dragOverTarget === 'root' && "bg-gradient-to-br from-blue-50/80 to-blue-100/60 dark:from-blue-950/60 dark:to-blue-900/40 border-2 border-dashed border-blue-300 dark:border-blue-600 shadow-lg"
           )}
           onDragOver={(e) => handleDragOver(e)}
@@ -543,7 +547,7 @@ ${meeting.transcript}`;
               onDragLeave={(e) => handleDragLeave(e, folder.folder_id)}
               onDrop={(e) => handleDrop(e, folder.folder_id)}
               className={cn(
-                "group bg-gradient-to-br from-card/60 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-5 hover:bg-gradient-to-br hover:from-accent/30 hover:to-accent/10 cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-black/5",
+                "group bg-gradient-to-br from-card/60 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-4 sm:p-5 hover:bg-gradient-to-br hover:from-accent/30 hover:to-accent/10 cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-black/5",
                 dragOverTarget === folder.folder_id && "bg-gradient-to-br from-blue-50/80 to-blue-100/60 dark:from-blue-950/60 dark:to-blue-900/40 border-blue-300 dark:border-blue-600 shadow-lg shadow-blue-500/20",
                 draggedItem?.id === folder.folder_id && "opacity-50 scale-95"
               )}
@@ -641,7 +645,7 @@ ${meeting.transcript}`;
               draggable
               onDragStart={(e) => handleDragStart(e, 'meeting', meeting.meeting_id)}
               className={cn(
-                "group bg-gradient-to-br from-card/60 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-5 hover:bg-gradient-to-br hover:from-accent/30 hover:to-accent/10 cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-black/5",
+                "group bg-gradient-to-br from-card/60 via-card to-card/80 backdrop-blur border border-border/50 rounded-xl p-4 sm:p-5 hover:bg-gradient-to-br hover:from-accent/30 hover:to-accent/10 cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-black/5",
                 draggedItem?.id === meeting.meeting_id && "opacity-50 scale-95"
               )}
               onClick={() => router.push(`/meetings/${meeting.meeting_id}`)}
