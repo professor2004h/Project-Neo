@@ -637,15 +637,15 @@ ${meeting.transcript || '(No transcript available)'}`;
               {/* Chat Input Section */}
               {showChatInput && (
                 <motion.div 
-                  className={cn('w-full mt-8', 'max-w-full', 'sm:max-w-3xl')}
+                  className={cn('w-full', 'max-w-full', 'sm:max-w-3xl')}
                   initial={{ 
-                    y: 80, 
+                    y: 112, 
                     opacity: 0, 
                     scale: 0.92,
                     filter: "blur(8px)"
                   }}
                   animate={{ 
-                    y: 0, 
+                    y: 32, 
                     opacity: 1, 
                     scale: 1,
                     filter: "blur(0px)"
@@ -670,26 +670,22 @@ ${meeting.transcript || '(No transcript available)'}`;
               {/* Examples Section */}
               {showExamples && (
                 <motion.div 
-                  className="w-full mt-6"
+                  className="w-full"
                   initial={{ 
-                    y: 100, 
+                    y: 124, 
                     opacity: 0, 
                     scale: 0.85,
                     filter: "blur(15px)"
                   }}
                   animate={{ 
-                    y: 0, 
+                    y: 24, 
                     opacity: 1, 
                     scale: 1,
                     filter: "blur(0px)"
                   }}
                   transition={{ 
                     duration: 1.8, 
-                    ease: [0.16, 1, 0.3, 1],
-                    type: "spring",
-                    stiffness: 50,
-                    damping: 25,
-                    mass: 1.2
+                    ease: [0.16, 1, 0.3, 1]
                   }}
                 >
                   <Examples onSelectPrompt={setInputValue} />
