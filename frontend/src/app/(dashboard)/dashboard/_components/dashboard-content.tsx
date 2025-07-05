@@ -110,17 +110,13 @@ export function DashboardContent() {
   useEffect(() => {
     if (!isLoadingUserName) {
       // Calculate total greeting animation time
-      const heyLength = "Hey".length;
-      const nameLength = (userName || 'there').length;
-      const imLength = ", I'm".length;
+      const firstTextLength = `Hey ${userName || 'there'}, I'm`.length;
       const secondTextLength = `What would you like to do this ${getTimeBasedGreeting()}?`.length;
       
-      const heyAnimationTime = 400 + (heyLength * 50); // delay + duration per char
-      const nameAnimationTime = 550 + (nameLength * 50); // delay + duration per char  
-      const imAnimationTime = 700 + (imLength * 50); // delay + duration per char
+      const firstAnimationTime = 400 + (firstTextLength * 50); // delay + duration per char
       const secondAnimationTime = 2000 + (secondTextLength * 80); // delay + duration per char
       
-      const totalGreetingTime = Math.max(heyAnimationTime, nameAnimationTime, imAnimationTime, secondAnimationTime) + 500; // Add buffer
+      const totalGreetingTime = Math.max(firstAnimationTime, secondAnimationTime) + 500; // Add buffer
       
       const timer = setTimeout(() => {
         setGreetingComplete(true);
@@ -521,7 +517,7 @@ ${meeting.transcript || '(No transcript available)'}`;
           >
             {/* Glass Morphism Background */}
             <motion.div 
-              className="absolute inset-0 bg-gradient-to-br from-background/70 via-background/50 to-background/70 backdrop-blur-2xl rounded-3xl border border-white/15 dark:border-white/8 shadow-2xl dark:shadow-black/30"
+              className="absolute inset-0 bg-gradient-to-br from-background/85 via-background/70 to-background/85 backdrop-blur-xl rounded-3xl border border-white/15 dark:border-white/8 shadow-2xl dark:shadow-black/30"
               animate={{ 
                 height: greetingComplete ? 'auto' : 'auto'
               }}
@@ -568,26 +564,12 @@ ${meeting.transcript || '(No transcript available)'}`;
                 ) : (
                   <div className="flex flex-col items-center gap-4 justify-center">
                     <div className="flex items-center gap-2 flex-wrap justify-center">
-                      <div className="flex items-center gap-1">
-                        <TypingText
-                          text="Hey"
-                          className="tracking-tight text-4xl text-muted-foreground leading-tight"
-                          duration={50}
-                          delay={400}
-                        />
-                        <TypingText
-                          text={userName || 'there'}
-                          className="tracking-tight text-4xl text-white dark:text-black leading-tight font-medium"
-                          duration={50}
-                          delay={550}
-                        />
-                        <TypingText
-                          text=", I'm"
-                          className="tracking-tight text-4xl text-muted-foreground leading-tight"
-                          duration={50}
-                          delay={700}
-                        />
-                      </div>
+                      <TypingText
+                        text={`Hey ${userName || 'there'}, I'm`}
+                        className="tracking-tight text-4xl text-muted-foreground leading-tight"
+                        duration={50}
+                        delay={400}
+                      />
                       {customAgentEnabled ? (
                         <AgentSelector
                           selectedAgentId={selectedAgentId}
@@ -656,8 +638,8 @@ ${meeting.transcript || '(No transcript available)'}`;
                   initial={{ 
                     y: 80, 
                     opacity: 0, 
-                    scale: 0.9,
-                    filter: "blur(10px)"
+                    scale: 0.92,
+                    filter: "blur(8px)"
                   }}
                   animate={{ 
                     y: 0, 
@@ -666,12 +648,8 @@ ${meeting.transcript || '(No transcript available)'}`;
                     filter: "blur(0px)"
                   }}
                   transition={{ 
-                    duration: 1.4, 
-                    ease: [0.16, 1, 0.3, 1],
-                    type: "spring",
-                    stiffness: 60,
-                    damping: 20,
-                    mass: 1
+                    duration: 1.2, 
+                    ease: [0.25, 0.46, 0.45, 0.94]
                   }}
                 >
                   <ChatInput
