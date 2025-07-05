@@ -207,7 +207,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
               size="sm"
               className={cn(
-                'w-7 h-7 flex-shrink-0 self-end',
+                'w-8 h-8 flex-shrink-0 rounded-full p-0',
                 isAgentRunning ? 'bg-red-500 hover:bg-red-600' : '',
                 (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
                   loading ||

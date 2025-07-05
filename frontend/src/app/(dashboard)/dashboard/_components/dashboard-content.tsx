@@ -37,6 +37,7 @@ import { GradientText } from '@/components/animate-ui/text/gradient';
 import { useAgents } from '@/hooks/react-query/agents/use-agents';
 import { isFlagEnabled } from '@/lib/feature-flags';
 import Waves from '@/Backgrounds/Waves/Waves';
+import { useTheme } from 'next-themes';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
@@ -63,6 +64,7 @@ export function DashboardContent() {
   const [customAgentEnabled, setCustomAgentEnabled] = useState(false);
   const { billingError, handleBillingError, clearBillingError } =
     useBillingError();
+  const { theme, resolvedTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
@@ -243,6 +245,13 @@ ${meeting.transcript || '(No transcript available)'}`;
   const secondaryGradient =
     'bg-gradient-to-r from-blue-500 to-blue-500 bg-clip-text text-transparent';
 
+  // Dynamic wave colors based on theme - black and white with thicker lines
+  const isDark = resolvedTheme === 'dark';
+  const waveColors = {
+    lineColor: isDark ? '#fff' : '#000',
+    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.2)',
+  };
+
   const handleSaveName = async () => {
     const trimmed = nameInput.trim();
     if (!trimmed) return;
@@ -381,18 +390,17 @@ ${meeting.transcript || '(No transcript available)'}`;
       <div className="flex flex-col h-screen w-full relative">
         {/* Waves Background */}
         <Waves
-          lineColor="rgba(99, 102, 241, 0.15)"
-          backgroundColor="rgba(244, 246, 248, 0.5)"
-          waveSpeedX={0.01}
-          waveSpeedY={0.005}
-          waveAmpX={20}
-          waveAmpY={10}
-          xGap={30}
-          yGap={30}
-          friction={0.92}
-          tension={0.008}
-          maxCursorMove={80}
-          className="dark:bg-gray-900/20"
+          lineColor={waveColors.lineColor}
+          backgroundColor={waveColors.backgroundColor}
+          waveSpeedX={0.02}
+          waveSpeedY={0.01}
+          waveAmpX={40}
+          waveAmpY={20}
+          xGap={12}
+          yGap={36}
+          friction={0.9}
+          tension={0.01}
+          maxCursorMove={120}
         />
         
         {isMobile && (
@@ -433,7 +441,7 @@ ${meeting.transcript || '(No transcript available)'}`;
                   <TypingText
                     text={`Hey ${userName || 'there'}, I'm`}
                     className="tracking-tight text-4xl text-muted-foreground leading-tight"
-                    duration={80}
+                    duration={60}
                     delay={500}
                   />
                   {customAgentEnabled ? (
