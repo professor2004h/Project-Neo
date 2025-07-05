@@ -2027,6 +2027,7 @@ class PublishAgentRequest(BaseModel):
     team_ids: Optional[List[str]] = []  # Team account IDs to share with
     include_knowledge_bases: Optional[bool] = True  # Whether to include knowledge bases when sharing
     include_custom_mcp_tools: Optional[bool] = True  # Whether to include custom MCP tools when sharing
+    disable_customization: Optional[bool] = False  # Whether to disable customization for marketplace agents
 
 @router.get("/marketplace/agents", response_model=MarketplaceAgentsResponse)
 async def get_marketplace_agents(
@@ -2148,7 +2149,8 @@ async def publish_agent_to_marketplace(
         # Store sharing preferences for later use when serving marketplace agents
         sharing_preferences = {
             'include_knowledge_bases': publish_data.include_knowledge_bases,
-            'include_custom_mcp_tools': publish_data.include_custom_mcp_tools
+            'include_custom_mcp_tools': publish_data.include_custom_mcp_tools,
+            'disable_customization': publish_data.disable_customization
         }
         
         # Update agent with sharing preferences
