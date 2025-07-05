@@ -4,6 +4,7 @@ import React, { useState, Suspense, useEffect, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Menu, Check } from 'lucide-react';
+import { motion } from 'framer-motion';
 import {
   ChatInput,
   ChatInputHandles,
@@ -62,6 +63,11 @@ export function DashboardContent() {
     null,
   );
   const [customAgentEnabled, setCustomAgentEnabled] = useState(false);
+  
+  // Animation state
+  const [showChatInput, setShowChatInput] = useState(false);
+  const [showExamples, setShowExamples] = useState(false);
+  const [greetingComplete, setGreetingComplete] = useState(false);
   const { billingError, handleBillingError, clearBillingError } =
     useBillingError();
   const { theme, resolvedTheme } = useTheme();
@@ -94,6 +100,36 @@ export function DashboardContent() {
       setSelectedAgentId(defaultAgent.agent_id);
     }
   }, [selectedAgentId, defaultAgent, agents.length]);
+
+  // Trigger cascade animation after greeting completes
+  useEffect(() => {
+    if (!isLoadingUserName) {
+      // Calculate total greeting animation time
+      const firstTextLength = `Hey ${userName || 'there'}, I'm`.length;
+      const secondTextLength = `What would you like to do this ${getTimeBasedGreeting()}?`.length;
+      
+      const firstAnimationTime = 500 + (firstTextLength * 60); // delay + duration per char
+      const secondAnimationTime = 2000 + (secondTextLength * 80); // delay + duration per char
+      
+      const totalGreetingTime = Math.max(firstAnimationTime, secondAnimationTime) + 500; // Add buffer
+      
+      const timer = setTimeout(() => {
+        setGreetingComplete(true);
+        
+        // Cascade chat input after greeting
+        setTimeout(() => {
+          setShowChatInput(true);
+          
+          // Cascade examples after chat input
+          setTimeout(() => {
+            setShowExamples(true);
+          }, 400); // Stagger for cascade effect
+        }, 300); // Small delay after greeting
+      }, totalGreetingTime);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isLoadingUserName, userName]);
 
   // Check custom agent flag
   useEffect(() => {
@@ -422,102 +458,164 @@ ${meeting.transcript || '(No transcript available)'}`;
           </div>
         )}
 
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[650px] max-w-[90%] z-10 relative">
-          <div className="flex flex-col items-center text-center w-full bg-background/80 backdrop-blur-sm rounded-2xl p-8 border border-border/20">
-            {isLoadingUserName ? (
-              <div className="flex items-center gap-2 flex-wrap justify-center">
-                <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
-                  Hey there, I am
-                </h1>
-                <AgentSelector
-                  selectedAgentId={selectedAgentId}
-                  onAgentSelect={setSelectedAgentId}
-                  variant="heading"
-                />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-4 justify-center">
-                <div className="flex items-center gap-2 flex-wrap justify-center">
-                  <TypingText
-                    text={`Hey ${userName || 'there'}, I'm`}
-                    className="tracking-tight text-4xl text-muted-foreground leading-tight"
-                    duration={60}
-                    delay={500}
-                  />
-                  {customAgentEnabled ? (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[700px] max-w-[95%] z-10 relative">
+          {/* Liquid Glass Background Container */}
+          <motion.div 
+            className="relative group"
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          >
+            {/* Glass Morphism Background */}
+            <motion.div 
+              className="absolute inset-0 bg-gradient-to-br from-background/60 via-background/40 to-background/60 backdrop-blur-xl rounded-3xl border border-white/10 dark:border-white/5 shadow-2xl dark:shadow-black/20"
+              animate={{ 
+                height: greetingComplete ? 'auto' : 'auto'
+              }}
+              transition={{ duration: 1.2, ease: "easeInOut" }}
+            />
+            
+            {/* Subtle Inner Glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5 rounded-3xl" />
+            
+            {/* Animated Gradient Border */}
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl" />
+            
+            {/* Main Content Container */}
+            <div className="relative flex flex-col items-center p-8 rounded-3xl overflow-hidden">
+              {/* Greeting Section */}
+              <motion.div 
+                className="flex flex-col items-center text-center w-full"
+                initial={{ y: 0 }}
+                animate={{ y: 0 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              >
+                {isLoadingUserName ? (
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
+                    <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
+                      Hey there, I am
+                    </h1>
                     <AgentSelector
                       selectedAgentId={selectedAgentId}
                       onAgentSelect={setSelectedAgentId}
                       variant="heading"
                     />
-                  ) : (
-                    <span className="tracking-tight text-4xl text-foreground leading-tight font-medium">
-                      {selectedAgent?.name || defaultAgent?.name || 'Operator'}
-                    </span>
-                  )}
-                </div>
-                
-                <TypingText
-                  text={`What would you like to do this ${getTimeBasedGreeting()}?`}
-                  className="tracking-tight text-3xl font-normal text-muted-foreground/80"
-                  duration={80}
-                  delay={2000}
-                />
-                
-                {/* Name editing section for users without a name */}
-                {!userName && (
-                  <div className="relative mt-4">
-                    {!isNameFocused ? (
-                      <button
-                        onClick={() => setIsNameFocused(true)}
-                        className="tracking-tight text-2xl text-muted-foreground hover:text-foreground leading-tight underline decoration-dashed underline-offset-4 transition-colors duration-200"
-                      >
-                        Click here to set your name
-                      </button>
-                    ) : (
-                      <div className="relative">
-                        <Input
-                          value={nameInput}
-                          onChange={(e) => setNameInput(e.target.value)}
-                          onKeyDown={handleNameKeyDown}
-                          onBlur={() => {
-                            if (!nameInput.trim()) {
-                              setIsNameFocused(false);
-                            }
-                          }}
-                          placeholder="your name"
-                          className="h-12 w-40 text-2xl text-center font-medium bg-transparent border-0 border-b-2 border-muted-foreground/30 focus:border-primary rounded-none shadow-none focus:shadow-none transition-colors duration-200 px-0"
-                          autoFocus
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4 justify-center">
+                    <div className="flex items-center gap-2 flex-wrap justify-center">
+                      <TypingText
+                        text={`Hey ${userName || 'there'}, I'm`}
+                        className="tracking-tight text-4xl text-muted-foreground leading-tight"
+                        duration={60}
+                        delay={500}
+                      />
+                      {customAgentEnabled ? (
+                        <AgentSelector
+                          selectedAgentId={selectedAgentId}
+                          onAgentSelect={setSelectedAgentId}
+                          variant="heading"
                         />
-                        {nameInput.trim() && (
+                      ) : (
+                        <span className="tracking-tight text-4xl text-foreground leading-tight font-medium">
+                          {selectedAgent?.name || defaultAgent?.name || 'Operator'}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <TypingText
+                      text={`What would you like to do this ${getTimeBasedGreeting()}?`}
+                      className="tracking-tight text-3xl font-normal text-muted-foreground/80"
+                      duration={80}
+                      delay={2000}
+                    />
+                    
+                    {/* Name editing section for users without a name */}
+                    {!userName && (
+                      <div className="relative mt-4">
+                        {!isNameFocused ? (
                           <button
-                            onClick={handleSaveName}
-                            className="absolute -right-8 top-1/2 -translate-y-1/2 p-1 rounded-full bg-primary hover:bg-primary/90 transition-colors duration-200"
+                            onClick={() => setIsNameFocused(true)}
+                            className="tracking-tight text-2xl text-muted-foreground hover:text-foreground leading-tight underline decoration-dashed underline-offset-4 transition-colors duration-200"
                           >
-                            <Check className="h-4 w-4 text-primary-foreground" />
+                            Click here to set your name
                           </button>
+                        ) : (
+                          <div className="relative">
+                            <Input
+                              value={nameInput}
+                              onChange={(e) => setNameInput(e.target.value)}
+                              onKeyDown={handleNameKeyDown}
+                              onBlur={() => {
+                                if (!nameInput.trim()) {
+                                  setIsNameFocused(false);
+                                }
+                              }}
+                              placeholder="your name"
+                              className="h-12 w-40 text-2xl text-center font-medium bg-transparent border-0 border-b-2 border-muted-foreground/30 focus:border-primary rounded-none shadow-none focus:shadow-none transition-colors duration-200 px-0"
+                              autoFocus
+                            />
+                            {nameInput.trim() && (
+                              <button
+                                onClick={handleSaveName}
+                                className="absolute -right-8 top-1/2 -translate-y-1/2 p-1 rounded-full bg-primary hover:bg-primary/90 transition-colors duration-200"
+                              >
+                                <Check className="h-4 w-4 text-primary-foreground" />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}
                   </div>
                 )}
-              </div>
-            )}
-          </div>
+              </motion.div>
 
-          <div className={cn('w-full mb-2', 'max-w-full', 'sm:max-w-3xl')}>
-            <ChatInput
-              ref={chatInputRef}
-              onSubmit={handleSubmit}
-              loading={isSubmitting}
-              placeholder="Describe what you need help with..."
-              value={inputValue}
-              onChange={setInputValue}
-              hideAttachments={false}
-            />
-          </div>
+              {/* Chat Input Section */}
+              {showChatInput && (
+                <motion.div 
+                  className={cn('w-full mt-8', 'max-w-full', 'sm:max-w-3xl')}
+                  initial={{ y: 50, opacity: 0, scale: 0.95 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  transition={{ 
+                    duration: 1.0, 
+                    ease: [0.25, 0.46, 0.45, 0.94],
+                    type: "spring",
+                    stiffness: 100,
+                    damping: 15
+                  }}
+                >
+                  <ChatInput
+                    ref={chatInputRef}
+                    onSubmit={handleSubmit}
+                    loading={isSubmitting}
+                    placeholder="Describe what you need help with..."
+                    value={inputValue}
+                    onChange={setInputValue}
+                    hideAttachments={false}
+                  />
+                </motion.div>
+              )}
 
-          <Examples onSelectPrompt={setInputValue} />
+              {/* Examples Section */}
+              {showExamples && (
+                <motion.div 
+                  className="w-full mt-6"
+                  initial={{ y: 60, opacity: 0, scale: 0.9 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  transition={{ 
+                    duration: 1.2, 
+                    ease: [0.25, 0.46, 0.45, 0.94],
+                    type: "spring",
+                    stiffness: 80,
+                    damping: 18
+                  }}
+                >
+                  <Examples onSelectPrompt={setInputValue} />
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
         </div>
 
         <div className="relative z-20">
