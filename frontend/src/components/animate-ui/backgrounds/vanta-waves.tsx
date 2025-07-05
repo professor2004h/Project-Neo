@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useSidebar } from '@/components/ui/sidebar';
 
 declare global {
   interface Window {
@@ -18,6 +19,7 @@ export function VantaWaves({ children, className }: VantaWavesProps) {
   const vantaRef = useRef<HTMLDivElement>(null);
   const vantaEffect = useRef<any>(null);
   const observerRef = useRef<MutationObserver | null>(null);
+  const { state, open } = useSidebar();
 
   useEffect(() => {
     // Load Three.js
@@ -68,17 +70,67 @@ export function VantaWaves({ children, className }: VantaWavesProps) {
         // Add resize listener after Vanta is initialized
         window.addEventListener('resize', handleResize);
         
-        // Listen for sidebar state changes (common class changes)
-        observerRef.current = new MutationObserver(() => {
-          handleResize();
+        // Create mutation observer with better targeting
+        observerRef.current = new MutationObserver((mutations) => {
+          let shouldResize = false;
+          
+          mutations.forEach((mutation) => {
+            // Check for sidebar-related changes
+            if (mutation.type === 'attributes') {
+              const target = mutation.target as Element;
+              
+              // Monitor data-state changes on sidebar elements
+              if (mutation.attributeName === 'data-state' && 
+                  target.matches('[data-slot="sidebar"]')) {
+                shouldResize = true;
+              }
+              
+              // Monitor class changes that might affect layout
+              if (mutation.attributeName === 'class') {
+                const classList = target.classList;
+                // Check for sidebar-related class changes
+                if (Array.from(classList).some(className => 
+                    className.includes('sidebar') || 
+                    className.includes('collapsed') || 
+                    className.includes('expanded'))) {
+                  shouldResize = true;
+                }
+              }
+              
+              // Monitor style changes that might affect layout
+              if (mutation.attributeName === 'style') {
+                shouldResize = true;
+              }
+            }
+          });
+          
+          if (shouldResize) {
+            handleResize();
+          }
         });
         
-        if (document.body && observerRef.current) {
-          observerRef.current.observe(document.body, {
+        if (observerRef.current) {
+          // Observe the entire document for sidebar changes
+          observerRef.current.observe(document.documentElement, {
             attributes: true,
-            attributeFilter: ['class', 'style']
+            attributeFilter: ['class', 'style', 'data-state', 'data-collapsible'],
+            subtree: true
           });
         }
+        
+        // Additional listener for CSS transitions end
+        const handleTransitionEnd = (event: TransitionEvent) => {
+          if (event.propertyName === 'width' || event.propertyName === 'left' || event.propertyName === 'right') {
+            handleResize();
+          }
+        };
+        
+        document.addEventListener('transitionend', handleTransitionEnd);
+        
+        // Cleanup function for transition listener
+        return () => {
+          document.removeEventListener('transitionend', handleTransitionEnd);
+        };
       };
     };
 
@@ -99,6 +151,18 @@ export function VantaWaves({ children, className }: VantaWavesProps) {
       }
     };
   }, []);
+
+  // Effect to handle sidebar state changes
+  useEffect(() => {
+    if (vantaEffect.current && vantaEffect.current.resize) {
+      // Delay to ensure CSS transitions have time to complete
+      const timer = setTimeout(() => {
+        vantaEffect.current.resize();
+      }, 300); // Slightly longer delay for transitions
+      
+      return () => clearTimeout(timer);
+    }
+  }, [state, open]);
 
   return (
     <div 
