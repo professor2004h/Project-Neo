@@ -142,8 +142,8 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
         </div>
 
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-1 ml-3 mb-1 pr-2 gap-2">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center justify-between mt-1 ml-3 mb-1 pr-2 gap-1 sm:gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             {!hideAttachments && (
               <FileUploadHandler
                 ref={fileInputRef}
@@ -186,7 +186,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               </Tooltip>
             </TooltipProvider>
           }
-          <div className='flex items-center gap-2 sm:gap-3 flex-shrink-0'>
+          <div className='flex items-center gap-1 sm:gap-2 flex-shrink-0'>
             <ModelSelector
               selectedModel={selectedModel}
               onModelChange={onModelChange}
