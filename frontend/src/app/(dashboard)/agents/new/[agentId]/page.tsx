@@ -99,7 +99,12 @@ export default function AgentConfigurationPage() {
 
   // Check if customization is disabled for marketplace agents
   useEffect(() => {
+    console.log('[DEBUG] Agent data:', agent);
+    console.log('[DEBUG] Agent sharing_preferences:', agent?.sharing_preferences);
+    console.log('[DEBUG] Agent disable_customization:', agent?.sharing_preferences?.disable_customization);
+    
     if (agent?.sharing_preferences?.disable_customization) {
+      console.log('[DEBUG] Customization is disabled, redirecting...');
       toast.error('Customization is disabled by the creator. Talk to the creator of the agent for modifications.');
       router.push('/agents');
       return;

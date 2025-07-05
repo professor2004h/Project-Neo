@@ -268,6 +268,11 @@ export default function MarketplacePage() {
                           <span className="text-muted-foreground">Contact creator for changes</span>
                         </div>
                       )}
+                      {/* DEBUG: Log marketplace agent data */}
+                      {(() => {
+                        console.log('[DEBUG] Marketplace agent:', agent.agent_id, 'sharing_preferences:', agent.sharing_preferences);
+                        return null;
+                      })()}
                     </div>
 
                     <Button 

@@ -1753,6 +1753,9 @@ async def get_agent(agent_id: str, user_id: str = Depends(get_current_user_id_fr
         if agent_data['account_id'] != user_id and not agent_data.get('is_public', False):
             raise HTTPException(status_code=403, detail="Access denied")
         
+        # DEBUG: Log sharing preferences
+        logger.info(f"[DEBUG] Agent {agent_id} sharing_preferences from DB: {agent_data.get('sharing_preferences', {})}")
+        
         return AgentResponse(
             agent_id=agent_data['agent_id'],
             account_id=agent_data['account_id'],

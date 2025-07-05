@@ -84,7 +84,12 @@ const AgentModal = ({ agent, isOpen, onClose, onCustomize, onChat, onPublish, on
                 </Button>
               ) : (
                 <Button
-                  onClick={() => onCustomize(agent.agent_id)}
+                  onClick={() => {
+                    console.log('[DEBUG] Customize button clicked for agent:', agent.agent_id);
+                    console.log('[DEBUG] Agent sharing_preferences:', agent.sharing_preferences);
+                    console.log('[DEBUG] Agent disable_customization:', agent.sharing_preferences?.disable_customization);
+                    onCustomize(agent.agent_id);
+                  }}
                   variant="outline"
                   className="flex-1 gap-2"
                 >

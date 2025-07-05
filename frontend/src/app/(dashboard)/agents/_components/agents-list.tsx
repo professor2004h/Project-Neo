@@ -59,7 +59,12 @@ export const AgentsList = ({
                     variant="ghost" 
                     size="sm"
                     className="h-8 w-8 p-0"
-                    onClick={() => onEditAgent(agent.agent_id)}
+                    onClick={() => {
+                      console.log('[DEBUG] Edit button clicked for agent:', agent.agent_id);
+                      console.log('[DEBUG] Agent sharing_preferences:', agent.sharing_preferences);
+                      console.log('[DEBUG] Agent disable_customization:', agent.sharing_preferences?.disable_customization);
+                      onEditAgent(agent.agent_id);
+                    }}
                     disabled={agent.sharing_preferences?.disable_customization}
                     title={agent.sharing_preferences?.disable_customization 
                       ? "Customization is disabled by the creator" 

@@ -188,6 +188,7 @@ export const getAgent = async (agentId: string): Promise<Agent> => {
 
     const agent = await response.json();
     console.log('[API] Fetched agent:', agent.agent_id);
+    console.log('[DEBUG] Agent sharing_preferences:', agent.sharing_preferences);
     return agent;
   } catch (err) {
     console.error('Error fetching agent:', err);
