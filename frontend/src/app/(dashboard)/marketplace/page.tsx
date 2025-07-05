@@ -2,10 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { Search, Download, Star, Calendar, User, Tags, TrendingUp, Globe } from 'lucide-react';
-import { useTheme } from 'next-themes';
-import Waves from '@/Backgrounds/Waves/Waves';
-import { HexagonBackground } from '@/components/animate-ui/backgrounds/hexagon';
-import { VantaWaves } from '@/components/animate-ui/backgrounds/vanta-waves';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,16 +17,12 @@ import { useCurrentAccount } from '@/hooks/use-current-account';
 type SortOption = 'newest' | 'popular' | 'most_downloaded' | 'name';
 
 export default function MarketplacePage() {
-  const { resolvedTheme } = useTheme();
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [addingAgentId, setAddingAgentId] = useState<string | null>(null);
   const currentAccount = useCurrentAccount();
-  
-  // Background selection
-  const [backgroundType, setBackgroundType] = useState<'waves' | 'hexagon' | 'vanta'>('waves');
   
   const queryParams = useMemo(() => ({
     page,
@@ -50,19 +42,6 @@ export default function MarketplacePage() {
   React.useEffect(() => {
     setPage(1);
   }, [searchQuery, selectedTags, sortBy]);
-
-  // Background selection
-  React.useEffect(() => {
-    if (resolvedTheme === 'dark') {
-      // Dark mode: waves or vanta only
-      const options = ['waves', 'vanta'] as const;
-      setBackgroundType(options[Math.floor(Math.random() * options.length)]);
-    } else {
-      // Light mode: waves or hexagon only
-      const options = ['waves', 'hexagon'] as const;
-      setBackgroundType(options[Math.floor(Math.random() * options.length)]);
-    }
-  }, [resolvedTheme]);
 
   const handleAddToLibrary = async (agentId: string, agentName: string) => {
     try {
@@ -106,41 +85,20 @@ export default function MarketplacePage() {
     return Array.from(tags);
   }, [agents]);
 
-  const renderBackground = () => {
-    switch (backgroundType) {
-      case 'waves':
-        return <Waves />;
-      case 'hexagon':
-        return <HexagonBackground />;
-      case 'vanta':
-        return <VantaWaves />;
-      default:
-        return <Waves />;
-    }
-  };
-
   if (error) {
     return (
-      <div className="flex-1 relative min-h-screen">
-        {renderBackground()}
-        <div className="relative z-10">
-          <div className="container mx-auto max-w-7xl px-4 py-8">
-            <Alert variant="destructive">
-              <AlertDescription>
-                Failed to load marketplace agents. Please try again later.
-              </AlertDescription>
-            </Alert>
-          </div>
-        </div>
+      <div className="container mx-auto max-w-7xl px-4 py-8">
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to load marketplace agents. Please try again later.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 relative min-h-screen">
-      {renderBackground()}
-      <div className="relative z-10">
-        <div className="container mx-auto max-w-7xl px-4 py-8">
+    <div className="container mx-auto max-w-7xl px-4 py-8">
       <div className="space-y-8">
         <div className="space-y-4">
           <div className="space-y-2">
@@ -341,8 +299,6 @@ export default function MarketplacePage() {
             isLoading={isLoading}
           />
         )}
-        </div>
-        </div>
       </div>
     </div>
   );

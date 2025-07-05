@@ -1389,7 +1389,7 @@ ${transcript}`;
                         >
                           <Monitor className="h-4 w-4" />
                           Continue Online
-                          <Badge variant="beta" className="bg-blue-600/20 text-blue-600 border-blue-400/30 dark:text-blue-300">
+                          <Badge variant="beta" className="bg-blue-500 text-white border-blue-500 text-xs px-1.5 py-0.5">
                             Beta
                           </Badge>
                         </Button>
@@ -1414,7 +1414,7 @@ ${transcript}`;
                         >
                           <Monitor className="h-4 w-4" />
                           Online
-                          <Badge variant="beta" className="bg-blue-600/20 text-blue-600 border-blue-400/30 dark:text-blue-300">
+                          <Badge variant="beta" className="bg-blue-500 text-white border-blue-500 text-xs px-1.5 py-0.5">
                             Beta
                           </Badge>
                         </Button>
@@ -1564,7 +1564,7 @@ ${transcript}`;
               <Monitor className="h-4 w-4 mr-2" />
               <span className="flex items-center gap-2">
                 Start Bot Recording
-                <Badge variant="beta" className="bg-blue-600/20 text-blue-200 border-blue-400/30">
+                <Badge variant="beta" className="bg-blue-500 text-white border-blue-500 text-xs px-1.5 py-0.5">
                   Beta
                 </Badge>
               </span>

@@ -2,10 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { Plus, AlertCircle, Loader2 } from 'lucide-react';
-import { useTheme } from 'next-themes';
-import Waves from '@/Backgrounds/Waves/Waves';
-import { HexagonBackground } from '@/components/animate-ui/backgrounds/hexagon';
-import { VantaWaves } from '@/components/animate-ui/backgrounds/vanta-waves';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { UpdateAgentDialog } from './_components/update-agent-dialog';
@@ -35,13 +31,9 @@ interface FilterOptions {
 
 export default function AgentsPage() {
   const router = useRouter();
-  const { resolvedTheme } = useTheme();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  
-  // Background selection
-  const [backgroundType, setBackgroundType] = useState<'waves' | 'hexagon' | 'vanta'>('waves');
   
   
   // Server-side parameters
@@ -136,19 +128,6 @@ export default function AgentsPage() {
     setPage(1);
   }, [searchQuery, sortBy, sortOrder, filters]);
 
-  // Background selection
-  React.useEffect(() => {
-    if (resolvedTheme === 'dark') {
-      // Dark mode: waves or vanta only
-      const options = ['waves', 'vanta'] as const;
-      setBackgroundType(options[Math.floor(Math.random() * options.length)]);
-    } else {
-      // Light mode: waves or hexagon only
-      const options = ['waves', 'hexagon'] as const;
-      setBackgroundType(options[Math.floor(Math.random() * options.length)]);
-    }
-  }, [resolvedTheme]);
-
   const handleDeleteAgent = async (agentId: string) => {
     try {
       await deleteAgentMutation.mutateAsync(agentId);
@@ -198,43 +177,22 @@ export default function AgentsPage() {
     }
   };
 
-  const renderBackground = () => {
-    switch (backgroundType) {
-      case 'waves':
-        return <Waves />;
-      case 'hexagon':
-        return <HexagonBackground />;
-      case 'vanta':
-        return <VantaWaves />;
-      default:
-        return <Waves />;
-    }
-  };
-
   if (error) {
     return (
-      <div className="flex-1 relative min-h-screen">
-        {renderBackground()}
-        <div className="relative z-10">
-          <div className="container mx-auto max-w-7xl px-4 py-8">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                {error instanceof Error ? error.message : 'An error occurred loading agents'}
-              </AlertDescription>
-            </Alert>
-          </div>
-        </div>
+      <div className="container mx-auto max-w-7xl px-4 py-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {error instanceof Error ? error.message : 'An error occurred loading agents'}
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 relative min-h-screen">
-      {renderBackground()}
-      <div className="relative z-10">
-        <div className="container mx-auto max-w-7xl px-4 py-8">
+    <div className="container mx-auto max-w-7xl px-4 py-8">
       <div className="space-y-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
@@ -327,8 +285,6 @@ export default function AgentsPage() {
           }}
           onAgentUpdated={loadAgents}
         />
-        </div>
-        </div>
       </div>
     </div>
   );
