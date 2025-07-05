@@ -1,6 +1,19 @@
 BEGIN;
 
--- Update get_marketplace_agents function to include new fields
+-- COMPREHENSIVE MCP SHARING FIX FOR MARKETPLACE AGENTS
+-- This migration fixes the issue where custom MCPs weren't being shared when importing agents from marketplace
+-- 
+-- Key fixes:
+-- 1. Ensures custom_mcps and sharing_preferences columns exist
+-- 2. Updates get_marketplace_agents to include custom_mcps and proper team visibility
+-- 3. Updates add_agent_to_library to respect sharing preferences for custom MCPs
+-- 4. Adds proper indexes for performance
+
+-- Ensure required columns exist for MCP sharing
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS custom_mcps JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS sharing_preferences JSONB DEFAULT '{"include_knowledge_bases": true, "include_custom_mcp_tools": true}';
+
+-- Update get_marketplace_agents function to include new fields and proper team visibility
 DROP FUNCTION IF EXISTS get_marketplace_agents(INTEGER, INTEGER, TEXT, TEXT[], UUID);
 DROP FUNCTION IF EXISTS get_marketplace_agents(INTEGER, INTEGER, TEXT, TEXT[]);
 
@@ -53,13 +66,32 @@ BEGIN
         a.avatar_color::TEXT
     FROM agents a
     LEFT JOIN basejump.accounts acc ON a.account_id = acc.id
-    WHERE a.is_public = true
+    WHERE (
+        -- Public marketplace agents (when no specific account context)
+        (p_account_id IS NULL AND (a.is_public = true OR a.visibility = 'public'))
+        OR
+        -- Account-specific agents (for teams)
+        (p_account_id IS NOT NULL AND (
+            -- Own agents (created by the team)
+            a.account_id = p_account_id
+            OR
+            -- Public agents (globally visible)
+            a.is_public = true 
+            OR a.visibility = 'public'
+            OR
+            -- Team-shared agents (shared with this team)
+            (a.visibility = 'teams' AND EXISTS (
+                SELECT 1 FROM team_agents ta
+                WHERE ta.agent_id = a.agent_id
+                AND ta.team_account_id = p_account_id
+            ))
+        ))
+    )
     AND (p_search IS NULL OR 
          a.name ILIKE '%' || p_search || '%' OR 
          a.description ILIKE '%' || p_search || '%')
     AND (p_tags IS NULL OR a.tags && p_tags)
-    AND (p_account_id IS NULL OR a.account_id = p_account_id)
-    ORDER BY a.marketplace_published_at DESC
+    ORDER BY a.marketplace_published_at DESC NULLS LAST, a.created_at DESC
     LIMIT p_limit
     OFFSET p_offset;
 END;
@@ -103,7 +135,7 @@ BEGIN
     -- Get sharing preferences
     v_sharing_prefs := COALESCE(v_original_agent.sharing_preferences, '{"include_knowledge_bases": true, "include_custom_mcp_tools": true}'::jsonb);
     
-    -- Apply sharing preferences
+    -- Apply sharing preferences for knowledge bases
     v_knowledge_bases := CASE 
         WHEN (v_sharing_prefs->>'include_knowledge_bases')::boolean = true 
         THEN COALESCE(v_original_agent.knowledge_bases, '[]'::jsonb)
@@ -173,5 +205,18 @@ $$;
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION get_marketplace_agents(INTEGER, INTEGER, TEXT, TEXT[], UUID) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION add_agent_to_library(UUID, UUID) TO authenticated;
+
+-- Create indexes if they don't exist for better performance
+CREATE INDEX IF NOT EXISTS idx_agents_custom_mcps ON agents USING GIN (custom_mcps);
+CREATE INDEX IF NOT EXISTS idx_agents_sharing_preferences ON agents USING GIN (sharing_preferences);
+
+-- Update existing agents to have default sharing preferences if null
+UPDATE agents 
+SET sharing_preferences = '{"include_knowledge_bases": true, "include_custom_mcp_tools": true}'::jsonb
+WHERE sharing_preferences IS NULL;
+
+-- NOTE: This migration supersedes 20250705000000_fix_team_marketplace_agents.sql
+-- which only fixes get_marketplace_agents but not add_agent_to_library.
+-- This migration includes both fixes in one comprehensive update.
 
 COMMIT; 
