@@ -13,6 +13,10 @@ export interface MarketplaceAgent {
   custom_mcps?: any[];
   agentpress_tools: Record<string, any>;
   knowledge_bases?: any[];
+  sharing_preferences?: {
+    include_knowledge_bases?: boolean;
+    include_custom_mcp_tools?: boolean;
+  };
   tags: string[];
   download_count: number;
   marketplace_published_at: string;
