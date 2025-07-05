@@ -133,6 +133,7 @@ class ResponseProcessor:
             Complete message objects matching the DB schema, except for content chunks.
         """
         accumulated_content = ""
+        accumulated_reasoning = "" # Separate accumulator for reasoning content
         tool_calls_buffer = {}
         current_xml_content = ""
         xml_chunks_buffer = []
@@ -146,6 +147,7 @@ class ResponseProcessor:
         has_printed_thinking_prefix = False # Flag for printing thinking prefix only once
         agent_should_terminate = False # Flag to track if a terminating tool has been executed
         complete_native_tool_calls = [] # Initialize early for use in assistant_response_end
+        reasoning_message_id = None # Track reasoning message for updates
 
         # Collect metadata for reconstructing LiteLLM response object
         streaming_metadata = {
@@ -215,12 +217,37 @@ class ResponseProcessor:
                     
                     # Check for and log Anthropic thinking content
                     if delta and hasattr(delta, 'reasoning_content') and delta.reasoning_content:
-                        if not has_printed_thinking_prefix:
-                            # print("[THINKING]: ", end='', flush=True)
-                            has_printed_thinking_prefix = True
-                        # print(delta.reasoning_content, end='', flush=True)
-                        # Append reasoning to main content to be saved in the final message
-                        accumulated_content += delta.reasoning_content
+                        reasoning_chunk = delta.reasoning_content
+                        accumulated_reasoning += reasoning_chunk
+                        
+                        # Create or update reasoning message
+                        if not reasoning_message_id:
+                            # Create initial reasoning message
+                            reasoning_message_object = await self.add_message(
+                                thread_id=thread_id, 
+                                type="reasoning", 
+                                content={"role": "assistant", "content": accumulated_reasoning},
+                                is_llm_message=True, 
+                                metadata={"thread_run_id": thread_run_id, "stream_status": "streaming"}
+                            )
+                            if reasoning_message_object:
+                                reasoning_message_id = reasoning_message_object['message_id']
+                                yield format_for_yield(reasoning_message_object)
+                        
+                        # Yield reasoning chunk for real-time streaming
+                        now_chunk = datetime.now(timezone.utc).isoformat()
+                        yield {
+                            "sequence": __sequence,
+                            "message_id": reasoning_message_id, 
+                            "thread_id": thread_id, 
+                            "type": "reasoning",
+                            "is_llm_message": True,
+                            "content": to_json_string({"role": "assistant", "content": reasoning_chunk}),
+                            "metadata": to_json_string({"stream_status": "chunk", "thread_run_id": thread_run_id}),
+                            "created_at": now_chunk, 
+                            "updated_at": now_chunk
+                        }
+                        __sequence += 1
 
                     # Process content chunk
                     if delta and hasattr(delta, 'content') and delta.content:
@@ -464,6 +491,19 @@ class ResponseProcessor:
                 if finish_msg_obj: yield format_for_yield(finish_msg_obj)
                 logger.info(f"Stream finished with reason: xml_tool_limit_reached after {xml_tool_call_count} XML tool calls")
                 self.trace.event(name="stream_finished_with_reason_xml_tool_limit_reached_after_xml_tool_calls", level="DEFAULT", status_message=(f"Stream finished with reason: xml_tool_limit_reached after {xml_tool_call_count} XML tool calls"))
+
+            # --- Finalize Reasoning Message ---
+            if accumulated_reasoning and reasoning_message_id:
+                # Save final complete reasoning message
+                final_reasoning_object = await self.add_message(
+                    thread_id=thread_id, 
+                    type="reasoning", 
+                    content={"role": "assistant", "content": accumulated_reasoning},
+                    is_llm_message=True, 
+                    metadata={"thread_run_id": thread_run_id, "stream_status": "complete"}
+                )
+                if final_reasoning_object:
+                    yield format_for_yield(final_reasoning_object)
 
             # --- SAVE and YIELD Final Assistant Message ---
             if accumulated_content:

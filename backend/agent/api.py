@@ -2082,19 +2082,9 @@ async def get_marketplace_agents(
         else:
             agents_data = sorted(agents_data, key=lambda x: x.get('marketplace_published_at', ''), reverse=True)
         
-        # Apply sharing preferences to filter out excluded components
-        for agent in agents_data:
-            sharing_preferences = agent.get('sharing_preferences', {})
-            
-            # If knowledge bases are not to be shared, remove them
-            if not sharing_preferences.get('include_knowledge_bases', True):
-                agent['knowledge_bases'] = []
-            
-            # If custom MCP tools are not to be shared, filter them out
-            if not sharing_preferences.get('include_custom_mcp_tools', True):
-                # Remove all custom MCPs and configured MCPs
-                agent['custom_mcps'] = []
-                agent['configured_mcps'] = []
+        # NOTE: Sharing preferences are applied during import in add_agent_to_library function
+        # The marketplace should show what WOULD be imported, not filter it out here
+        # This allows users to see what MCPs/knowledge bases are available before importing
         
         estimated_total = (page - 1) * limit + len(agents_data)
         if has_more:
