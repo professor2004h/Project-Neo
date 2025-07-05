@@ -1352,17 +1352,16 @@ ${transcript}`;
         </div>
       </div>
 
-      {/* Scroll Progress Bar */}
-      {(transcript || interimTranscript) && (
-        <motion.div
-          className="bg-gradient-to-r from-blue-500 to-purple-500 h-1 origin-left"
-          style={{ scaleX }}
-        />
-      )}
-
       {/* Recording controls */}
       {(meeting.status === 'active' || (meeting.status === 'completed' && transcript)) && (
         <div className="flex-shrink-0 border-t bg-gradient-to-r from-background/95 via-background to-background/95 backdrop-blur-sm">
+          {/* Scroll Progress Bar */}
+          {(transcript || interimTranscript) && (
+            <motion.div
+              className="bg-gradient-to-r from-blue-500 to-purple-500 h-1 origin-left"
+              style={{ scaleX }}
+            />
+          )}
           <div className="px-6 py-4">
             <div className="max-w-4xl mx-auto">
               {!isRecording ? (
