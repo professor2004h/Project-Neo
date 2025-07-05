@@ -35,8 +35,17 @@ import { createClient } from '@/lib/supabase/client';
 import { TypingText } from '@/components/animate-ui/text/typing';
 import { GradientText } from '@/components/animate-ui/text/gradient';
 import { useAgents } from '@/hooks/react-query/agents/use-agents';
+import { isFlagEnabled } from '@/lib/feature-flags';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
+
+// Utility function to get time-based greeting
+const getTimeBasedGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+};
 
 export function DashboardContent() {
   const [inputValue, setInputValue] = useState('');
@@ -50,6 +59,7 @@ export function DashboardContent() {
   const [initiatedThreadId, setInitiatedThreadId] = useState<string | null>(
     null,
   );
+  const [customAgentEnabled, setCustomAgentEnabled] = useState(false);
   const { billingError, handleBillingError, clearBillingError } =
     useBillingError();
   const router = useRouter();
@@ -81,6 +91,15 @@ export function DashboardContent() {
       setSelectedAgentId(defaultAgent.agent_id);
     }
   }, [selectedAgentId, defaultAgent, agents.length]);
+
+  // Check custom agent flag
+  useEffect(() => {
+    const checkFlag = async () => {
+      const enabled = await isFlagEnabled('custom-agents');
+      setCustomAgentEnabled(enabled);
+    };
+    checkFlag();
+  }, []);
 
   // Load user name from Supabase auth and listen for changes
   useEffect(() => {
@@ -404,16 +423,31 @@ ${meeting.transcript || '(No transcript available)'}`;
               </div>
             ) : (
               <div className="flex flex-col items-center gap-4 justify-center">
+                <div className="flex items-center gap-2 flex-wrap justify-center">
+                  <TypingText
+                    text={`Hey ${userName || 'there'}, I'm`}
+                    className="tracking-tight text-4xl text-muted-foreground leading-tight"
+                    duration={80}
+                    delay={500}
+                  />
+                  {customAgentEnabled ? (
+                    <AgentSelector
+                      selectedAgentId={selectedAgentId}
+                      onAgentSelect={setSelectedAgentId}
+                      variant="heading"
+                    />
+                  ) : (
+                    <span className="tracking-tight text-4xl text-foreground leading-tight font-medium">
+                      {selectedAgent?.name || defaultAgent?.name || 'Operator'}
+                    </span>
+                  )}
+                </div>
+                
                 <TypingText
-                  text={`Hey ${userName || 'there'}, I'm`}
-                  className="tracking-tight text-4xl text-muted-foreground leading-tight"
+                  text={`What would you like to do this ${getTimeBasedGreeting()}?`}
+                  className="tracking-tight text-3xl font-normal text-muted-foreground/80"
                   duration={80}
-                  delay={500}
-                />
-                <AgentSelector
-                  selectedAgentId={selectedAgentId}
-                  onAgentSelect={setSelectedAgentId}
-                  variant="heading"
+                  delay={2000}
                 />
                 
                 {/* Name editing section for users without a name */}
@@ -455,18 +489,6 @@ ${meeting.transcript || '(No transcript available)'}`;
                 )}
               </div>
             )}
-            {/* Dynamic time-of-day prompt */}
-            <TypingText
-              text={`What would you like to do this ${(() => {
-                const hour = new Date().getHours();
-                if (hour < 12) return 'morning';
-                if (hour < 18) return 'afternoon';
-                return 'evening';
-              })()}?`}
-              className="tracking-tight text-3xl font-normal text-muted-foreground/80 mt-2"
-              duration={60}
-              delay={1200}
-            />
           </div>
 
           <div className={cn('w-full mb-2', 'max-w-full', 'sm:max-w-3xl')}>
