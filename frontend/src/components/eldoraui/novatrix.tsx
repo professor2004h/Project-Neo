@@ -3,6 +3,7 @@ import type React from "react"
 import { useEffect, useRef } from "react"
 import { Renderer, Program, Mesh, Triangle } from "ogl"
 import { useSidebar } from "@/components/ui/sidebar"
+import { useTheme } from "next-themes"
 
 // Vertex Shader
 const vert = `
@@ -63,6 +64,7 @@ type NovatrixProps = {}
 export const Novatrix: React.FC<NovatrixProps> = () => {
   const ctnDom = useRef<HTMLDivElement>(null)
   const { state, open } = useSidebar()
+  const { theme, resolvedTheme } = useTheme()
   const observerRef = useRef<MutationObserver | null>(null)
 
   useEffect(() => {
@@ -74,8 +76,8 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
     const renderer = new Renderer()
     const gl = renderer.gl
     
-    // Set initial clear color based on system theme
-    const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches
+    // Set initial clear color based on app theme
+    const isDarkMode = resolvedTheme === 'dark'
     gl.clearColor(isDarkMode ? 0 : 1, isDarkMode ? 0 : 1, isDarkMode ? 0 : 1, 1)
 
     const geometry = new Triangle(gl)
@@ -85,7 +87,7 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
       fragment: frag,
       uniforms: {
         uTime: { value: 0 },
-        uIsDarkMode: { value: 0.0 },
+        uIsDarkMode: { value: resolvedTheme === 'dark' ? 1.0 : 0.0 },
         uResolution: {
           value: [ctn.offsetWidth, ctn.offsetHeight, ctn.offsetWidth / ctn.offsetHeight],
         },
@@ -168,16 +170,14 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
     
     document.addEventListener('transitionend', handleTransitionEnd);
 
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
     const updateTheme = () => {
-      const isDark = mediaQuery.matches
+      const isDark = resolvedTheme === 'dark'
       program.uniforms.uIsDarkMode.value = isDark ? 1.0 : 0.0
       // Update canvas clear color based on theme
       gl.clearColor(isDark ? 0 : 1, isDark ? 0 : 1, isDark ? 0 : 1, 1)
     }
 
     updateTheme()
-    mediaQuery.addEventListener("change", updateTheme)
 
     let animateId: number
 
@@ -193,7 +193,6 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
     return () => {
       cancelAnimationFrame(animateId)
       window.removeEventListener("resize", handleResize)
-      mediaQuery.removeEventListener("change", updateTheme)
       document.removeEventListener('transitionend', handleTransitionEnd)
       if (observerRef.current) {
         observerRef.current.disconnect()
@@ -204,6 +203,21 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
       gl.getExtension("WEBGL_lose_context")?.loseContext()
     }
   }, [])
+
+  // Effect to handle theme changes
+  useEffect(() => {
+    const ctn = ctnDom.current
+    if (ctn) {
+      const canvas = ctn.querySelector('canvas')
+      if (canvas) {
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+        if (gl && 'clearColor' in gl) {
+          const isDark = resolvedTheme === 'dark'
+          gl.clearColor(isDark ? 0 : 1, isDark ? 0 : 1, isDark ? 0 : 1, 1)
+        }
+      }
+    }
+  }, [resolvedTheme])
 
   // Effect to handle sidebar state changes
   useEffect(() => {
