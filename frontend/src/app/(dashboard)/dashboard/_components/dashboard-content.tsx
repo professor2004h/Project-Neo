@@ -110,13 +110,17 @@ export function DashboardContent() {
   useEffect(() => {
     if (!isLoadingUserName) {
       // Calculate total greeting animation time
-      const firstTextLength = `Hey ${userName || 'there'}, I'm`.length;
+      const heyLength = "Hey".length;
+      const nameLength = (userName || 'there').length;
+      const imLength = ", I'm".length;
       const secondTextLength = `What would you like to do this ${getTimeBasedGreeting()}?`.length;
       
-      const firstAnimationTime = 400 + (firstTextLength * 50); // delay + duration per char
+      const heyAnimationTime = 400 + (heyLength * 50); // delay + duration per char
+      const nameAnimationTime = 550 + (nameLength * 50); // delay + duration per char  
+      const imAnimationTime = 700 + (imLength * 50); // delay + duration per char
       const secondAnimationTime = 2000 + (secondTextLength * 80); // delay + duration per char
       
-      const totalGreetingTime = Math.max(firstAnimationTime, secondAnimationTime) + 500; // Add buffer
+      const totalGreetingTime = Math.max(heyAnimationTime, nameAnimationTime, imAnimationTime, secondAnimationTime) + 500; // Add buffer
       
       const timer = setTimeout(() => {
         setGreetingComplete(true);
@@ -564,12 +568,26 @@ ${meeting.transcript || '(No transcript available)'}`;
                 ) : (
                   <div className="flex flex-col items-center gap-4 justify-center">
                     <div className="flex items-center gap-2 flex-wrap justify-center">
-                      <TypingText
-                        text={`Hey ${userName || 'there'}, I'm`}
-                        className="tracking-tight text-4xl text-muted-foreground leading-tight"
-                        duration={50}
-                        delay={400}
-                      />
+                      <div className="flex items-center gap-1">
+                        <TypingText
+                          text="Hey"
+                          className="tracking-tight text-4xl text-muted-foreground leading-tight"
+                          duration={50}
+                          delay={400}
+                        />
+                        <TypingText
+                          text={userName || 'there'}
+                          className="tracking-tight text-4xl text-white dark:text-black leading-tight font-medium"
+                          duration={50}
+                          delay={550}
+                        />
+                        <TypingText
+                          text=", I'm"
+                          className="tracking-tight text-4xl text-muted-foreground leading-tight"
+                          duration={50}
+                          delay={700}
+                        />
+                      </div>
                       {customAgentEnabled ? (
                         <AgentSelector
                           selectedAgentId={selectedAgentId}
