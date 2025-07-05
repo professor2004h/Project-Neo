@@ -126,6 +126,9 @@ export function SidebarLeft({
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
         />
         
+        {/* Text Readability Layer */}
+        <div className="absolute inset-0 bg-background/5" />
+        
         {/* Subtle Border Gradient */}
         <div className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-border/60 to-transparent" />
         
@@ -212,75 +215,146 @@ export function SidebarLeft({
           </div>
         </motion.div>
       </SidebarHeader>
-      <SidebarContent className="[&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+      <SidebarContent className="[&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] relative z-10">
         {!flagsLoading && (showAgentPlayground || marketplaceEnabled) && (
-          <SidebarGroup>
-            {showAgentPlayground && (
-              <Link href="/agents">
-                <SidebarMenuButton className={cn({
-                  'bg-primary/10 font-medium': pathname === '/agents',
-                })}>
-                  <Bot className="h-4 w-4 mr-2" />
-                  <span className="flex items-center justify-between w-full">
-                    Agent Playground
-                    <Badge variant="new">
-                      New
-                    </Badge>
-                  </span>
-                </SidebarMenuButton>
-              </Link>
-            )}
-            {marketplaceEnabled && (
-              <Link href="/marketplace">
-                <SidebarMenuButton className={cn({
-                  'bg-primary/10 font-medium': pathname === '/marketplace',
-                })}>
-                  <Store className="h-4 w-4 mr-2" />
-                  <span className="flex items-center justify-between w-full">
-                    Marketplace
-                    <Badge variant="new">
-                      New
-                    </Badge>
-                  </span>
-                </SidebarMenuButton>
-              </Link>
-            )}
-          </SidebarGroup>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <SidebarGroup>
+              {showAgentPlayground && (
+                <Link href="/agents">
+                  <motion.div
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <SidebarMenuButton className={cn(
+                      'hover:bg-white/15 dark:hover:bg-black/15 transition-all duration-200',
+                      {
+                        'bg-white/20 dark:bg-black/20 font-medium shadow-sm': pathname === '/agents',
+                      }
+                    )}>
+                      <Bot className="h-4 w-4 mr-2" />
+                      <span className="flex items-center justify-between w-full">
+                        Agent Playground
+                        <Badge variant="new">
+                          New
+                        </Badge>
+                      </span>
+                    </SidebarMenuButton>
+                  </motion.div>
+                </Link>
+              )}
+              {marketplaceEnabled && (
+                <Link href="/marketplace">
+                  <motion.div
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <SidebarMenuButton className={cn(
+                      'hover:bg-white/15 dark:hover:bg-black/15 transition-all duration-200',
+                      {
+                        'bg-white/20 dark:bg-black/20 font-medium shadow-sm': pathname === '/marketplace',
+                      }
+                    )}>
+                      <Store className="h-4 w-4 mr-2" />
+                      <span className="flex items-center justify-between w-full">
+                        Marketplace
+                        <Badge variant="new">
+                          New
+                        </Badge>
+                      </span>
+                    </SidebarMenuButton>
+                  </motion.div>
+                </Link>
+              )}
+            </SidebarGroup>
+          </motion.div>
         )}
-        <SidebarGroup>
-          <Link href="/meetings">
-            <SidebarMenuButton className={cn({
-              'bg-primary/10 font-medium': pathname === '/meetings' || pathname.startsWith('/meetings/'),
-            })}>
-              <FileAudio className="h-4 w-4 mr-2" />
-              <span className="flex items-center justify-between w-full">
-                Meetings
-                <Badge variant="new">
-                  New
-                </Badge>
-              </span>
-            </SidebarMenuButton>
-          </Link>
-        </SidebarGroup>
-        <NavAgents />
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
+          <SidebarGroup>
+            <Link href="/meetings">
+              <motion.div
+                whileHover={{ scale: 1.02, x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.2 }}
+              >
+                <SidebarMenuButton className={cn(
+                  'hover:bg-white/15 dark:hover:bg-black/15 transition-all duration-200',
+                  {
+                    'bg-white/20 dark:bg-black/20 font-medium shadow-sm': pathname === '/meetings' || pathname.startsWith('/meetings/'),
+                  }
+                )}>
+                  <FileAudio className="h-4 w-4 mr-2" />
+                  <span className="flex items-center justify-between w-full">
+                    Meetings
+                    <Badge variant="new">
+                      New
+                    </Badge>
+                  </span>
+                </SidebarMenuButton>
+              </motion.div>
+            </Link>
+          </SidebarGroup>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+        >
+          <NavAgents />
+        </motion.div>
       </SidebarContent>
       {state !== 'collapsed' && enterpriseDemoEnabled && (
-        <div className="px-3 py-2">
-          <CTACard />
-        </div>
+        <motion.div 
+          className="px-3 py-2 relative z-10"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.7 }}
+        >
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.3 }}
+          >
+            <CTACard />
+          </motion.div>
+        </motion.div>
       )}
-      <SidebarFooter>
+      <SidebarFooter className="relative z-10">
         {state === 'collapsed' && (
-          <div className="mt-2 flex justify-center">
+          <motion.div 
+            className="mt-2 flex justify-center"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.8 }}
+          >
             <Tooltip>
               <TooltipTrigger asChild>
-                <SidebarTrigger className="h-8 w-8" />
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <SidebarTrigger className="h-8 w-8 hover:bg-white/10 dark:hover:bg-black/10 transition-colors duration-200" />
+                </motion.div>
               </TooltipTrigger>
               <TooltipContent>Expand sidebar (CMD+B)</TooltipContent>
             </Tooltip>
-          </div>
+          </motion.div>
         )}
-        <NavUserWithTeams user={user} />
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.9 }}
+        >
+          <NavUserWithTeams user={user} />
+        </motion.div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
