@@ -152,14 +152,8 @@ export default function AgentsPage() {
 
   const handleEditAgent = (agentId: string) => {
     const agent = agents.find(a => a.agent_id === agentId);
-    console.log('[DEBUG] handleEditAgent called for agent:', agentId);
-    console.log('[DEBUG] Found agent:', agent);
-    console.log('[DEBUG] Agent sharing_preferences:', agent?.sharing_preferences);
-    console.log('[DEBUG] Agent disable_customization:', agent?.sharing_preferences?.disable_customization);
-    
-    if (agent?.sharing_preferences?.disable_customization) {
-      console.log('[DEBUG] Customization is disabled, showing toast...');
-      toast.error('Customization is disabled by the creator. Talk to the creator of the agent for modifications.');
+    if (agent?.is_managed) {
+      toast.error('This is a managed agent. Contact the creator of the agent for modifications.');
       return;
     }
     setEditingAgentId(agentId);
@@ -189,9 +183,6 @@ export default function AgentsPage() {
     }
   };
 
-  // DEBUG: Log all agents to understand the data structure
-  console.log('[DEBUG] All agents loaded:', agents);
-  
   if (error) {
     return (
       <div className="container mx-auto max-w-7xl px-4 py-8">

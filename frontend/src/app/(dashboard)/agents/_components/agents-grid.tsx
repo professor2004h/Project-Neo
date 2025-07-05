@@ -72,24 +72,19 @@ const AgentModal = ({ agent, isOpen, onClose, onCustomize, onChat, onPublish, on
             </div>
 
             <div className="flex gap-3 pt-2">
-              {agent.sharing_preferences?.disable_customization ? (
+              {agent.is_managed ? (
                 <Button
                   variant="outline"
                   className="flex-1 gap-2 opacity-50 cursor-not-allowed"
                   disabled
-                  title="Customization is disabled by the creator. Talk to the creator of the agent for modifications."
+                  title="This is a managed agent. You always see the latest version from the creator. Contact the creator for modifications."
                 >
                   <Wrench className="h-4 w-4" />
-                  Talk to the creator
+                  Contact Creator
                 </Button>
               ) : (
                 <Button
-                  onClick={() => {
-                    console.log('[DEBUG] Customize button clicked for agent:', agent.agent_id);
-                    console.log('[DEBUG] Agent sharing_preferences:', agent.sharing_preferences);
-                    console.log('[DEBUG] Agent disable_customization:', agent.sharing_preferences?.disable_customization);
-                    onCustomize(agent.agent_id);
-                  }}
+                  onClick={() => onCustomize(agent.agent_id)}
                   variant="outline"
                   className="flex-1 gap-2"
                 >
@@ -253,6 +248,11 @@ export const AgentsGrid = ({
                   <h3 className="text-foreground font-medium text-lg line-clamp-1 flex-1">
                     {agent.name}
                   </h3>
+                  {agent.is_managed && (
+                    <Badge variant="secondary" className="text-xs shrink-0">
+                      Managed
+                    </Badge>
+                  )}
                   {agent.is_public && (
                     <Badge variant="outline" className="text-xs shrink-0">
                       <Globe className="h-3 w-3" />
@@ -270,7 +270,7 @@ export const AgentsGrid = ({
                   </span>
                   
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {!agent.is_default && (
+                    {!agent.is_default && !agent.is_managed && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button 
