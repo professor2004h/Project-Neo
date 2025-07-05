@@ -168,7 +168,7 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
                   onClick={handleToggle}
                   disabled={isReasoningDisabled}
                   className={cn(
-                    "relative flex items-center gap-2 px-7 py-3.5 rounded-full transition-all duration-500 ease-out",
+                    "relative flex items-center gap-1.5 px-5 py-2.5 rounded-full transition-all duration-500 ease-out",
                     "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700",
                     "border border-gray-200 dark:border-gray-700",
                     "hover:scale-105 active:scale-95 group",
