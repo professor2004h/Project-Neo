@@ -46,6 +46,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/components/AuthProvider';
 import { ScrollProgress } from '@/components/animate-ui/components/scroll-progress';
+import { useScroll, useSpring, motion } from 'framer-motion';
 
 // Speech recognition types
 interface SpeechRecognitionEvent extends Event {
@@ -99,6 +100,14 @@ export default function MeetingPage() {
 
   const transcriptRef = useRef<HTMLDivElement>(null);
   const searchHighlightRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  
+  // Custom scroll progress tracking
+  const { scrollYProgress } = useScroll({ container: transcriptRef });
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 250,
+    damping: 40,
+    bounce: 0,
+  });
 
   // Auto-scroll to bottom when transcript updates
   useEffect(() => {
@@ -1243,12 +1252,9 @@ ${transcript}`;
 
       {/* Transcript area */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <ScrollProgress 
-          className="h-full px-6 py-4 bg-gradient-to-b from-background to-muted/10"
+        <div 
+          className="h-full px-6 py-4 bg-gradient-to-b from-background to-muted/10 overflow-y-auto"
           ref={transcriptRef}
-          progressProps={{
-            className: 'bg-gradient-to-r from-blue-500 to-purple-500 h-1'
-          }}
         >
           <div className="max-w-4xl mx-auto">
           {transcript || interimTranscript ? (
@@ -1343,8 +1349,16 @@ ${transcript}`;
             </div>
           )}
         </div>
-        </ScrollProgress>
+        </div>
       </div>
+
+      {/* Scroll Progress Bar */}
+      {(transcript || interimTranscript) && (
+        <motion.div
+          className="bg-gradient-to-r from-blue-500 to-purple-500 h-1 origin-left"
+          style={{ scaleX }}
+        />
+      )}
 
       {/* Recording controls */}
       {(meeting.status === 'active' || (meeting.status === 'completed' && transcript)) && (

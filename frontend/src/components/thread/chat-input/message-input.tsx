@@ -186,7 +186,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               </Tooltip>
             </TooltipProvider>
           }
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-3'>
             <ModelSelector
               selectedModel={selectedModel}
               onModelChange={onModelChange}
@@ -207,7 +207,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
               size="sm"
               className={cn(
-                'w-8 h-8 flex-shrink-0 rounded-full p-0',
+                'w-8 h-8 flex-shrink-0 rounded-lg p-0',
                 isAgentRunning ? 'bg-red-500 hover:bg-red-600' : '',
                 (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
                   loading ||
