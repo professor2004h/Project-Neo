@@ -66,6 +66,8 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
   const { state, open } = useSidebar()
   const { theme, resolvedTheme } = useTheme()
   const observerRef = useRef<MutationObserver | null>(null)
+  const glRef = useRef<WebGLRenderingContext | null>(null)
+  const programRef = useRef<any>(null)
 
   useEffect(() => {
     if (!ctnDom.current) {
@@ -75,6 +77,7 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
     const ctn = ctnDom.current
     const renderer = new Renderer()
     const gl = renderer.gl
+    glRef.current = gl
     
     // Set initial clear color based on app theme
     const isDarkMode = resolvedTheme === 'dark'
@@ -93,6 +96,7 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
         },
       },
     })
+    programRef.current = program
 
     const mesh = new Mesh(gl, { geometry, program })
 
@@ -206,16 +210,10 @@ export const Novatrix: React.FC<NovatrixProps> = () => {
 
   // Effect to handle theme changes
   useEffect(() => {
-    const ctn = ctnDom.current
-    if (ctn) {
-      const canvas = ctn.querySelector('canvas')
-      if (canvas) {
-        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
-        if (gl && 'clearColor' in gl) {
-          const isDark = resolvedTheme === 'dark'
-          gl.clearColor(isDark ? 0 : 1, isDark ? 0 : 1, isDark ? 0 : 1, 1)
-        }
-      }
+    if (glRef.current && programRef.current) {
+      const isDark = resolvedTheme === 'dark'
+      programRef.current.uniforms.uIsDarkMode.value = isDark ? 1.0 : 0.0
+      glRef.current.clearColor(isDark ? 0 : 1, isDark ? 0 : 1, isDark ? 0 : 1, 1)
     }
   }, [resolvedTheme])
 
