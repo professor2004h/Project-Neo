@@ -48,8 +48,8 @@ void main() {
       // Dark mode: white pattern on black background
       finalColor = vec3(gray);
   } else {
-      // Light mode: white background with subtle gray patterns
-      float lightPattern = 0.9 + (gray * 0.1); // Mostly white with subtle variation
+      // Light mode: white background with higher contrast gray patterns
+      float lightPattern = 0.7 + (gray * 0.3); // White background with more visible patterns
       finalColor = vec3(lightPattern);
   }
   
