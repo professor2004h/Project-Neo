@@ -548,7 +548,7 @@ ${meeting.transcript || '(No transcript available)'}`;
             />
             
             {/* Main Content Container */}
-            <div className="relative flex flex-col items-center p-8 rounded-3xl overflow-hidden">
+            <div className="relative flex flex-col items-center p-8 pb-12 rounded-3xl overflow-hidden">
               {/* Greeting Section */}
               <motion.div 
                 className="flex flex-col items-center text-center w-full"

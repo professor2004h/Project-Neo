@@ -2,6 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Folder, FileAudio, MoreHorizontal, Edit2, Trash2, Download, Share2, FolderOpen, Move, MessageSquare, Loader2 } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import Waves from '@/Backgrounds/Waves/Waves';
+import { HexagonBackground } from '@/components/animate-ui/backgrounds/hexagon';
+import { VantaWaves } from '@/components/animate-ui/backgrounds/vanta-waves';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -47,6 +51,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export default function MeetingsPage() {
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [folders, setFolders] = useState<MeetingFolder[]>([]);
   const [allFolders, setAllFolders] = useState<MeetingFolder[]>([]);
@@ -57,6 +62,9 @@ export default function MeetingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentFolderId, setCurrentFolderId] = useState<string | undefined>(undefined);
   const [breadcrumbs, setBreadcrumbs] = useState<{ id?: string; name: string }[]>([{ name: 'All Meetings' }]);
+  
+  // Background selection
+  const [backgroundType, setBackgroundType] = useState<'waves' | 'hexagon' | 'vanta'>('waves');
   
   // Dialog states
   const [showNewMeetingDialog, setShowNewMeetingDialog] = useState(false);
@@ -75,6 +83,19 @@ export default function MeetingsPage() {
     loadAllFolders();
     loadAllMeetings();
   }, [currentFolderId]);
+
+  // Background selection
+  useEffect(() => {
+    if (resolvedTheme === 'dark') {
+      // Dark mode: waves or vanta only
+      const options = ['waves', 'vanta'] as const;
+      setBackgroundType(options[Math.floor(Math.random() * options.length)]);
+    } else {
+      // Light mode: waves or hexagon only
+      const options = ['waves', 'hexagon'] as const;
+      setBackgroundType(options[Math.floor(Math.random() * options.length)]);
+    }
+  }, [resolvedTheme]);
 
   const loadData = async () => {
     try {
@@ -409,15 +430,31 @@ ${meeting.transcript}`;
     }
   };
 
+  const renderBackground = () => {
+    switch (backgroundType) {
+      case 'waves':
+        return <Waves />;
+      case 'hexagon':
+        return <HexagonBackground />;
+      case 'vanta':
+        return <VantaWaves />;
+      default:
+        return <Waves />;
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto">
-          <Skeleton className="h-8 w-48 mb-8" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-24" />
-            ))}
+      <div className="flex-1 relative min-h-screen">
+        {renderBackground()}
+        <div className="relative z-10 p-8">
+          <div className="max-w-7xl mx-auto">
+            <Skeleton className="h-8 w-48 mb-8" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-24" />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -425,8 +462,10 @@ ${meeting.transcript}`;
   }
 
   return (
-    <div className="flex-1 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="flex-1 relative min-h-screen">
+      {renderBackground()}
+      <div className="relative z-10 p-8">
+        <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
           <div className="space-y-1">
@@ -920,6 +959,7 @@ ${meeting.transcript}`;
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
     </div>
   );
