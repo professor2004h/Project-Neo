@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Brain, Zap, Target, Rocket, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isLocalMode } from '@/lib/config';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface ReasoningSettings {
   enabled: boolean;
@@ -82,6 +83,8 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
   modelName = '',
   subscriptionStatus = '',
 }) => {
+  const isMobile = useIsMobile();
+  
   // Check if the model supports reasoning (Claude models)
   const supportsReasoning = modelName.toLowerCase().includes('claude');
   
@@ -129,6 +132,74 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
   const currentLevelIndex = REASONING_LEVELS.findIndex(level => level.value === value.effort);
   const IconToShow = isFreePlan ? Crown : currentLevel.icon;
 
+  // Mobile-optimized compact version
+  if (isMobile && !isFreePlan) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleToggle}
+              disabled={isReasoningDisabled}
+              className={cn(
+                "relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-300 ease-out",
+                "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700",
+                "border border-gray-200 dark:border-gray-700",
+                "active:scale-95",
+                isReasoningDisabled && "opacity-50 cursor-not-allowed"
+              )}
+              aria-label={`Current mode: ${currentLevel.label}. Click to cycle through modes.`}
+            >
+              {/* Mode Label */}
+              <span className={cn(
+                "text-xs font-medium transition-all duration-300 ease-out",
+                currentLevelIndex === 0 
+                  ? "text-gray-700 dark:text-white" 
+                  : currentLevelIndex === 1 
+                  ? "text-blue-600 dark:text-blue-400" 
+                  : "text-purple-600 dark:text-purple-400"
+              )}>
+                {currentLevel.label}
+              </span>
+              
+              {/* Compact Dots Row */}
+              <div className="flex items-center gap-0.5">
+                {REASONING_LEVELS.map((level, index) => {
+                  const isFilled = index <= currentLevelIndex;
+                  const isActive = index === currentLevelIndex;
+                  
+                  return (
+                    <div
+                      key={level.value}
+                      className={cn(
+                        "w-2 h-2 rounded-full transition-all duration-500 ease-out",
+                        isFilled 
+                          ? currentLevelIndex === 0 
+                            ? 'bg-white shadow-sm' 
+                            : currentLevelIndex === 1 
+                            ? 'bg-blue-500 shadow-sm' 
+                            : 'bg-purple-500 shadow-sm'
+                          : "bg-gray-300 dark:bg-gray-600",
+                        isActive && "scale-125"
+                      )}
+                    />
+                  );
+                })}
+              </div>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            <div className="flex flex-col gap-1">
+              <p className="font-medium">{currentLevel.label}</p>
+              <p className="text-muted-foreground">{currentLevel.description}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">Tap to cycle modes</p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
   return (
     <TooltipProvider>
       <div className="flex items-center gap-2">
@@ -141,12 +212,15 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
                 onClick={handleToggle}
                 disabled={isReasoningDisabled}
                 className={cn(
-                  "h-8 w-8 p-0 rounded-full transition-all duration-200",
-                  "hover:bg-muted opacity-60"
+                  isMobile ? "h-10 w-10 p-0 rounded-xl" : "h-8 w-8 p-0 rounded-full",
+                  "transition-all duration-200 hover:bg-muted opacity-60"
                 )}
               >
                 <Crown 
-                  className="h-4 w-4 transition-colors text-amber-500"
+                  className={cn(
+                    "transition-colors text-amber-500",
+                    isMobile ? "h-5 w-5" : "h-4 w-4"
+                  )}
                 /> 
               </Button>
             </TooltipTrigger>
@@ -161,7 +235,7 @@ export const ReasoningControl: React.FC<ReasoningControlProps> = ({
           </Tooltip>
         ) : (
           <div className="flex items-center animate-in slide-in-from-left-2 duration-300 -ml-4">
-            {/* Pill-shaped Sand Timer Component */}
+            {/* Desktop: Pill-shaped Sand Timer Component */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button

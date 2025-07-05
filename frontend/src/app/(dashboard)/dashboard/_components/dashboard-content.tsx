@@ -302,11 +302,11 @@ ${meeting.transcript || '(No transcript available)'}`;
   const secondaryGradient =
     'bg-gradient-to-r from-blue-500 to-blue-500 bg-clip-text text-transparent';
 
-  // Dynamic wave colors based on theme - black and white with thicker lines
+  // Dynamic wave colors based on theme - subtle gray lines for less jarring effect
   const isDark = resolvedTheme === 'dark';
   const waveColors = {
-    lineColor: isDark ? '#fff' : '#000',
-    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.2)',
+    lineColor: isDark ? '#666666' : '#888888',
+    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
   };
 
   const handleSaveName = async () => {
