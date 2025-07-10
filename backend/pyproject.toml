@@ -12,7 +12,7 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
   "python-dotenv==1.0.1",
-  "litellm==1.72.2",
+  "litellm",
   "click==8.1.7",
   "questionary==2.0.1",
   "requests==2.32.3",
@@ -74,3 +74,6 @@ repository = "https://github.com/kortix-ai/suna"
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+litellm = { git = "https://github.com/kortix-ai/litellm", branch = "v1.72.2-stable" }
