@@ -7,7 +7,7 @@ LOGGING_LEVEL = logging.getLevelNamesMapping().get(
 
 renderer = [structlog.processors.JSONRenderer()]
 # if ENV_MODE.lower() == "local".lower() or ENV_MODE.lower() == "staging".lower():
-#     renderer = [structlog.processors.KeyValueRenderer()]
+#     renderer = [structlog.dev.ConsoleRenderer()]
 
 structlog.configure(
     processors=[
