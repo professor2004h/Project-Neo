@@ -1121,7 +1121,7 @@ wheels = [
 [[package]]
 name = "litellm"
 version = "1.72.2"
-source = { git = "https://github.com/kortix-ai/litellm?branch=v1.72.2-stable#dc52225541834033bc2ec9ccf2041c13803bc2a4" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "click" },
@@ -1134,6 +1134,10 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "tiktoken" },
     { name = "tokenizers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8a/30/e28fa0136fcee61b63241bab13eabcb1a3b03ccc36e9e1a7b2a355dfcd86/litellm-1.72.2.tar.gz", hash = "sha256:b50c7f7a0df67117889479264a12b0dea9c566a02173d4c3159540a13760d38b", size = 8111213 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/1d/40a3f5d7c7a91b4aafce4b516e14eaef64d0f9ac7d9852560757bb074b97/litellm-1.72.2-py3-none-any.whl", hash = "sha256:51e70f5cd98748a603d725ef29ede0ecad3d55e1a89cbbcec8d12d6fff55bff4", size = 8017149 },
 ]
 
 [[package]]
@@ -2477,7 +2481,7 @@ requires-dist = [
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "httpx", specifier = "==0.28.0" },
     { name = "langfuse", specifier = "==2.60.5" },
-    { name = "litellm", git = "https://github.com/kortix-ai/litellm?branch=v1.72.2-stable" },
+    { name = "litellm", specifier = "==1.72.2" },
     { name = "mailtrap", specifier = "==2.0.1" },
     { name = "mcp", specifier = "==1.9.4" },
     { name = "nest-asyncio", specifier = "==1.6.0" },
