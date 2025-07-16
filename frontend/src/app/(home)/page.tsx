@@ -27,10 +27,10 @@ export default function Home() {
           <UseCasesSection />
           <CompanyShowcase />
           <BentoSection />
-          <QuoteSection />
+          { /* <QuoteSection /> */ }
           <FeatureSection />
-          <GrowthSection />
-          <OpenSourceSection />
+          { /* <GrowthSection /> */ }
+          { /* <OpenSourceSection /> */ }
           <div className='flex flex-col items-center px-4'>
             <PricingSection />
           </div>
