@@ -76,7 +76,7 @@ export default function AgentsPage() {
   const [installingItemId, setInstallingItemId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MarketplaceTemplate | null>(null);
   const [showInstallDialog, setShowInstallDialog] = useState(false);
-  const [marketplaceFilter, setMarketplaceFilter] = useState<'all' | 'kortix' | 'community'>('all');
+  const [marketplaceFilter, setMarketplaceFilter] = useState<'all' | 'leaker-flow' | 'community'>('all');
 
   const [templatesActioningId, setTemplatesActioningId] = useState<string | null>(null);
   const [publishDialog, setPublishDialog] = useState<PublishDialogData | null>(null);
@@ -129,8 +129,8 @@ export default function AgentsPage() {
   const agents = agentsResponse?.agents || [];
   const agentsPagination = agentsResponse?.pagination;
 
-  const { kortixTeamItems, communityItems } = useMemo(() => {
-    const kortixItems: MarketplaceTemplate[] = [];
+  const { leakerFlowTeamItems, communityItems } = useMemo(() => {
+    const leakerFlowItems: MarketplaceTemplate[] = [];
     const communityItems: MarketplaceTemplate[] = [];
 
     if (marketplaceTemplates) {
@@ -147,13 +147,13 @@ export default function AgentsPage() {
           avatar: template.avatar,
           avatar_color: template.avatar_color,
           template_id: template.template_id,
-          is_kortix_team: template.is_kortix_team,
+          is_leaker_flow_team: template.is_leaker_flow_team,
           mcp_requirements: template.mcp_requirements,
           metadata: template.metadata,
         };
 
-        if (template.is_kortix_team) {
-          kortixItems.push(item);
+        if (template.is_leaker_flow_team) {
+          leakerFlowItems.push(item);
         } else {
           communityItems.push(item);
         }
@@ -178,19 +178,19 @@ export default function AgentsPage() {
     };
 
     return {
-      kortixTeamItems: sortItems(kortixItems),
+      leakerFlowTeamItems: sortItems(leakerFlowItems),
       communityItems: sortItems(communityItems)
     };
   }, [marketplaceTemplates, marketplaceSortBy]);
 
   const allMarketplaceItems = useMemo(() => {
-    if (marketplaceFilter === 'kortix') {
-      return kortixTeamItems;
+    if (marketplaceFilter === 'leaker-flow') {
+      return leakerFlowTeamItems;
     } else if (marketplaceFilter === 'community') {
       return communityItems;
     }
-    return [...kortixTeamItems, ...communityItems];
-  }, [kortixTeamItems, communityItems, marketplaceFilter]);
+    return [...leakerFlowTeamItems, ...communityItems];
+  }, [leakerFlowTeamItems, communityItems, marketplaceFilter]);
 
   const handleTabChange = (newTab: string) => {
     setActiveTab(newTab);
@@ -486,7 +486,7 @@ export default function AgentsPage() {
               setMarketplaceFilter={setMarketplaceFilter}
               marketplaceLoading={marketplaceLoading}
               allMarketplaceItems={allMarketplaceItems}
-              kortixTeamItems={kortixTeamItems}
+              leakerFlowTeamItems={leakerFlowTeamItems}
               communityItems={communityItems}
               installingItemId={installingItemId}
               onInstallClick={handleInstallClick}

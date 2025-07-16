@@ -1,0 +1,3 @@
+Proposta de Valor Central: Do Caos à Clareza
+
+O cenário atual de informação sobre o GTA 6 é descrito como uma "seca severa de informações", pontuada por inundações de "fugas falsas de baixo esforço".1 A informação está dispersa por GTAForums, Reddit (r/GTA6), Discord e YouTube, exigindo um esforço significativo do utilizador para acompanhar e verificar.1 O Leaker Flow resolve este problema ao fornecer uma "única fonte de verdade". A plataforma ingere, verifica, cura e analisa todos os dados disponíveis, poupando tempo aos utilizadores e protegendo-os de desinformação. Na sua essência, transforma o esforço manual e caótico da comunidade, exemplificado pelo documento de 65 páginas 1, num serviço interativo e em tempo real.

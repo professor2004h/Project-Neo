@@ -11,11 +11,11 @@ import type { MarketplaceTemplate } from '@/components/agents/installation/types
 interface MarketplaceTabProps {
   marketplaceSearchQuery: string;
   setMarketplaceSearchQuery: (value: string) => void;
-  marketplaceFilter: 'all' | 'kortix' | 'community';
-  setMarketplaceFilter: (value: 'all' | 'kortix' | 'community') => void;
+  marketplaceFilter: 'all' | 'leaker-flow' | 'community';
+  setMarketplaceFilter: (value: 'all' | 'leaker-flow' | 'community') => void;
   marketplaceLoading: boolean;
   allMarketplaceItems: MarketplaceTemplate[];
-  kortixTeamItems: MarketplaceTemplate[];
+  leakerFlowTeamItems: MarketplaceTemplate[];
   communityItems: MarketplaceTemplate[];
   installingItemId: string | null;
   onInstallClick: (item: MarketplaceTemplate, e?: React.MouseEvent) => void;
@@ -29,7 +29,7 @@ export const MarketplaceTab = ({
   setMarketplaceFilter,
   marketplaceLoading,
   allMarketplaceItems,
-  kortixTeamItems,
+  leakerFlowTeamItems,
   communityItems,
   installingItemId,
   onInstallClick,
@@ -43,13 +43,13 @@ export const MarketplaceTab = ({
           value={marketplaceSearchQuery}
           onChange={setMarketplaceSearchQuery}
         />
-        <Select value={marketplaceFilter} onValueChange={(value: 'all' | 'kortix' | 'community') => setMarketplaceFilter(value)}>
+        <Select value={marketplaceFilter} onValueChange={(value: 'all' | 'leaker-flow' | 'community') => setMarketplaceFilter(value)}>
           <SelectTrigger className="w-[180px] h-12 rounded-xl">
             <SelectValue placeholder="Filter agents" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Agents</SelectItem>
-            <SelectItem value="kortix">Kortix Verified</SelectItem>
+            <SelectItem value="leaker-flow">Leaker-Flow Verified</SelectItem>
             <SelectItem value="community">Community</SelectItem>
           </SelectContent>
         </Select>
@@ -83,14 +83,14 @@ export const MarketplaceTab = ({
         <div className="space-y-12">
           {marketplaceFilter === 'all' ? (
             <>
-              {kortixTeamItems.length > 0 && (
+              {leakerFlowTeamItems.length > 0 && (
                 <div className="space-y-6">
                   <MarketplaceSectionHeader
-                    title="Verified by Kortix"
+                    title="Verified by Leaker-Flow"
                     subtitle="Official agents, maintained and supported"
                   />
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {kortixTeamItems.map((item) => (
+                    {leakerFlowTeamItems.map((item) => (
                       <AgentCard
                         key={item.id}
                         mode="marketplace"
@@ -141,4 +141,4 @@ export const MarketplaceTab = ({
       )}
     </div>
   );
-}; 
+};

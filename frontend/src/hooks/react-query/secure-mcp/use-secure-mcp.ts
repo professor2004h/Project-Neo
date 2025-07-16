@@ -44,7 +44,7 @@ export interface AgentTemplate {
   creator_name?: string;
   avatar?: string;
   avatar_color?: string;
-  is_kortix_team?: boolean;
+  is_leaker_flow_team?: boolean;
   metadata?: {
     source_agent_id?: string;
     source_version_id?: string;
@@ -421,4 +421,4 @@ export function useInstallTemplate() {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
     },
   });
-} 
+}

@@ -72,10 +72,10 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
   const allAgents = [
     {
       id: undefined,
-      name: 'Suna',
+      name: 'Leaker-Flow',
       description: 'Your personal AI assistant',
       type: 'default' as const,
-      icon: <Image src="/kortix-symbol.svg" alt="Suna" width={16} height={16} className="h-4 w-4 dark:invert" />
+      icon: <Image src="/leaker-flow-symbol.svg" alt="Leaker-Flow" width={16} height={16} className="h-4 w-4 dark:invert" />
     },
     ...PREDEFINED_AGENTS.map(agent => ({
       ...agent,
@@ -119,10 +119,10 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
     
     // If selectedAgentId is not undefined but no agent is found, log a warning
     if (selectedAgentId !== undefined) {
-      console.warn('Agent with ID', selectedAgentId, 'not found, falling back to Suna');
+      console.warn('Agent with ID', selectedAgentId, 'not found, falling back to Leaker-Flow');
     }
     
-    // Default to Suna (the first agent which has id: undefined)
+    // Default to Leaker-Flow (the first agent which has id: undefined)
     const defaultAgent = allAgents[0];
     console.log('Using default agent:', defaultAgent.name);
     return {
@@ -132,7 +132,7 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
   };
 
   const handleAgentSelect = (agentId: string | undefined) => {
-    console.log('Agent selected:', agentId === undefined ? 'Suna (default)' : agentId);
+    console.log('Agent selected:', agentId === undefined ? 'Leaker-Flow (default)' : agentId);
     onAgentSelect?.(agentId);
     setIsOpen(false);
   };
@@ -351,4 +351,4 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
 
     </>
   );
-}; 
+};

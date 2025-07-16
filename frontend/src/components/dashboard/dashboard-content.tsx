@@ -63,7 +63,7 @@ export function DashboardContent() {
   const selectedAgent = selectedAgentId
     ? agents.find(agent => agent.agent_id === selectedAgentId)
     : null;
-  const displayName = selectedAgent?.name || 'Suna';
+  const displayName = selectedAgent?.name || 'Leaker-Flow';
   const agentAvatar = selectedAgent?.avatar;
 
   const threadQuery = useThreadQuery(initiatedThreadId || '');

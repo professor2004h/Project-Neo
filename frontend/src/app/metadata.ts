@@ -2,16 +2,20 @@ import { Metadata } from 'next';
 import { siteConfig } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: siteConfig.name,
+  metadataBase: new URL('https://leaker-flow.com'),
+  title: {
+    default: siteConfig.name,
+    template: `%s - ${siteConfig.name}`,
+  },
   description: siteConfig.description,
-  keywords: ['Kortix Suna', 'AI', 'Agent'],
+  keywords: ['Leaker-Flow', 'AI', 'Agent'],
   authors: [
     {
-      name: 'Kortix AI Corp',
-      url: 'https://kortix.ai',
+      name: 'Leaker-Flow Team',
+      url: 'https://leaker-flow.com',
     },
   ],
-  creator: 'Kortix AI Corp',
+  creator: 'Leaker-Flow Team',
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -24,7 +28,8 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: siteConfig.name,
     description: siteConfig.description,
-    creator: '@kortixai',
+    images: [`${siteConfig.url}/og.png`],
+    creator: '@leakerflow',
   },
   robots: {
     index: true,

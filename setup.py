@@ -30,7 +30,7 @@ class Colors:
 
 # --- UI Helpers ---
 def print_banner():
-    """Prints the Suna setup banner."""
+    """Prints the Leaker-Flow setup banner."""
     print(
         f"""
 {Colors.BLUE}{Colors.BOLD}
@@ -369,7 +369,7 @@ class SetupWizard:
         """Runs the setup wizard."""
         print_banner()
         print(
-            "This wizard will guide you through setting up Suna, an open-source generalist AI agent.\n"
+            "This wizard will guide you through setting up Leaker-Flow, an open-source generalist AI agent.\n"
         )
 
         # Show current configuration status
@@ -392,7 +392,7 @@ class SetupWizard:
             self.run_step(14, self.configure_env_files)
             self.run_step(15, self.setup_supabase_database)
             self.run_step(16, self.install_dependencies)
-            self.run_step(17, self.start_suna)
+            self.run_step(17, self.start_leaker_flow)
 
             self.final_instructions()
 
@@ -425,9 +425,9 @@ class SetupWizard:
             return
 
         print_info(
-            "You can start Suna using either Docker Compose or by manually starting the services."
+            "You can start Leaker-Flow using either Docker Compose or by manually starting the services."
         )
-        print(f"\n{Colors.CYAN}How would you like to set up Suna?{Colors.ENDC}")
+        print(f"\n{Colors.CYAN}How would you like to set up Leaker-Flow?{Colors.ENDC}")
         print(
             f"{Colors.CYAN}[1] {Colors.GREEN}Docker Compose{Colors.ENDC} {Colors.CYAN}(recommended, starts all services automatically){Colors.ENDC}"
         )
@@ -496,7 +496,7 @@ class SetupWizard:
             sys.exit(1)
 
         self.check_docker_running()
-        self.check_suna_directory()
+        self.check_leaker_flow_directory()
 
     def check_docker_running(self):
         """Checks if the Docker daemon is running."""
@@ -517,7 +517,7 @@ class SetupWizard:
             )
             sys.exit(1)
 
-    def check_suna_directory(self):
+    def check_leaker_flow_directory(self):
         """Checks if the script is run from the correct project root directory."""
         print_info("Verifying project structure...")
         required_dirs = ["backend", "frontend"]
@@ -526,18 +526,18 @@ class SetupWizard:
         for directory in required_dirs:
             if not os.path.isdir(directory):
                 print_error(
-                    f"'{directory}' directory not found. Make sure you're in the Suna repository root."
+                    f"'{directory}' directory not found. Make sure you're in the Leaker-Flow repository root."
                 )
                 sys.exit(1)
 
         for file in required_files:
             if not os.path.isfile(file):
                 print_error(
-                    f"'{file}' not found. Make sure you're in the Suna repository root."
+                    f"'{file}' not found. Make sure you're in the Leaker-Flow repository root."
                 )
                 sys.exit(1)
 
-        print_success("Suna repository detected.")
+        print_success("Leaker-Flow repository detected.")
         return True
 
     def _get_input(
@@ -619,7 +619,7 @@ class SetupWizard:
             )
         else:
             print_info(
-                "Suna uses Daytona for sandboxing. Visit https://app.daytona.io/ to create an account."
+                "Leaker-Flow uses Daytona for sandboxing. Visit https://app.daytona.io/ to create an account."
             )
             print_info("Then, generate an API key from the 'Keys' menu.")
             input("Press Enter to continue once you have your API key...")
@@ -642,14 +642,14 @@ class SetupWizard:
         print_success("Daytona information saved.")
 
         print_warning(
-            "IMPORTANT: You must create a Suna snapshot in Daytona for it to work properly."
+            "IMPORTANT: You must create a Leaker-Flow snapshot in Daytona for it to work properly."
         )
         print_info(
             f"Visit {Colors.GREEN}https://app.daytona.io/dashboard/snapshots{Colors.ENDC}{Colors.CYAN} to create a snapshot."
         )
         print_info("Create a snapshot with these exact settings:")
-        print_info(f"   - Name:\t\t{Colors.GREEN}kortix/suna:0.1.3{Colors.ENDC}")
-        print_info(f"   - Image name:\t{Colors.GREEN}kortix/suna:0.1.3{Colors.ENDC}")
+        print_info(f"   - Name:\t\t{Colors.GREEN}leaker-flow/leaker-flow:0.1.3{Colors.ENDC}")
+        print_info(f"   - Image name:\t{Colors.GREEN}leaker-flow/leaker-flow:0.1.3{Colors.ENDC}")
         print_info(
             f"   - Entrypoint:\t{Colors.GREEN}/usr/bin/supervisord -n -c /etc/supervisor/conf.d/supervisord.conf{Colors.ENDC}"
         )
@@ -675,7 +675,7 @@ class SetupWizard:
             )
         else:
             print_info(
-                "Suna requires at least one LLM provider. Supported: OpenAI, Anthropic, OpenRouter."
+                "Leaker-Flow requires at least one LLM provider. Supported: OpenAI, Anthropic, OpenRouter."
             )
 
         # Don't clear existing keys if we're updating
@@ -758,7 +758,7 @@ class SetupWizard:
                 "Found existing search API keys. Press Enter to keep current values or type new ones."
             )
         else:
-            print_info("Suna uses Tavily for search and Firecrawl for web scraping.")
+            print_info("Leaker-Flow uses Tavily for search and Firecrawl for web scraping.")
             print_info(
                 "Get a Tavily key at https://tavily.com and a Firecrawl key at https://firecrawl.dev"
             )
@@ -888,7 +888,7 @@ class SetupWizard:
             print_info("Press Enter to keep current values or type new ones.")
         else:
             print_info(
-                "QStash is required for Suna's background job processing and scheduling."
+                "QStash is required for Leaker-Flow's background job processing and scheduling."
             )
             print_info(
                 "QStash enables workflows, automated tasks, and webhook handling."
@@ -1073,7 +1073,7 @@ class SetupWizard:
             print_info("Press Enter to keep current value or type a new one.")
         else:
             print_info("Webhook base URL is required for workflows to receive callbacks.")
-            print_info("This must be a publicly accessible URL where Suna can receive webhooks.")
+            print_info("This must be a publicly accessible URL where Leaker-Flow can receive webhooks.")
             print_info("For local development, you can use services like ngrok or localtunnel.")
 
         self.env_vars["webhook"]["WEBHOOK_BASE_URL"] = self._get_input(
@@ -1114,7 +1114,7 @@ class SetupWizard:
             "NEXT_PUBLIC_URL": "http://localhost:3000",
         }
 
-        backend_env_content = f"# Generated by Suna install script for '{self.env_vars['setup_method']}' setup\n\n"
+        backend_env_content = f"# Generated by Leaker-Flow install script for '{self.env_vars['setup_method']}' setup\n\n"
         for key, value in backend_env.items():
             backend_env_content += f"{key}={value or ''}\n"
 
@@ -1133,7 +1133,7 @@ class SetupWizard:
             "NEXT_PUBLIC_ENV_MODE": "LOCAL",
         }
 
-        frontend_env_content = "# Generated by Suna install script\n\n"
+        frontend_env_content = "# Generated by Leaker-Flow install script\n\n"
         for key, value in frontend_env.items():
             frontend_env_content += f"{key}={value or ''}\n"
 
@@ -1282,11 +1282,11 @@ class SetupWizard:
             print_info("Please install dependencies manually and run the script again.")
             sys.exit(1)
 
-    def start_suna(self):
-        """Starts Suna using Docker Compose or shows instructions for manual startup."""
-        print_step(17, self.total_steps, "Starting Suna")
+    def start_leaker_flow(self):
+        """Starts Leaker-Flow using Docker Compose or shows instructions for manual startup."""
+        print_step(17, self.total_steps, "Starting Leaker-Flow")
         if self.env_vars["setup_method"] == "docker":
-            print_info("Starting Suna with Docker Compose...")
+            print_info("Starting Leaker-Flow with Docker Compose...")
             try:
                 subprocess.run(
                     ["docker", "compose", "up", "-d", "--build"],
@@ -1303,13 +1303,13 @@ class SetupWizard:
                     shell=IS_WINDOWS,
                 )
                 if "backend" in result.stdout and "frontend" in result.stdout:
-                    print_success("Suna services are starting up!")
+                    print_success("Leaker-Flow services are starting up!")
                 else:
                     print_warning(
                         "Some services might not be running. Check 'docker compose ps' for details."
                     )
             except subprocess.SubprocessError as e:
-                print_error(f"Failed to start Suna with Docker Compose: {e}")
+                print_error(f"Failed to start Leaker-Flow with Docker Compose: {e}")
                 print_info(
                     "Try running 'docker compose up --build' manually to diagnose the issue."
                 )
@@ -1319,18 +1319,18 @@ class SetupWizard:
 
     def final_instructions(self):
         """Shows final instructions to the user."""
-        print(f"\n{Colors.GREEN}{Colors.BOLD}✨ Suna Setup Complete! ✨{Colors.ENDC}\n")
+        print(f"\n{Colors.GREEN}{Colors.BOLD}✨ Leaker-Flow Setup Complete! ✨{Colors.ENDC}\n")
 
         default_model = self.env_vars.get("llm", {}).get("MODEL_TO_USE", "N/A")
         print_info(
-            f"Suna is configured to use {Colors.GREEN}{default_model}{Colors.ENDC} as the default LLM."
+            f"Leaker-Flow is configured to use {Colors.GREEN}{default_model}{Colors.ENDC} as the default LLM."
         )
         print_info(
             f"Delete the {Colors.RED}.setup_progress{Colors.ENDC} file to reset the setup."
         )
 
         if self.env_vars["setup_method"] == "docker":
-            print_info("Your Suna instance is ready to use!")
+            print_info("Your Leaker-Flow instance is ready to use!")
             print("\nUseful Docker commands:")
             print(
                 f"  {Colors.CYAN}docker compose ps{Colors.ENDC}         - Check service status"
@@ -1339,14 +1339,14 @@ class SetupWizard:
                 f"  {Colors.CYAN}docker compose logs -f{Colors.ENDC}    - Follow logs"
             )
             print(
-                f"  {Colors.CYAN}docker compose down{Colors.ENDC}       - Stop Suna services"
+                f"  {Colors.CYAN}docker compose down{Colors.ENDC}       - Stop Leaker-Flow services"
             )
             print(
-                f"  {Colors.CYAN}python start.py{Colors.ENDC}           - To start or stop Suna services"
+                f"  {Colors.CYAN}python start.py{Colors.ENDC}           - To start or stop Leaker-Flow services"
             )
         else:
             print_info(
-                "To start Suna, you need to run these commands in separate terminals:"
+                "To start Leaker-Flow, you need to run these commands in separate terminals:"
             )
             print(
                 f"\n{Colors.BOLD}1. Start Infrastructure (in project root):{Colors.ENDC}"
@@ -1366,7 +1366,7 @@ class SetupWizard:
                 f"{Colors.CYAN}   cd backend && uv run dramatiq run_agent_background{Colors.ENDC}"
             )
 
-        print("\nOnce all services are running, access Suna at: http://localhost:3000")
+        print("\nOnce all services are running, access Leaker-Flow at: http://localhost:3000")
 
 
 if __name__ == "__main__":

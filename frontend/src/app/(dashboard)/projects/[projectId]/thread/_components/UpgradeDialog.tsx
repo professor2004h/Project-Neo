@@ -23,7 +23,7 @@ export function UpgradeDialog({ open, onOpenChange, onDismiss }: UpgradeDialogPr
   const handleUpgradeClick = () => {
     router.push('/settings/billing');
     onOpenChange(false);
-    localStorage.setItem('suna_upgrade_dialog_displayed', 'true');
+    localStorage.setItem('leaker_flow_upgrade_dialog_displayed', 'true');
   };
 
   return (
@@ -32,10 +32,10 @@ export function UpgradeDialog({ open, onOpenChange, onDismiss }: UpgradeDialogPr
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Crown className="h-5 w-5 mr-2 text-primary" />
-            Unlock the Full Suna Experience
+            Unlock the Full Leaker-Flow Experience
           </DialogTitle>
           <DialogDescription>
-            You're currently using Suna's free tier with limited capabilities.
+            You're currently using Leaker-Flow's free tier with limited capabilities.
             Upgrade now to access our most powerful AI model.
           </DialogDescription>
         </DialogHeader>
@@ -88,4 +88,4 @@ export function UpgradeDialog({ open, onOpenChange, onDismiss }: UpgradeDialogPr
       </DialogContent>
     </Dialog>
   );
-} 
+}

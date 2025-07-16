@@ -28,7 +28,7 @@ export default function Home() {
           <CompanyShowcase />
           <BentoSection />
           { /* <QuoteSection /> */ }
-          <FeatureSection />
+          { /* <FeatureSection /> */ }
           { /* <GrowthSection /> */ }
           { /* <OpenSourceSection /> */ }
           <div className='flex flex-col items-center px-4'>

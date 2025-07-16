@@ -1,11 +1,11 @@
 export const siteConfig = {
-  name: 'Kortix Suna',
-  url: 'https://suna.so/',
-  description: 'Kortix AI',
+  name: 'Leaker-Flow',
+  url: 'https://leaker-flow.com/',
+  description: 'Leaker-Flow AI',
   links: {
-    twitter: 'https://x.com/kortixai',
-    github: 'https://github.com/kortix-ai/',
-    linkedin: 'https://www.linkedin.com/company/kortix/',
+    twitter: 'https://x.com/leakerflow',
+    github: 'https://github.com/leaker-flow/',
+    linkedin: 'https://www.linkedin.com/company/leaker-flow/',
   },
 };
 

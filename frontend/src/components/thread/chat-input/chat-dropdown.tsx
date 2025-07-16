@@ -24,8 +24,8 @@ const ChatDropdown = () => {
                     }}
                 >
                     <div className="flex items-center gap-2">
-                        <Image src="/kortix-symbol.svg" alt="Suna" width={16} height={16} className="h-4 w-4 dark:invert" />
-                        <span>Suna</span>
+                        <Image src="/leaker-flow-symbol.svg" alt="Leaker-Flow" width={16} height={16} className="h-4 w-4 dark:invert" />
+                        <span>Leaker-Flow</span>
                         <ChevronDown size={14} className="opacity-50" />
                     </div>
                 </Button>
@@ -44,7 +44,7 @@ const ChatDropdown = () => {
                 >
                     <User size={18} />
                     <div className="flex flex-col">
-                        <span className="font-semibold text-sm">Suna</span>
+                        <span className="font-semibold text-sm">Leaker-Flow</span>
                         <span className="text-xs text-muted-foreground">Default</span>
                     </div>
                 </DropdownMenuItem>

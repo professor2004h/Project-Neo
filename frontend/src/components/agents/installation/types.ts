@@ -10,7 +10,7 @@ export interface MarketplaceTemplate {
   avatar?: string;
   avatar_color?: string;
   template_id: string;
-  is_kortix_team?: boolean;
+  is_leaker_flow_team?: boolean;
   mcp_requirements?: Array<{
     qualified_name: string;
     display_name: string;
@@ -42,4 +42,4 @@ export interface SetupStep {
   custom_type?: 'sse' | 'http' | 'pipedream'; 
   app_slug?: string;
   app_name?: string;
-} 
+}

@@ -19,7 +19,7 @@ interface BaseAgentData {
 }
 
 interface MarketplaceData extends BaseAgentData {
-  is_kortix_team?: boolean;
+  is_leaker_flow_team?: boolean;
   download_count: number;
   creator_name?: string;
   marketplace_published_at?: string;
@@ -58,12 +58,12 @@ interface AgentCardProps {
 }
 
 // Badge components for each mode
-const MarketplaceBadge: React.FC<{ isKortixTeam?: boolean }> = ({ isKortixTeam }) => {
-  if (isKortixTeam) {
+const MarketplaceBadge: React.FC<{ isLeakerFlowTeam?: boolean }> = ({ isLeakerFlowTeam }) => {
+  if (isLeakerFlowTeam) {
     return (
       <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-0 dark:bg-blue-950 dark:text-blue-300">
         <CheckCircle className="h-3 w-3 mr-1" />
-        Kortix
+        Leaker-Flow
       </Badge>
     );
   }
@@ -113,7 +113,7 @@ const AgentBadges: React.FC<{ agent: AgentData }> = ({ agent }) => (
 const MarketplaceMetadata: React.FC<{ data: MarketplaceData }> = ({ data }) => (
   <div className="flex items-center justify-between text-xs text-muted-foreground">
     <div className="flex items-center gap-1">
-      {data.is_kortix_team ? (
+      {data.is_leaker_flow_team ? (
         <>
           <Download className="h-3 w-3" />
           <span>{data.download_count} installs</span>
@@ -291,7 +291,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
   const renderBadge = () => {
     switch (mode) {
       case 'marketplace':
-        return <MarketplaceBadge isKortixTeam={(data as MarketplaceData).is_kortix_team} />;
+        return <MarketplaceBadge isLeakerFlowTeam={(data as MarketplaceData).is_leaker_flow_team} />;
       case 'template':
         return <TemplateBadge isPublic={(data as TemplateData).is_public} />;
       case 'agent':
@@ -355,4 +355,4 @@ export const AgentCard: React.FC<AgentCardProps> = ({
       </div>
     </div>
   );
-}; 
+};
