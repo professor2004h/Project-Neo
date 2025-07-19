@@ -74,7 +74,7 @@ export default memo(function MessageActions({ messageId, initialFeedback = null,
   };
 
   return (
-    <div className="flex items-center gap-1 justify-end">
+    <div className="flex items-center gap-1 justify-end pr-6">
       <button 
         className="h-4 w-4 p-0 rounded-sm hover:bg-muted/50 transition-colors flex items-center justify-center" 
         onClick={handleCopy}
