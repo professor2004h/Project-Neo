@@ -163,7 +163,7 @@ app.add_middleware(
     allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Project-Id", "X-MCP-URL", "X-MCP-Type", "X-MCP-Headers"],
+    allow_headers=["Content-Type", "Authorization", "X-Project-Id", "X-MCP-URL", "X-MCP-Type", "X-MCP-Headers", "X-Refresh-Token"],
 )
 
 # Create a main API router
@@ -194,6 +194,9 @@ api_router.include_router(workflows_router, prefix="/workflows")
 
 from pipedream import api as pipedream_api
 api_router.include_router(pipedream_api.router)
+
+from auth import phone_verification_supabase_mfa
+api_router.include_router(phone_verification_supabase_mfa.router)
 
 @api_router.get("/health")
 async def health_check():
