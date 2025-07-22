@@ -627,7 +627,7 @@ async def run_agent(
                             logger.error(f"Error chunk detected: {chunk.get('message', 'Unknown error')}")
                             if trace:
                                 trace.event(name="error_chunk_detected", level="ERROR", status_message=(chunk.get('message', 'Unknown error')))
-                        record_event(name="error_chunk_detected", level="ERROR", message=chunk.get('message', 'Unknown error'))
+                            record_event(name="error_chunk_detected", level="ERROR", message=chunk.get('message', 'Unknown error'))
                             error_detected = True
                             yield chunk  # Forward the error chunk
                             continue     # Continue processing other chunks but don't break yet
@@ -673,17 +673,17 @@ async def run_agent(
                                 # The actual text content is nested within
                                 assistant_text = assistant_content_json.get('content', '')
                                 
-                            # Ensure assistant_text is a string before concatenation
-                            if isinstance(assistant_text, list):
-                                # If it's a list, convert to string representation
-                                logger.warning(f"Assistant text is a list, converting to string: {type(assistant_text)}")
-                                assistant_text = str(assistant_text)
-                            elif not isinstance(assistant_text, str):
-                                # Handle other non-string types
-                                logger.warning(f"Assistant text is not a string (type: {type(assistant_text)}), converting")
-                                assistant_text = str(assistant_text) if assistant_text else ''
-                            
-                            full_response += assistant_text
+                                # Ensure assistant_text is a string before concatenation
+                                if isinstance(assistant_text, list):
+                                    # If it's a list, convert to string representation
+                                    logger.warning(f"Assistant text is a list, converting to string: {type(assistant_text)}")
+                                    assistant_text = str(assistant_text)
+                                elif not isinstance(assistant_text, str):
+                                    # Handle other non-string types
+                                    logger.warning(f"Assistant text is not a string (type: {type(assistant_text)}), converting")
+                                    assistant_text = str(assistant_text) if assistant_text else ''
+                                
+                                full_response += assistant_text
                                 if isinstance(assistant_text, str) and assistant_text:
                                     if '</ask>' in assistant_text or '</complete>' in assistant_text or '</web-browser-takeover>' in assistant_text:
                                         if '</ask>' in assistant_text:
@@ -695,21 +695,21 @@ async def run_agent(
 
                                         last_tool_call = xml_tool
                                         logger.info(f"Agent used XML tool: {xml_tool}")
-                                       if trace:
-                                            trace.event(name="agent_used_xml_tool", level="DEFAULT", status_message=f"Agent used XML tool: {xml_tool}")
-                                            record_event(name="agent_used_xml_tool", level="DEFAULT", message=f"Agent used XML tool: {xml_tool}")
+                                        if trace:
+                                                trace.event(name="agent_used_xml_tool", level="DEFAULT", status_message=f"Agent used XML tool: {xml_tool}")
+                                                record_event(name="agent_used_xml_tool", level="DEFAULT", message=f"Agent used XML tool: {xml_tool}")
                             
                             except json.JSONDecodeError:
                                 # Handle cases where content might not be valid JSON
                                 logger.warning(f"Warning: Could not parse assistant content JSON: {chunk.get('content')}")
                                 if trace:
                                     trace.event(name="warning_could_not_parse_assistant_content_json", level="WARNING", status_message=f"Warning: Could not parse assistant content JSON: {chunk.get('content')}")
-                            record_event(name="warning_could_not_parse_assistant_content_json", level="WARNING", message=f"Warning: Could not parse assistant content JSON: {chunk.get('content')}")
+                                record_event(name="warning_could_not_parse_assistant_content_json", level="WARNING", message=f"Warning: Could not parse assistant content JSON: {chunk.get('content')}")
                             except Exception as e:
                                 logger.error(f"Error processing assistant chunk: {e}")
                                 if trace:
                                     trace.event(name="error_processing_assistant_chunk", level="ERROR", status_message=f"Error processing assistant chunk: {e}")
-                            record_event(name="error_processing_assistant_chunk", level="ERROR", message=f"Error processing assistant chunk: {e}")
+                                record_event(name="error_processing_assistant_chunk", level="ERROR", message=f"Error processing assistant chunk: {e}")
 
                         yield chunk
                 else:
