@@ -560,9 +560,9 @@ Here are the XML tools available with examples:
                                             }
                                         )
                                         auto_continue = True
-                                            auto_continue_count += 1
-                                            # Don't yield the finish chunk to avoid confusing the client
-                                            continue
+                                        auto_continue_count += 1
+                                        # Don't yield the finish chunk to avoid confusing the client
+                                        continue
                                     elif chunk.get('finish_reason') == 'xml_tool_limit_reached':
                                         # Don't auto-continue if XML tool limit was reached
                                         logger.info("Detected finish_reason='xml_tool_limit_reached', stopping auto-continue")
