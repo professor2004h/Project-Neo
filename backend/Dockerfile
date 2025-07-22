@@ -23,22 +23,29 @@ ENV PYTHONPATH=/app
 EXPOSE 8000
 
 # Gunicorn configuration
-CMD ["sh", "-c", "uv run gunicorn api:app \
-  --workers $WORKERS \
-  --worker-class uvicorn.workers.UvicornWorker \
-  --bind 0.0.0.0:8000 \
-  --timeout 1800 \
-  --graceful-timeout 600 \
-  --keep-alive 1800 \
-  --max-requests 0 \
-  --max-requests-jitter 0 \
-  --forwarded-allow-ips '*' \
-  --worker-connections $WORKER_CONNECTIONS \
-  --worker-tmp-dir /dev/shm \
-  --preload \
-  --log-level info \
-  --access-logfile - \
-  --error-logfile - \
-  --capture-output \
-  --enable-stdio-inheritance \
-  --threads $THREADS"]
+CMD ["sh", "-c", "\
+  CPUS=$(nproc) && \
+  CALCULATED_WORKERS=$((2 * CPUS + 1)) && \
+  WORKERS=${WORKERS:-$CALCULATED_WORKERS} && \
+  if [ $WORKERS -gt 33 ]; then WORKERS=33; fi && \
+  echo \"Starting with $WORKERS workers on $CPUS CPUs\" && \
+  uv run gunicorn api:app \
+    --workers $WORKERS \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --timeout 1800 \
+    --graceful-timeout 600 \
+    --keep-alive 1800 \
+    --max-requests 0 \
+    --max-requests-jitter 0 \
+    --forwarded-allow-ips '*' \
+    --worker-connections ${WORKER_CONNECTIONS:-2000} \
+    --worker-tmp-dir /dev/shm \
+    --preload \
+    --log-level info \
+    --access-logfile - \
+    --error-logfile - \
+    --capture-output \
+    --enable-stdio-inheritance \
+    --threads ${THREADS:-2} \
+"]
