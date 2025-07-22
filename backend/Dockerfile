@@ -3,7 +3,13 @@ FROM ghcr.io/astral-sh/uv:python3.11-alpine
 ENV ENV_MODE production
 WORKDIR /app
 
-RUN apk add --no-cache curl git
+RUN apk add --no-cache \
+    curl \
+    git \
+    rust \
+    cargo \
+    build-base \
+    libffi-dev
 
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./
