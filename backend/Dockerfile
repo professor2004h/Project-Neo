@@ -6,6 +6,8 @@ WORKDIR /app
 RUN apk add --no-cache curl git
 
 # Install Python dependencies
+RUN apk add --no-cache build-base python3-dev linux-headers
+
 COPY pyproject.toml uv.lock ./
 ENV UV_LINK_MODE=copy
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --quiet
