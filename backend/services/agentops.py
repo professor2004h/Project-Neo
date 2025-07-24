@@ -534,17 +534,21 @@ async def llm_span(
         SpanAttributes.LLM_REQUEST_STREAMING: kwargs.get("stream", False),
     }
     
-    # Add additional request attributes if present in kwargs
-    if "top_p" in kwargs:
-        attributes[SpanAttributes.LLM_REQUEST_TOP_P] = kwargs["top_p"]
-    if "top_k" in kwargs:
-        attributes[SpanAttributes.LLM_REQUEST_TOP_K] = kwargs["top_k"]
-    if "seed" in kwargs:
-        attributes[SpanAttributes.LLM_REQUEST_SEED] = kwargs["seed"]
-    if "frequency_penalty" in kwargs:
-        attributes[SpanAttributes.LLM_REQUEST_FREQUENCY_PENALTY] = kwargs["frequency_penalty"]
-    if "presence_penalty" in kwargs:
-        attributes[SpanAttributes.LLM_REQUEST_PRESENCE_PENALTY] = kwargs["presence_penalty"]
+    # Add optional attributes from kwargs, filtering out None values
+    optional_attributes = {
+        "top_p": SpanAttributes.LLM_REQUEST_TOP_P,
+        "top_k": SpanAttributes.LLM_REQUEST_TOP_K,
+        "seed": SpanAttributes.LLM_REQUEST_SEED,
+        "frequency_penalty": SpanAttributes.LLM_REQUEST_FREQUENCY_PENALTY,
+        "presence_penalty": SpanAttributes.LLM_REQUEST_PRESENCE_PENALTY,
+    }
+    
+    attributes.update({
+        attr_name: kwargs[key]
+        for key, attr_name in optional_attributes.items()
+        if key in kwargs and kwargs[key] is not None
+    })
+    
     if "stop" in kwargs or "stop_sequences" in kwargs:
         stop_sequences = kwargs.get("stop", kwargs.get("stop_sequences", []))
         if stop_sequences:
