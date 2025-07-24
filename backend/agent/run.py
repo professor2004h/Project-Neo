@@ -37,7 +37,6 @@ from opentelemetry.trace.status import Status
 
 load_dotenv()
 
-@agentops.agent
 async def run_agent(
     thread_id: str,
     project_id: str,
