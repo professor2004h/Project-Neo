@@ -475,6 +475,7 @@ Here are the XML tools available with examples:
                             config=config,
                             prompt_messages=prepared_messages,
                             llm_model=llm_model,
+                            llm_span_context=llm_span_context,
                         )
                     else:
                         # Fallback to non-streaming if response is not iterable
@@ -484,7 +485,7 @@ Here are the XML tools available with examples:
                             config=config,
                             prompt_messages=prepared_messages,
                             llm_model=llm_model,
-                            llm_span_context=llm_span_context,  # Pass span context for token recording
+                            llm_span_context=llm_span_context,
                     )
 
                     return response_generator
