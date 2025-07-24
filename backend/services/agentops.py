@@ -8,7 +8,7 @@ import ast
 from typing import Optional, Any, Dict
 import agentops
 from agentops import StatusCode, TraceContext, tracer
-from agentops.semconv import SpanKind, SpanAttributes
+from agentops.semconv import SpanKind, SpanAttributes, CoreAttributes
 from opentelemetry.trace.status import Status
 from utils.logger import logger
 from contextlib import asynccontextmanager
@@ -101,9 +101,13 @@ def start_agent_trace(
         logger.debug(f"Tracer initialized: {tracer.initialized}")
         
         if tracer.initialized:
+            # Create the tags
+            tags = [agent_run_id, thread_id, project_id, model_name]
+            
             # Create span attributes
             attributes = {
                 SpanAttributes.AGENTOPS_SPAN_KIND: SpanKind.AGENT,
+                CoreAttributes.TAGS: tags,
                 "agent_run_id": agent_run_id,
                 "thread_id": thread_id,
                 "project_id": project_id,
@@ -735,12 +739,7 @@ def get_or_create_conversation_trace(
     try:
         # Create new conversation trace
         trace_name = f"conversation_{thread_id}"
-        tags = {
-            "thread_id": thread_id,
-            "project_id": project_id,
-            "model": model_name,
-            "conversation_id": thread_id
-        }
+        tags = [thread_id, project_id, model_name]
         
         # Start the trace
         trace_context = agentops.start_trace(trace_name=trace_name, tags=tags)
@@ -749,7 +748,7 @@ def get_or_create_conversation_trace(
         # Set in async context for propagation
         agentops_trace_context.set(trace_context)
         
-        logger.info(f"Started new conversation trace for thread {thread_id}")
+        logger.info(f"Started new conversation trace for thread {thread_id} with tags {tags}")
         return trace_context
         
     except Exception as e:
