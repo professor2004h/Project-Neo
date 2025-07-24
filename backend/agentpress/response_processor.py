@@ -422,7 +422,7 @@ class ResponseProcessor:
                     # Record tokens in the LLM span if available
                     if llm_span_context:
                         llm_span_context.record_tokens(prompt_tokens, completion_tokens)
-                        logger.info("✅ Recorded estimated tokens in LLM span")
+                        logger.info("Recorded estimated tokens in LLM span")
                     else:
                         logger.warning("⚠️ No LLM span context available to record tokens")
                     
@@ -861,7 +861,7 @@ class ResponseProcessor:
             if llm_span_context:
                 try:
                     await llm_span_context.end()
-                    logger.info("✅ Closed LLM span after streaming response processing")
+                    logger.info("Closed LLM span after streaming response processing")
                 except Exception as span_e:
                     logger.error(f"Failed to close LLM span: {str(span_e)}")
             

@@ -299,7 +299,7 @@ class LLMSpanContext:
                 total_tokens = prompt_tokens + completion_tokens
             self.span.set_attribute(SpanAttributes.LLM_USAGE_TOTAL_TOKENS, total_tokens)
             
-            logger.info(f"✅ Recorded tokens in LLM span: prompt={prompt_tokens}, completion={completion_tokens}, total={total_tokens}")
+            logger.info(f"Recorded tokens in LLM span: prompt={prompt_tokens}, completion={completion_tokens}, total={total_tokens}")
         except Exception as e:
             logger.error(f"Failed to record tokens: {e}")
     
@@ -307,7 +307,7 @@ class LLMSpanContext:
         """Manually end the span."""
         if not self._ended:
             try:
-                logger.info("🔒 Manually ending LLM span")
+                logger.info("Manually ending LLM span")
                 self.span.end()
                 self._ended = True
                 # Small delay to ensure span is sent
@@ -610,7 +610,7 @@ async def llm_span(
             except Exception as e:
                 logger.error(f"Failed to end LLM span: {e}")
         elif manual_end and not span_context._ended:
-            logger.info("⏳ LLM span left open for manual ending")
+            logger.info("LLM span left open for manual ending")
 
 
 def get_current_trace_context() -> Optional[TraceContext]:
