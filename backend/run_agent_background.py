@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from services.langfuse import langfuse
-from services.agentops import start_agent_trace, end_agent_trace, initialize_agentops, flush_trace
+from services.agentops import start_agent_trace, end_agent_trace, initialize_agentops, flush_trace, end_conversation_trace
 from utils.retry import retry
 
 import sentry_sdk
@@ -173,7 +173,7 @@ async def run_agent_background(
     trace = langfuse.trace(name="agent_run", id=agent_run_id, session_id=thread_id, metadata={"project_id": project_id, "instance_id": instance_id})
     
     # Start AgentOps trace
-    agentops_trace = start_agent_trace(
+    agentops_trace = await start_agent_trace(
         agent_run_id=agent_run_id,
         thread_id=thread_id,
         project_id=project_id,
@@ -343,6 +343,10 @@ async def run_agent_background(
                 trace_context=agentops_trace,
                 status=final_status,
                 error=error_message
+            )
+            # End the conversation trace
+            await end_conversation_trace(
+                thread_id=thread_id
             )
 
         logger.info(f"Agent run background task fully completed for: {agent_run_id} (Instance: {instance_id}) with final status: {final_status}")

@@ -10,6 +10,7 @@ import agentops
 from agentops import StatusCode, TraceContext, tracer
 from agentops.semconv import SpanKind, SpanAttributes, CoreAttributes
 from opentelemetry.trace.status import Status
+from services import redis
 from utils.logger import logger
 from contextlib import asynccontextmanager
 import contextvars
@@ -20,9 +21,8 @@ import asyncio
 _initialized = False
 _current_trace_context: Optional[TraceContext] = None
 
-# Cache for conversation traces (thread_id -> TraceContext)
-_conversation_traces: Dict[str, TraceContext] = {}
-
+# In-memory cache for TraceContext objects to avoid repeated Redis lookups within a single process
+_local_trace_cache: Dict[str, TraceContext] = {}
 # Context variable for async trace propagation
 agentops_trace_context: contextvars.ContextVar[Optional[TraceContext]] = contextvars.ContextVar(
     'agentops_trace_context', 
@@ -60,7 +60,7 @@ def initialize_agentops():
         _initialized = False
 
 
-def start_agent_trace(
+async def start_agent_trace(
     agent_run_id: str,
     thread_id: str,
     project_id: str,
@@ -88,7 +88,7 @@ def start_agent_trace(
     
     try:
         # Get or create conversation trace
-        conversation_trace = get_or_create_conversation_trace(thread_id, project_id, model_name)
+        conversation_trace = await get_or_create_conversation_trace(thread_id, project_id, model_name)
         if not conversation_trace:
             logger.error("Failed to get conversation trace")
             return None
@@ -102,7 +102,11 @@ def start_agent_trace(
         
         if tracer.initialized:
             # Create the tags
-            tags = [agent_run_id, thread_id, project_id, model_name]
+            tags = [
+                f"agent-run-{agent_run_id}",
+                f"thread-{thread_id}",
+                f"project-{project_id}",
+            ]
             
             # Create span attributes
             attributes = {
@@ -698,20 +702,17 @@ async def flush_trace() -> None:
             tracer._flush_span_processors()
             logger.debug("Flushed pending spans")
             
-            # Small delay to ensure flush completes
-            await asyncio.sleep(0.1)
-            
     except Exception as e:
         logger.error(f"Failed to flush trace: {str(e)}")
 
 
-def get_or_create_conversation_trace(
+async def get_or_create_conversation_trace(
     thread_id: str,
     project_id: str,
     model_name: str
 ) -> Optional[TraceContext]:
     """
-    Get existing conversation trace or create a new one.
+    Get existing conversation trace from Redis/cache or create a new one.
     
     Args:
         thread_id: Thread ID for the conversation
@@ -721,29 +722,40 @@ def get_or_create_conversation_trace(
     Returns:
         TraceContext object if successful, None otherwise
     """
-    global _conversation_traces
+    global _local_trace_cache
     
     if not _initialized:
         logger.debug("AgentOps not initialized, skipping trace creation")
         return None
     
-    # Check if we already have a trace for this thread
-    if thread_id in _conversation_traces:
-        trace_context = _conversation_traces[thread_id]
+    # Check local cache first
+    if thread_id in _local_trace_cache:
+        trace_context = _local_trace_cache[thread_id]
         logger.debug(f"Using existing conversation trace for thread {thread_id}")
-        
-        # Set in async context for propagation
         agentops_trace_context.set(trace_context)
         return trace_context
-    
+
+    redis_key = f"agentops_trace:{thread_id}"
     try:
-        # Create new conversation trace
+        existing_trace_id = await redis.get(redis_key)
+        if existing_trace_id:
+            logger.debug(f"Resuming conversation trace for thread {thread_id} with trace_id {existing_trace_id}")
+            # Reconstruct the TraceContext. This assumes the SDK's tracer will pick up
+            # the context based on a reconstructed object.
+            span, _, _ = tracer.make_span(f"conversation_{thread_id}", span_kind=SpanKind.SESSION, attributes={'trace_id': existing_trace_id})
+            trace_context = TraceContext(span)
+            _local_trace_cache[thread_id] = trace_context
+            agentops_trace_context.set(trace_context)
+            return trace_context
+
+        # If no trace in Redis, create a new one
         trace_name = f"conversation_{thread_id}"
-        tags = [thread_id, project_id, model_name]
+        tags = [thread_id, project_id]
         
         # Start the trace
         trace_context = agentops.start_trace(trace_name=trace_name, tags=tags)
-        _conversation_traces[thread_id] = trace_context
+        await redis.set(redis_key, trace_context.span.get_span_context().trace_id, ex=3600 * 24) # 24-hour TTL
+        _local_trace_cache[thread_id] = trace_context
         
         # Set in async context for propagation
         agentops_trace_context.set(trace_context)
@@ -756,33 +768,34 @@ def get_or_create_conversation_trace(
         return None
 
 
-def end_conversation_trace(thread_id: str) -> None:
+async def end_conversation_trace(thread_id: str) -> None:
     """
     End a conversation trace and remove it from cache.
     
     Args:
         thread_id: Thread ID for the conversation
     """
-    global _conversation_traces
+    global _local_trace_cache
+    redis_key = f"agentops_trace:{thread_id}"
     
     if not _initialized:
         return
     
-    if thread_id not in _conversation_traces:
-        logger.debug(f"No conversation trace found for thread {thread_id}")
-        return
-    
     try:
-        trace_context = _conversation_traces[thread_id]
-        
-        # End the trace
-        agentops.end_trace(trace_context=trace_context, end_state=agentops.SUCCESS)
-        
-        # Remove from cache
-        del _conversation_traces[thread_id]
+        trace_context = None
+        if thread_id in _local_trace_cache:
+            trace_context = _local_trace_cache[thread_id]
+            agentops.end_trace(trace_context=trace_context, end_state=agentops.SUCCESS)
+            del _local_trace_cache[thread_id]
+        else:
+            logger.warning(f"No local TraceContext for thread {thread_id}, cannot end trace in AgentOps. Cleaning up Redis.")
+
+        # Remove from Redis
+        await redis.delete(redis_key)
         
         # Clear async context if it matches
-        if agentops_trace_context.get() == trace_context:
+        current_context = agentops_trace_context.get()
+        if current_context and trace_context and current_context.trace_id == trace_context.trace_id:
             agentops_trace_context.set(None)
             
         logger.info(f"Ended conversation trace for thread {thread_id}")
