@@ -786,8 +786,8 @@ async def run_agent(
                                         last_tool_call = xml_tool
                                         logger.info(f"Agent used XML tool: {xml_tool}")
                                         if trace:
-                                                trace.event(name="agent_used_xml_tool", level="DEFAULT", status_message=f"Agent used XML tool: {xml_tool}")
-                                                record_event(name="agent_used_xml_tool", level="DEFAULT", message=f"Agent used XML tool: {xml_tool}")
+                                            trace.event(name="agent_used_xml_tool", level="DEFAULT", status_message=f"Agent used XML tool: {xml_tool}")
+                                        record_event(name="agent_used_xml_tool", level="DEFAULT", message=f"Agent used XML tool: {xml_tool}")
                             
                             except json.JSONDecodeError:
                                 # Handle cases where content might not be valid JSON
@@ -812,9 +812,9 @@ async def run_agent(
                     logger.info(f"Stopping due to error detected in response")
                     if trace:
                         trace.event(name="stopping_due_to_error_detected_in_response", level="DEFAULT", status_message=("Stopping due to error detected in response"))
+                    record_event(name="stopping_due_to_error_detected_in_response", level="DEFAULT", message="Stopping due to error detected in response")
                     if generation:
-                        record_event(name="stopping_due_to_error_detected_in_response", level="DEFAULT", message="Stopping due to error detected in response")
-                    generation.end(output=full_response, status_message="error_detected", level="ERROR")
+                        generation.end(output=full_response, status_message="error_detected", level="ERROR")
                     break
                     
                 if agent_should_terminate or last_tool_call in ['ask', 'complete', 'web-browser-takeover']:
