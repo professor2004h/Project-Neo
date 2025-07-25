@@ -495,7 +495,7 @@ Here are the XML tools available with examples:
                             llm_model=llm_model,
                             can_auto_continue=(native_max_auto_continues > 0),
                             auto_continue_count=auto_continue_count,
-                            continuous_state=continuous_state
+                            continuous_state=continuous_state,
                             llm_span_context=llm_span_context,
                         )
                     else:
