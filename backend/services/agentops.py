@@ -795,7 +795,7 @@ async def end_conversation_trace(thread_id: str) -> None:
         
         # Clear async context if it matches
         current_context = agentops_trace_context.get()
-        if current_context and trace_context and current_context.trace_id == trace_context.trace_id:
+        if current_context and trace_context and current_context.span.get_span_context().trace_id == trace_context.span.get_span_context().trace_id:
             agentops_trace_context.set(None)
             
         logger.info(f"Ended conversation trace for thread {thread_id}")

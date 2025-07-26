@@ -29,10 +29,10 @@ from langfuse.client import StatefulTraceClient
 from agent.gemini_prompt import get_gemini_system_prompt
 from agent.tools.mcp_tool_wrapper import MCPToolWrapper
 from agentpress.tool import SchemaType
-from agentops.semconv import AgentAttributes, SpanKind, CoreAttributes
+from agentops.semconv import AgentAttributes, SpanKind, SpanAttributes
 from agentops import tracer, StatusCode
 import agentops
-from services.agentops import record_event, agentops_trace_context
+from services.agentops import record_event, agentops_trace_context, end_conversation_trace
 from opentelemetry.trace.status import Status
 
 load_dotenv()
@@ -313,7 +313,7 @@ async def run_agent(
                         "mcp_tool_registration",
                         SpanKind.OPERATION,
                         attributes={
-                            CoreAttributes.OPERATION_NAME: "mcp_tool_registration",
+                            SpanAttributes.OPERATION_NAME: "mcp_tool_registration",
                             "mcp.server_count": len(all_mcps),
                             "mcp.custom_count": len(agent_config.get('custom_mcps', []))
                         }
@@ -535,7 +535,7 @@ async def run_agent(
                     "browser_state_capture",
                     SpanKind.OPERATION,
                     attributes={
-                        CoreAttributes.OPERATION_NAME: "browser_state_capture",
+                        SpanAttributes.OPERATION_NAME: "browser_state_capture",
                         "browser.thread_id": thread_id
                     }
                 )
@@ -861,3 +861,4 @@ async def run_agent(
             generation.end(output=full_response)
 
     asyncio.create_task(asyncio.to_thread(lambda: langfuse.flush()))
+    asyncio.create_task(end_conversation_trace(thread_id))
