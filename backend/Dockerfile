@@ -38,8 +38,12 @@ COPY --from=builder /app/.venv /app/.venv
 # Copy application code
 COPY . .
 
-# Ensure we use the virtual environment
-ENV PATH="/app/.venv/bin:$PATH"
+# Calculate optimal worker count based on 16 vCPUs
+# Using (2*CPU)+1 formula for CPU-bound applications
+ENV WORKERS=7
+ENV THREADS=2
+ENV WORKER_CONNECTIONS=2000
+
 ENV PYTHONPATH=/app
 EXPOSE 8000
 
