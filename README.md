@@ -30,15 +30,22 @@ Suna's powerful toolkit includes seamless browser automation to navigate the web
 
 ## Table of Contents
 
-- [Suna Architecture](#project-architecture)
-  - [Backend API](#backend-api)
-  - [Frontend](#frontend)
-  - [Agent Docker](#agent-docker)
-  - [Supabase Database](#supabase-database)
-- [Use Cases](#use-cases)
-- [Self-Hosting](#self-hosting)
-- [Acknowledgements](#acknowledgements)
-- [License](#license)
+- [Suna - Open Source Generalist AI Agent](#suna---open-source-generalist-ai-agent)
+  - [Table of Contents](#table-of-contents)
+  - [Project Architecture](#project-architecture)
+    - [Backend API](#backend-api)
+    - [Frontend](#frontend)
+    - [Agent Docker](#agent-docker)
+    - [Supabase Database](#supabase-database)
+  - [Use Cases](#use-cases)
+  - [Self-Hosting](#self-hosting)
+    - [Quick Start](#quick-start)
+    - [Manual Setup](#manual-setup)
+  - [Contributing](#contributing)
+  - [Acknowledgements](#acknowledgements)
+    - [Main Contributors](#main-contributors)
+    - [Technologies](#technologies)
+  - [License](#license)
 
 ## Project Architecture
 
@@ -146,6 +153,7 @@ We welcome contributions from the community! Please see our [Contributing Guide]
 
 ### Technologies
 
+- [AgentOps](https://agentops.ai/) - Agent observability and monitoring
 - [Daytona](https://daytona.io/) - Secure agent execution environment
 - [Supabase](https://supabase.com/) - Database and authentication
 - [Playwright](https://playwright.dev/) - Browser automation
