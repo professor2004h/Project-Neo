@@ -171,7 +171,7 @@ def load_existing_env_vars():
             "PIPEDREAM_CLIENT_SECRET": backend_env.get("PIPEDREAM_CLIENT_SECRET", ""),
             "PIPEDREAM_X_PD_ENVIRONMENT": backend_env.get("PIPEDREAM_X_PD_ENVIRONMENT", ""),
         },
-        "observability": {
+        "agentops": {
             "AGENTOPS_API_KEY": backend_env.get("AGENTOPS_API_KEY", ""),
             "AGENTOPS_LOG_LEVEL": backend_env.get("AGENTOPS_LOG_LEVEL", "INFO"),
         },
@@ -271,7 +271,7 @@ class SetupWizard:
             "webhook": existing_env_vars["webhook"],
             "mcp": existing_env_vars["mcp"],
             "pipedream": existing_env_vars["pipedream"],
-            "observability": existing_env_vars["observability"],
+            "agentops": existing_env_vars["agentops"],
         }
 
         # Override with any progress data (in case user is resuming)
@@ -375,7 +375,7 @@ class SetupWizard:
             config_items.append(f"{Colors.YELLOW}○{Colors.ENDC} Morph (recommended)")
 
         # Check AgentOps (optional) configuration
-        if self.env_vars.get("observability", {}).get("AGENTOPS_API_KEY"):
+        if self.env_vars.get("agentops", {}).get("AGENTOPS_API_KEY"):
             config_items.append(f"{Colors.GREEN}✓{Colors.ENDC} AgentOps (optional)")
         else:
             config_items.append(f"{Colors.CYAN}○{Colors.ENDC} AgentOps (optional)")
@@ -1164,11 +1164,11 @@ class SetupWizard:
 
     def collect_agentops_keys(self):
         """Collects the optional AgentOps observability configuration."""
-        print_step(15, self.total_steps, "Collecting Observability Configuration (Optional)")
+        print_step(15, self.total_steps, "Collecting AgentOps Configuration (Optional)")
 
         # Check if we already have values configured
-        existing_key = self.env_vars.get("observability", {}).get("AGENTOPS_API_KEY", "")
-        existing_log_level = self.env_vars.get("observability", {}).get("AGENTOPS_LOG_LEVEL", "INFO")
+        existing_key = self.env_vars.get("agentops", {}).get("AGENTOPS_API_KEY", "")
+        existing_log_level = self.env_vars.get("agentops", {}).get("AGENTOPS_LOG_LEVEL", "INFO")
         
         if existing_key:
             print_info(
@@ -1182,9 +1182,9 @@ class SetupWizard:
             )
             print_info("This is optional - you can skip it and add it later.")
 
-        # Initialize observability dict if it doesn't exist
-        if "observability" not in self.env_vars:
-            self.env_vars["observability"] = {}
+        # Initialize agentops dict if it doesn't exist
+        if "agentops" not in self.env_vars:
+            self.env_vars["agentops"] = {}
 
         agentops_key = self._get_input(
             "Enter your AgentOps API key (or press Enter to skip): ",
@@ -1193,7 +1193,7 @@ class SetupWizard:
             allow_empty=True,
             default_value=existing_key,
         )
-        self.env_vars["observability"]["AGENTOPS_API_KEY"] = agentops_key
+        self.env_vars["agentops"]["AGENTOPS_API_KEY"] = agentops_key
 
         if agentops_key:
             # Ask for log level only if API key is provided
@@ -1207,11 +1207,11 @@ class SetupWizard:
                 print_warning(f"Invalid log level '{log_level}'. Using default 'INFO'.")
                 log_level = "INFO"
             
-            self.env_vars["observability"]["AGENTOPS_LOG_LEVEL"] = log_level
+            self.env_vars["agentops"]["AGENTOPS_LOG_LEVEL"] = log_level
             print_success(f"AgentOps configuration saved with log level: {log_level}")
         else:
             # Set default log level even if no API key
-            self.env_vars["observability"]["AGENTOPS_LOG_LEVEL"] = "INFO"
+            self.env_vars["agentops"]["AGENTOPS_LOG_LEVEL"] = "INFO"
             print_info("Skipping AgentOps configuration.")
 
     def configure_env_files(self):
@@ -1239,7 +1239,7 @@ class SetupWizard:
             **self.env_vars["webhook"],
             **self.env_vars["mcp"],
             **self.env_vars["pipedream"],
-            **self.env_vars["observability"],
+            **self.env_vars["agentops"],
             **self.env_vars["daytona"],
             "NEXT_PUBLIC_URL": "http://localhost:3000",
         }
