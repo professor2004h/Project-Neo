@@ -28,7 +28,7 @@ from .config_helper import extract_agent_config, build_unified_config, extract_t
 from .versioning.facade import version_manager
 from .versioning.api.routes import router as version_router
 from .versioning.infrastructure.dependencies import set_db_connection
-from agent.services.suna_default_agent_service import SunaDefaultAgentService
+from utils.suna_default_agent_service import SunaDefaultAgentService
 
 router = APIRouter()
 router.include_router(version_router)
@@ -243,8 +243,6 @@ async def stop_agent_run(agent_run_id: str, error_message: Optional[str] = None)
 
     logger.info(f"Successfully initiated stop process for agent run: {agent_run_id}")
 
-
-
 async def get_agent_run_with_access_check(client, agent_run_id: str, user_id: str):
     agent_run = await client.table('agent_runs').select('*').eq('id', agent_run_id).execute()
     if not agent_run.data:
@@ -254,8 +252,6 @@ async def get_agent_run_with_access_check(client, agent_run_id: str, user_id: st
     thread_id = agent_run_data['thread_id']
     await verify_thread_access(client, thread_id, user_id)
     return agent_run_data
-
-
 
 
 @router.post("/thread/{thread_id}/agent/start")
@@ -291,19 +287,17 @@ async def start_agent(
     client = await db.client
 
     await verify_thread_access(client, thread_id, user_id)
-    thread_result = await client.table('threads').select('project_id', 'account_id', 'agent_id', 'metadata').eq('thread_id', thread_id).execute()
+    thread_result = await client.table('threads').select('project_id', 'account_id', 'metadata').eq('thread_id', thread_id).execute()
     if not thread_result.data:
         raise HTTPException(status_code=404, detail="Thread not found")
     thread_data = thread_result.data[0]
     project_id = thread_data.get('project_id')
     account_id = thread_data.get('account_id')
-    thread_agent_id = thread_data.get('agent_id')
     thread_metadata = thread_data.get('metadata', {})
 
     structlog.contextvars.bind_contextvars(
         project_id=project_id,
         account_id=account_id,
-        thread_agent_id=thread_agent_id,
         thread_metadata=thread_metadata,
     )
     
@@ -316,11 +310,10 @@ async def start_agent(
     
     # Load agent configuration with version support
     agent_config = None
-    effective_agent_id = body.agent_id or thread_agent_id  # Use provided agent_id or the one stored in thread
+    effective_agent_id = body.agent_id  # Optional agent ID from request
     
     logger.info(f"[AGENT LOAD] Agent loading flow:")
     logger.info(f"  - body.agent_id: {body.agent_id}")
-    logger.info(f"  - thread_agent_id: {thread_agent_id}")
     logger.info(f"  - effective_agent_id: {effective_agent_id}")
     
     if effective_agent_id:
@@ -359,7 +352,7 @@ async def start_agent(
                 logger.info(f"Using agent {agent_config['name']} ({effective_agent_id}) version {agent_config.get('version_name', 'v1')}")
             else:
                 logger.info(f"Using agent {agent_config['name']} ({effective_agent_id}) - no version data")
-            source = "request" if body.agent_id else "thread"
+            source = "request" if body.agent_id else "fallback"
     else:
         logger.info(f"[AGENT LOAD] No effective_agent_id, will try default agent")
     
@@ -399,8 +392,6 @@ async def start_agent(
     logger.info(f"[AGENT LOAD] Final agent_config: {agent_config is not None}")
     if agent_config:
         logger.info(f"[AGENT LOAD] Agent config keys: {list(agent_config.keys())}")
-
-    if body.agent_id and body.agent_id != thread_agent_id and agent_config:
         logger.info(f"Using agent {agent_config['agent_id']} for this agent run (thread remains agent-agnostic)")
 
     can_use, model_message, allowed_models = await can_use_model(client, account_id, model_name)
@@ -516,8 +507,8 @@ async def get_agent_run(agent_run_id: str, user_id: str = Depends(get_current_us
 
 @router.get("/thread/{thread_id}/agent", response_model=ThreadAgentResponse)
 async def get_thread_agent(thread_id: str, user_id: str = Depends(get_current_user_id_from_jwt)):
-    """Get the agent details for a specific thread. Since threads are now agent-agnostic, 
-    this returns the most recently used agent or the default agent."""
+    """Get the agent details for a specific thread. Since threads are fully agent-agnostic, 
+    this returns the most recently used agent from agent_runs only."""
     structlog.contextvars.bind_contextvars(
         thread_id=thread_id,
     )
@@ -525,21 +516,20 @@ async def get_thread_agent(thread_id: str, user_id: str = Depends(get_current_us
     client = await db.client
     
     try:
-        # Verify thread access and get thread data including agent_id
+        # Verify thread access and get thread data
         await verify_thread_access(client, thread_id, user_id)
-        thread_result = await client.table('threads').select('agent_id', 'account_id').eq('thread_id', thread_id).execute()
+        thread_result = await client.table('threads').select('account_id').eq('thread_id', thread_id).execute()
         
         if not thread_result.data:
             raise HTTPException(status_code=404, detail="Thread not found")
         
         thread_data = thread_result.data[0]
-        thread_agent_id = thread_data.get('agent_id')
         account_id = thread_data.get('account_id')
         
         effective_agent_id = None
         agent_source = "none"
         
-        # First, try to get the most recently used agent from agent_runs
+        # Get the most recently used agent from agent_runs
         recent_agent_result = await client.table('agent_runs').select('agent_id', 'agent_version_id').eq('thread_id', thread_id).not_.is_('agent_id', 'null').order('created_at', desc=True).limit(1).execute()
         if recent_agent_result.data:
             effective_agent_id = recent_agent_result.data[0]['agent_id']
@@ -547,26 +537,12 @@ async def get_thread_agent(thread_id: str, user_id: str = Depends(get_current_us
             agent_source = "recent"
             logger.info(f"Found most recently used agent: {effective_agent_id} (version: {recent_version_id})")
         
-        # If no recent agent, fall back to thread default agent
-        elif thread_agent_id:
-            effective_agent_id = thread_agent_id
-            agent_source = "thread"
-            logger.info(f"Using thread default agent: {effective_agent_id}")
-        
-        # If no thread agent, try to get the default agent for the account
-        else:
-            default_agent_result = await client.table('agents').select('agent_id').eq('account_id', account_id).eq('is_default', True).execute()
-            if default_agent_result.data:
-                effective_agent_id = default_agent_result.data[0]['agent_id']
-                agent_source = "default"
-                logger.info(f"Using account default agent: {effective_agent_id}")
-        
-        # If still no agent found
+        # If no agent found in agent_runs
         if not effective_agent_id:
             return {
                 "agent": None,
                 "source": "none",
-                "message": "No agent configured for this thread. Threads are agent-agnostic - you can select any agent."
+                "message": "No agent has been used in this thread yet. Threads are agent-agnostic - use /agent/start to select an agent."
             }
         
         # Fetch the agent details
@@ -2243,11 +2219,17 @@ async def get_pipedream_tools_for_agent(
             available_tools = server.available_tools
             
             formatted_tools = []
+            def tools_match(api_tool_name, stored_tool_name):
+                api_normalized = api_tool_name.lower().replace('-', '_')
+                stored_normalized = stored_tool_name.lower().replace('-', '_')
+                return api_normalized == stored_normalized
+            
             for tool in available_tools:
+                is_enabled = any(tools_match(tool.name, stored_tool) for stored_tool in enabled_tools)
                 formatted_tools.append({
                     'name': tool.name,
                     'description': tool.description or f"Tool from {profile.app_name}",
-                    'enabled': tool.name in enabled_tools
+                    'enabled': is_enabled
                 })
             
             return {
@@ -2285,9 +2267,8 @@ async def update_pipedream_tools_for_agent(
 ):
     try:
         client = await db.client
-        
         agent_row = await client.table('agents')\
-            .select('custom_mcps')\
+            .select('config')\
             .eq('agent_id', agent_id)\
             .eq('account_id', user_id)\
             .maybe_single()\
@@ -2295,7 +2276,9 @@ async def update_pipedream_tools_for_agent(
         if not agent_row.data:
             raise HTTPException(status_code=404, detail="Agent not found")
 
-        custom_mcps = agent_row.data.get('custom_mcps', []) or []
+        agent_config = agent_row.data.get('config', {})
+        tools = agent_config.get('tools', {})
+        custom_mcps = tools.get('custom_mcp', []) or []
 
         if any(mcp.get('config', {}).get('profile_id') == profile_id for mcp in custom_mcps):
             raise HTTPException(status_code=400, detail="This profile is already added to this agent")
@@ -2336,7 +2319,9 @@ async def get_custom_mcp_tools_for_agent(
             raise HTTPException(status_code=404, detail="Agent not found")
         
         agent = agent_result.data[0]
-        custom_mcps = agent.get('custom_mcps', [])
+        agent_config = agent.get('config', {})
+        tools = agent_config.get('tools', {})
+        custom_mcps = tools.get('custom_mcp', [])
         
         mcp_url = request.headers.get('X-MCP-URL')
         mcp_type = request.headers.get('X-MCP-Type', 'sse')
@@ -2409,7 +2394,9 @@ async def update_custom_mcp_tools_for_agent(
             raise HTTPException(status_code=404, detail="Agent not found")
         
         agent = agent_result.data[0]
-        custom_mcps = agent.get('custom_mcps', [])
+        agent_config = agent.get('config', {})
+        tools = agent_config.get('tools', {})
+        custom_mcps = tools.get('custom_mcp', [])
         
         mcp_url = request.get('url')
         mcp_type = request.get('type', 'sse')
@@ -2438,8 +2425,12 @@ async def update_custom_mcp_tools_for_agent(
             }
             custom_mcps.append(new_mcp_config)
         
+        # Update the config structure with the modified custom MCPs
+        tools['custom_mcp'] = custom_mcps
+        agent_config['tools'] = tools
+        
         update_result = await client.table('agents').update({
-            'custom_mcps': custom_mcps
+            'config': agent_config
         }).eq('agent_id', agent_id).execute()
         
         if not update_result.data:
@@ -2522,26 +2513,5 @@ async def get_agent_tools(
             mcp_tools.append({"name": tool_name, "server": server, "enabled": True})
     return {"agentpress_tools": agentpress_tools, "mcp_tools": mcp_tools}
 
-@router.post("/admin/suna-agents/install-user/{account_id}")
-async def admin_install_suna_for_user(
-    account_id: str,
-    replace_existing: bool = False,
-    _: bool = Depends(verify_admin_api_key)
-):
-    logger.info(f"Admin installing Suna agent for user: {account_id}")
-    
-    service = SunaDefaultAgentService()
-    agent_id = await service.install_suna_agent_for_user(account_id, replace_existing)
-    
-    if agent_id:
-        return {
-            "success": True,
-            "message": f"Successfully installed Suna agent for user {account_id}",
-            "agent_id": agent_id
-        }
-    else:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to install Suna agent for user {account_id}"
-        )
+
 
