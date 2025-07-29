@@ -109,6 +109,10 @@ WEBHOOK_BASE_URL=https://yourdomain.com
 # MCP Configuration
 MCP_CREDENTIAL_ENCRYPTION_KEY=your-generated-encryption-key
 
+# Observability and Monitoring
+AGENTOPS_API_KEY=your-agentops-api-key
+AGENTOPS_LOG_LEVEL=INFO
+
 # Optional APIs
 RAPID_API_KEY=your-rapidapi-key
 SMITHERY_API_KEY=your-smithery-key
@@ -251,6 +255,20 @@ The feature flag system includes robust error handling:
 - Backend operations are direct Redis calls (no caching)
 - Frontend includes 5-minute caching for performance
 - Use `clearCache()` in frontend to force refresh
+
+---
+
+## Observability
+
+Suna includes comprehensive observability and monitoring through [AgentOps](https://agentops.ai/).
+
+### Getting Started
+
+1. Sign up at the [AgentOps](https://app.agentops.ai) dashboard and create a project
+2. Copy your API key from the project settings or the API Keys in the side bar.
+3. Add the API key to your `.env` file as `AGENTOPS_API_KEY` or provide it when the `setup.py` is run.
+
+AgentOps will automatically start collecting telemetry data for all agent runs, LLM calls, and tool executions.
 
 ---
 
