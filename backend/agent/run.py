@@ -30,6 +30,7 @@ from langfuse.client import StatefulTraceClient
 from services.langfuse import langfuse
 from agent.gemini_prompt import get_gemini_system_prompt
 from agent.tools.mcp_tool_wrapper import MCPToolWrapper
+from agent.tools.task_list_tool import TaskListTool
 from agentpress.tool import SchemaType
 
 load_dotenv()
@@ -128,6 +129,9 @@ async def run_agent(
         thread_manager.add_tool(WorkflowTool, thread_manager=thread_manager, db_connection=db, agent_id=target_agent_id)
         thread_manager.add_tool(TriggerTool, thread_manager=thread_manager, db_connection=db, agent_id=target_agent_id)
         
+
+    # register TaskListTool for all agents
+    thread_manager.add_tool(TaskListTool, project_id=project_id, thread_manager=thread_manager, thread_id=thread_id)
 
     if enabled_tools is None:
         logger.info("No agent specified - registering all tools for full Suna capabilities")
