@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { ArrowDown, CircleDashed, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UnifiedMessage, ParsedContent, ParsedMetadata } from '@/components/thread/types';
@@ -363,6 +363,38 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
         messagesEndRef.current?.scrollIntoView({ behavior });
     }, []);
+
+    // Consolidated auto-scroll effect for all streaming scenarios
+    useEffect(() => {
+        const shouldAutoScroll = (
+            // Agent is actively streaming
+            (agentStatus === 'running' || agentStatus === 'connecting') ||
+            // Streaming text content is present
+            (streamingTextContent && (agentStatus === 'running' || agentStatus === 'connecting')) ||
+            // Streaming tool call is present
+            (streamingToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) ||
+            // New messages during streaming
+            (messages.length > 0 && (agentStatus === 'running' || agentStatus === 'connecting')) ||
+            // Playback mode streaming text
+            (readOnly && isStreamingText && streamingText) ||
+            // Playback mode tool call
+            (readOnly && currentToolCall)
+        );
+
+        if (shouldAutoScroll) {
+            scrollToBottom('smooth');
+        }
+    }, [
+        agentStatus,
+        streamingTextContent,
+        streamingToolCall,
+        messages.length,
+        readOnly,
+        isStreamingText,
+        streamingText,
+        currentToolCall,
+        scrollToBottom
+    ]);
 
     // Preload all message attachments when messages change or sandboxId is provided
     React.useEffect(() => {
