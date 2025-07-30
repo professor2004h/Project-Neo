@@ -1607,23 +1607,23 @@ async def create_agent(
                 change_description="Initial version"
             )
             
-            agent['current_version_id'] = version['version_id']
+            agent['current_version_id'] = version.version_id
             agent['version_count'] = 1
             
-            # Create proper AgentVersionResponse from version dict
+            # Create proper AgentVersionResponse from version object
             current_version = AgentVersionResponse(
-                version_id=version['version_id'],
-                agent_id=version['agent_id'],
-                version_number=version['version_number'],
-                version_name=version['version_name'],
-                system_prompt=version['system_prompt'],
-                configured_mcps=version.get('configured_mcps', []),
-                custom_mcps=version.get('custom_mcps', []),
-                agentpress_tools=version.get('agentpress_tools', {}),
-                is_active=version.get('is_active', True),
-                created_at=version['created_at'],
-                updated_at=version.get('updated_at', version['created_at']),
-                created_by=version.get('created_by')
+                version_id=version.version_id,
+                agent_id=version.agent_id,
+                version_number=version.version_number,
+                version_name=version.version_name,
+                system_prompt=version.system_prompt,
+                configured_mcps=version.configured_mcps,
+                custom_mcps=version.custom_mcps,
+                agentpress_tools=version.agentpress_tools,
+                is_active=version.is_active,
+                created_at=version.created_at.isoformat(),
+                updated_at=version.updated_at.isoformat(),
+                created_by=version.created_by
             )
         except Exception as e:
             logger.error(f"Error creating initial version: {str(e)}")
@@ -1639,10 +1639,10 @@ async def create_agent(
             account_id=agent['account_id'],
             name=agent['name'],
             description=agent.get('description'),
-            system_prompt=version['system_prompt'],
-            configured_mcps=version.get('configured_mcps', []),
-            custom_mcps=version.get('custom_mcps', []),
-            agentpress_tools=version.get('agentpress_tools', {}),
+            system_prompt=version.system_prompt,
+            configured_mcps=version.configured_mcps,
+            custom_mcps=version.custom_mcps,
+            agentpress_tools=version.agentpress_tools,
             is_default=agent.get('is_default', False),
             is_public=agent.get('is_public', False),
             tags=agent.get('tags', []),
@@ -2502,6 +2502,3 @@ async def get_agent_tools(
         for tool_name in enabled_tools:
             mcp_tools.append({"name": tool_name, "server": server, "enabled": True})
     return {"agentpress_tools": agentpress_tools, "mcp_tools": mcp_tools}
-
-
-
