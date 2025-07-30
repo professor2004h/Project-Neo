@@ -366,15 +366,17 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
     // Consolidated auto-scroll effect for all streaming scenarios
     useEffect(() => {
+        const isStreaming = agentStatus === 'running' || agentStatus === 'connecting';
+        
         const shouldAutoScroll = (
             // Agent is actively streaming
-            (agentStatus === 'running' || agentStatus === 'connecting') ||
+            isStreaming ||
             // Streaming text content is present
-            (streamingTextContent && (agentStatus === 'running' || agentStatus === 'connecting')) ||
+            (streamingTextContent && isStreaming) ||
             // Streaming tool call is present
-            (streamingToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) ||
+            (streamingToolCall && isStreaming) ||
             // New messages during streaming
-            (messages.length > 0 && (agentStatus === 'running' || agentStatus === 'connecting')) ||
+            (messages.length > 0 && isStreaming) ||
             // Playback mode streaming text
             (readOnly && isStreamingText && streamingText) ||
             // Playback mode tool call
