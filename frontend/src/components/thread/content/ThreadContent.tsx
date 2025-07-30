@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { ArrowDown, CircleDashed, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UnifiedMessage, ParsedContent, ParsedMetadata } from '@/components/thread/types';
@@ -363,6 +363,48 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
         messagesEndRef.current?.scrollIntoView({ behavior });
     }, []);
+
+    // Auto-scroll during streaming
+    useEffect(() => {
+        if (agentStatus === 'running' || agentStatus === 'connecting') {
+            scrollToBottom('smooth');
+        }
+    }, [agentStatus, scrollToBottom]);
+
+    // Auto-scroll when streaming text content changes
+    useEffect(() => {
+        if (streamingTextContent && (agentStatus === 'running' || agentStatus === 'connecting')) {
+            scrollToBottom('smooth');
+        }
+    }, [streamingTextContent, agentStatus, scrollToBottom]);
+
+    // Auto-scroll when streaming tool call changes
+    useEffect(() => {
+        if (streamingToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
+            scrollToBottom('smooth');
+        }
+    }, [streamingToolCall, agentStatus, scrollToBottom]);
+
+    // Auto-scroll when new messages are added
+    useEffect(() => {
+        if (messages.length > 0 && (agentStatus === 'running' || agentStatus === 'connecting')) {
+            scrollToBottom('smooth');
+        }
+    }, [messages.length, agentStatus, scrollToBottom]);
+
+    // Auto-scroll during playback mode when streaming text changes
+    useEffect(() => {
+        if (readOnly && isStreamingText && streamingText) {
+            scrollToBottom('smooth');
+        }
+    }, [readOnly, isStreamingText, streamingText, scrollToBottom]);
+
+    // Auto-scroll during playback mode when current tool call changes
+    useEffect(() => {
+        if (readOnly && currentToolCall) {
+            scrollToBottom('smooth');
+        }
+    }, [readOnly, currentToolCall, scrollToBottom]);
 
     // Preload all message attachments when messages change or sandboxId is provided
     React.useEffect(() => {

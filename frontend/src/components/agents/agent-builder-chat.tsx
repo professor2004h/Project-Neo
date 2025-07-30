@@ -85,6 +85,13 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
     previousMessageCountRef.current = messages?.length || 0;
   }, [messages, messages?.length]);
 
+  // Auto-scroll during streaming
+  useEffect(() => {
+    if (agentStatus === 'running' || agentStatus === 'connecting') {
+      scrollToBottom();
+    }
+  }, [agentStatus]);
+
   useEffect(() => {
     if (chatHistoryQuery.data && chatHistoryQuery.status === 'success' && !hasInitiallyLoadedRef.current) {
       console.log('[AgentBuilderChat] Loading chat history for agent:', agentId);
