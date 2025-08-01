@@ -1005,14 +1005,18 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
             {/* Scroll to bottom button */}
             {showScrollButton && (
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-50 h-10 w-10 rounded-full shadow-lg bg-background/95 backdrop-blur border-border hover:bg-background"
-                    onClick={() => scrollToBottom('smooth')}
-                >
-                    <ArrowDown className="h-5 w-5" />
-                </Button>
+                <div className="relative">
+                    <div className="mx-auto max-w-3xl md:px-8 min-w-0">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-50 h-10 w-10 rounded-full shadow-lg bg-background/95 backdrop-blur border-border hover:bg-background"
+                            onClick={() => scrollToBottom('smooth')}
+                        >
+                            <ArrowDown className="h-5 w-5" />
+                        </Button>
+                    </div>
+                </div>
             )}
         </>
     );
