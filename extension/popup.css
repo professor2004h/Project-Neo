@@ -1,0 +1,421 @@
+/* Cambridge AI Tutor Chrome Extension - Popup Styles */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #333;
+  background: #f8f9fa;
+}
+
+.popup-container {
+  width: 350px;
+  min-height: 400px;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.popup-header {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  width: 24px;
+  height: 24px;
+}
+
+.popup-header h1 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.section {
+  padding: 16px;
+}
+
+/* Authentication Section */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-form h2 {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.auth-form input {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: #4CAF50;
+}
+
+.primary-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.primary-btn:hover {
+  background: #45a049;
+}
+
+.primary-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.auth-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.auth-links a {
+  color: #4CAF50;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.auth-links a:hover {
+  text-decoration: underline;
+}
+
+/* Main Section */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  background: #4CAF50;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+}
+
+.user-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#user-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+#user-role {
+  font-size: 12px;
+  color: #666;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.icon-btn:hover {
+  background: #e0e0e0;
+}
+
+/* Page Status */
+.page-status {
+  margin-bottom: 16px;
+}
+
+#page-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f0f8f0;
+  border-radius: 6px;
+  border-left: 4px solid #4CAF50;
+}
+
+.status-indicator {
+  font-size: 12px;
+}
+
+.status-indicator.educational {
+  color: #4CAF50;
+}
+
+.status-indicator.non-educational {
+  color: #ff9800;
+}
+
+#page-description {
+  font-size: 12px;
+  color: #666;
+}
+
+/* Quick Actions */
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #4CAF50;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.btn-text {
+  font-size: 14px;
+  color: #333;
+}
+
+/* Recent Activity */
+.recent-activity {
+  margin-bottom: 16px;
+}
+
+.recent-activity h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+#activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.activity-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.activity-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
+}
+
+.activity-time {
+  font-size: 11px;
+  color: #666;
+}
+
+/* Settings Section */
+.settings-section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-item label {
+  font-size: 13px;
+  color: #333;
+}
+
+.setting-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #4CAF50;
+}
+
+/* Loading Section */
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #4CAF50;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+#loading-section {
+  text-align: center;
+  padding: 32px 16px;
+}
+
+#loading-section p {
+  color: #666;
+  font-size: 14px;
+}
+
+/* Error Section */
+#error-section {
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.error-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.error-icon {
+  font-size: 32px;
+  color: #f44336;
+}
+
+#error-text {
+  color: #666;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 400px) {
+  .popup-container {
+    width: 320px;
+  }
+  
+  .section {
+    padding: 12px;
+  }
+  
+  .popup-header {
+    padding: 12px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #1a1a1a;
+    color: #e0e0e0;
+  }
+  
+  .popup-container {
+    background: #2d2d2d;
+  }
+  
+  .auth-form input {
+    background: #3d3d3d;
+    border-color: #555;
+    color: #e0e0e0;
+  }
+  
+  .user-info {
+    background: #3d3d3d;
+  }
+  
+  .action-btn {
+    background: #3d3d3d;
+    border-color: #555;
+  }
+  
+  .action-btn:hover:not(:disabled) {
+    background: #4d4d4d;
+  }
+  
+  .activity-item {
+    background: #3d3d3d;
+  }
+  
+  .btn-text {
+    color: #e0e0e0;
+  }
+}

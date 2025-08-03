@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cambridge AI Tutor</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <img src="icons/icon32.png" alt="Cambridge AI Tutor" class="logo">
+      <h1>Cambridge AI Tutor</h1>
+    </header>
+
+    <div id="auth-section" class="section">
+      <div class="auth-form">
+        <h2>Sign In</h2>
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button id="login-btn" class="primary-btn">Sign In</button>
+        <div class="auth-links">
+          <a href="#" id="register-link">Create Account</a>
+          <a href="#" id="forgot-link">Forgot Password?</a>
+        </div>
+      </div>
+    </div>
+
+    <div id="main-section" class="section" style="display: none;">
+      <div class="user-info">
+        <div class="user-avatar">
+          <span id="user-initial">U</span>
+        </div>
+        <div class="user-details">
+          <span id="user-name">User</span>
+          <span id="user-role">Parent</span>
+        </div>
+        <button id="logout-btn" class="icon-btn">⚙️</button>
+      </div>
+
+      <div class="page-status">
+        <div id="page-info">
+          <span class="status-indicator" id="educational-status">●</span>
+          <span id="page-description">Analyzing page...</span>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <button id="help-page-btn" class="action-btn">
+          <span class="btn-icon">❓</span>
+          <span class="btn-text">Get Help with Page</span>
+        </button>
+        
+        <button id="explain-selection-btn" class="action-btn" disabled>
+          <span class="btn-icon">💡</span>
+          <span class="btn-text">Explain Selection</span>
+        </button>
+        
+        <button id="practice-btn" class="action-btn">
+          <span class="btn-icon">📝</span>
+          <span class="btn-text">Practice Problems</span>
+        </button>
+      </div>
+
+      <div class="recent-activity">
+        <h3>Recent Activity</h3>
+        <div id="activity-list">
+          <div class="activity-item">
+            <span class="activity-icon">📚</span>
+            <div class="activity-details">
+              <span class="activity-title">Math Practice</span>
+              <span class="activity-time">2 minutes ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Settings</h3>
+        <div class="setting-item">
+          <label for="auto-help">Auto Help</label>
+          <input type="checkbox" id="auto-help" checked>
+        </div>
+        <div class="setting-item">
+          <label for="contextual-hints">Contextual Hints</label>
+          <input type="checkbox" id="contextual-hints" checked>
+        </div>
+        <div class="setting-item">
+          <label for="voice-enabled">Voice Interaction</label>
+          <input type="checkbox" id="voice-enabled">
+        </div>
+      </div>
+    </div>
+
+    <div id="loading-section" class="section" style="display: none;">
+      <div class="loading-spinner"></div>
+      <p>Loading...</p>
+    </div>
+
+    <div id="error-section" class="section" style="display: none;">
+      <div class="error-message">
+        <span class="error-icon">⚠️</span>
+        <p id="error-text">An error occurred</p>
+        <button id="retry-btn" class="primary-btn">Retry</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
