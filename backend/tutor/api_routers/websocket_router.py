@@ -13,7 +13,7 @@ import logging
 from services.supabase import DBConnection
 from utils.auth_utils import get_current_user_id_from_jwt_websocket
 from utils.logger import logger
-from ..services.realtime_sync_service import RealtimeUpdater, WebSocketConnectionManager
+from ..services.realtime_sync_service import RealtimeSyncService, WebSocketConnectionManager
 from ..services.progress_reporting_service import ProgressReportingService
 from ..services.tutor_service import TutorService
 
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/ws", tags=["WebSocket"])
 
 # Global connection managers
 connection_manager = WebSocketConnectionManager()
-realtime_updater = RealtimeUpdater()
+# Note: RealtimeSyncService will be initialized in endpoints with proper DB connection
 
 # WebSocket message types
 class MessageType:
@@ -259,6 +259,11 @@ async def handle_sync_operation(websocket: WebSocket, message_data: Dict[str, An
                                user_id: str, session_id: str):
     """Handle real-time synchronization operations"""
     try:
+        # Initialize database connection and realtime sync service
+        db = DBConnection()
+        await db.initialize()
+        realtime_updater = RealtimeSyncService(db)
+        
         if message_data.get("type") == "device_sync":
             # Real-time device synchronization
             device_id = message_data.get("device_id")
@@ -584,5 +589,5 @@ async def send_periodic_updates():
             logger.error(f"Error in periodic updates: {str(e)}")
             await asyncio.sleep(10)
 
-# Start background task when module loads
-asyncio.create_task(send_periodic_updates())
+# Note: Background task should be started in FastAPI startup event, not at module level
+# asyncio.create_task(send_periodic_updates())

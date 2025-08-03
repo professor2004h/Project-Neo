@@ -210,7 +210,7 @@ class TextToSpeechRequest(BaseModel):
     text: str = Field(min_length=1, max_length=5000)
     language_code: LanguageCode = LanguageCode.EN_US
     voice_name: Optional[str] = None
-    gender: Optional[str] = Field(default="neutral", regex="^(male|female|neutral)$")
+    gender: Optional[str] = Field(default="neutral", pattern="^(male|female|neutral)$")
     speaking_rate: float = Field(ge=0.25, le=4.0, default=1.0)
     pitch: float = Field(ge=-20.0, le=20.0, default=0.0)
     volume_gain_db: float = Field(ge=-96.0, le=16.0, default=0.0)

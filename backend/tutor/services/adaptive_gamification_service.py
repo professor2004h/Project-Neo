@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 import statistics
 import json
 import random
+from pydantic import BaseModel, Field, field_validator
 
 from utils.logger import logger
 from services.llm import make_llm_api_call
@@ -116,10 +117,6 @@ class GamificationStrategy(BaseModel):
         adaptations["ui_changes"]["theme"] = self.theme_elements
         
         return adaptations
-
-
-from pydantic import BaseModel, Field, field_validator
-import uuid
 
 
 class AdaptiveGamificationService:

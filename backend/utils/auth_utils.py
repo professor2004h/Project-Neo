@@ -402,6 +402,67 @@ async def verify_admin_api_key(x_admin_api_key: Optional[str] = Header(None)):
     
     return True
 
+async def get_current_user_id_from_jwt_websocket(websocket, token: Optional[str] = None) -> str:
+    """
+    Extract and verify the user ID from JWT for WebSocket connections.
+    
+    WebSocket connections handle authentication differently since they can't use 
+    standard Authorization headers. This function supports token-based authentication
+    for WebSocket connections.
+    
+    Args:
+        websocket: The WebSocket connection object
+        token: Optional JWT token from query parameters or initial message
+        
+    Returns:
+        str: The user ID extracted from the JWT
+        
+    Raises:
+        HTTPException: If no valid token is found or if the token is invalid
+    """
+    
+    # Get token from query parameters if not provided
+    if not token:
+        query_params = websocket.query_params
+        token = query_params.get('token')
+    
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="No authentication token provided for WebSocket connection"
+        )
+    
+    try:
+        # For Supabase JWT, decode and extract the user ID
+        payload = jwt.decode(token, options={"verify_signature": False})
+        user_id = payload.get('sub')
+        
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token payload - no user ID found"
+            )
+
+        sentry.sentry.set_user({ "id": user_id })
+        structlog.contextvars.bind_contextvars(
+            user_id=user_id,
+            auth_method="websocket_jwt"
+        )
+        return user_id
+        
+    except PyJWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid JWT token for WebSocket"
+        )
+    except Exception as e:
+        structlog.get_logger().error(f"WebSocket authentication error: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail="WebSocket authentication failed"
+        )
+
+
 async def verify_agent_access(client, agent_id: str, user_id: str) -> dict:
     """
     Verify that a user has access to a specific agent based on ownership.
