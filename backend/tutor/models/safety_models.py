@@ -81,3 +81,49 @@ class SessionTimeLimit(BaseModel):
         if v <= 0:
             raise ValueError('Time limits must be positive')
         return v
+
+
+class ModerationAction(str, Enum):
+    """Actions that can be taken for content moderation"""
+    ALLOW = "allow"
+    BLOCK = "block"
+    FLAG = "flag"
+    REVIEW = "review"
+    WARN = "warn"
+
+
+class ContentModerationResult(BaseModel):
+    """Result of content moderation analysis"""
+    moderation_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    content: str
+    is_safe: bool
+    confidence_score: float = Field(ge=0.0, le=1.0)
+    action: ModerationAction
+    categories_flagged: list[str] = Field(default_factory=list)
+    explanation: Optional[str] = None
+    processed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    class Config:
+        from_attributes = True
+
+
+class SafetyViolation(BaseModel):
+    """Simplified safety violation model"""
+    violation_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    child_id: str
+    violation_type: SafetyViolationType
+    description: str
+    severity: str = Field(default="medium")
+    detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    action_taken: ModerationAction
+    
+    @field_validator('severity')
+    @classmethod
+    def validate_severity(cls, v):
+        if v not in ['low', 'medium', 'high', 'critical']:
+            raise ValueError('Invalid severity level')
+        return v
+    
+    class Config:
+        from_attributes = True
