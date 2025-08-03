@@ -132,6 +132,32 @@ See the [Self-Hosting Guide](./docs/SELF-HOSTING.md) for detailed manual setup i
 
 The wizard will guide you through all necessary steps to get your Suna instance up and running. For detailed instructions, troubleshooting tips, and advanced configuration options, see the [Self-Hosting Guide](./docs/SELF-HOSTING.md).
 
+## Local Development
+
+For developers who want to contribute to Suna or run a lightweight local instance, we provide a streamlined setup script that configures only the essential services.
+
+### Quick Start for Local Development
+
+1. **Clone the repository** (if you haven't already):
+```bash
+git clone https://github.com/kortix-ai/suna.git
+cd suna
+```
+
+2. **Run the local development setup script**:
+```bash
+python local-dev.py
+```
+This script will guide you through configuring your Supabase and LLM provider credentials.
+
+3. **Check your environment status**:
+```bash
+python local-dev-status.py
+```
+This will verify that your environment is correctly configured and that all required services are running.
+
+For a more detailed guide on local development, including troubleshooting and advanced configuration, please see the [Local Development Guide](./docs/LOCAL_DEVELOPMENT.md).
+
 ## Contributing
 
 We welcome contributions from the community! Please see our [Contributing Guide](./CONTRIBUTING.md) for more details.
