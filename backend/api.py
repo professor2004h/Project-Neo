@@ -73,6 +73,7 @@ async def lifespan(app: FastAPI):
         pipedream_api.initialize(db)
         credentials_api.initialize(db)
         template_api.initialize(db)
+        tutor_api.initialize(db)
         
         yield
         
@@ -180,6 +181,9 @@ api_router.include_router(triggers_api.router)
 
 from pipedream import api as pipedream_api
 api_router.include_router(pipedream_api.router)
+
+from tutor import api as tutor_api
+api_router.include_router(tutor_api.router, prefix="/tutor")
 
 # MFA functionality moved to frontend
 

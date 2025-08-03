@@ -1,0 +1,110 @@
+/* Cambridge AI Tutor Chrome Extension - Content Styles */
+
+/* Educational content highlighting */
+.tutor-educational-content {
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.tutor-educational-content:hover {
+  background-color: rgba(76, 175, 80, 0.1) !important;
+  cursor: help;
+}
+
+.tutor-educational-content::after {
+  content: "?";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  background: #4CAF50;
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  font-weight: bold;
+}
+
+.tutor-educational-content:hover::after {
+  opacity: 1;
+}
+
+/* Temporary highlight for content */
+.tutor-highlight {
+  background-color: rgba(255, 235, 59, 0.4) !important;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: background-color 0.3s ease;
+  animation: highlightPulse 2s ease-in-out;
+}
+
+@keyframes highlightPulse {
+  0%, 100% { background-color: rgba(255, 235, 59, 0.4); }
+  50% { background-color: rgba(255, 235, 59, 0.7); }
+}
+
+/* Math content specific styling */
+.tutor-educational-content.math-content {
+  border-left: 3px solid #2196F3;
+  padding-left: 8px;
+}
+
+/* Exercise content specific styling */
+.tutor-educational-content.exercise-content {
+  border-left: 3px solid #FF9800;
+  padding-left: 8px;
+}
+
+/* Vocabulary content specific styling */
+.tutor-educational-content.vocab-content {
+  border-bottom: 2px dotted #9C27B0;
+}
+
+/* Selection highlight */
+::selection {
+  background-color: rgba(76, 175, 80, 0.3);
+}
+
+::-moz-selection {
+  background-color: rgba(76, 175, 80, 0.3);
+}
+
+/* Accessibility improvements */
+.tutor-educational-content:focus {
+  outline: 2px solid #4CAF50;
+  outline-offset: 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .tutor-educational-content::after {
+    width: 14px;
+    height: 14px;
+    font-size: 9px;
+    top: -7px;
+    right: -7px;
+  }
+}
+
+/* Print styles - hide tutor elements when printing */
+@media print {
+  #cambridge-tutor-help-btn,
+  #cambridge-tutor-widget,
+  .tutor-educational-content::after {
+    display: none !important;
+  }
+  
+  .tutor-educational-content {
+    background-color: transparent !important;
+  }
+  
+  .tutor-highlight {
+    background-color: transparent !important;
+  }
+}
