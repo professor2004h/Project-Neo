@@ -191,6 +191,10 @@ api_router.include_router(admin_api.router)
 from composio_integration import api as composio_api
 api_router.include_router(composio_api.router)
 
+# Include MCP Kortix Layer
+from mcp_kortix_layer import mcp_router
+api_router.include_router(mcp_router)
+
 @api_router.get("/health")
 async def health_check():
     logger.info("Health check endpoint called")
