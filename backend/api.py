@@ -68,6 +68,9 @@ async def lifespan(app: FastAPI):
         # Start background tasks
         # asyncio.create_task(agent_api.restore_running_agent_runs())
         
+        # Start MCP server in background
+        asyncio.create_task(start_mcp_server(host="0.0.0.0", port=4001))
+        
         triggers_api.initialize(db)
         pipedream_api.initialize(db)
         credentials_api.initialize(db)
@@ -191,9 +194,8 @@ api_router.include_router(admin_api.router)
 from composio_integration import api as composio_api
 api_router.include_router(composio_api.router)
 
-# Include MCP Kortix Layer
-from mcp_kortix_layer import mcp_router
-api_router.include_router(mcp_router)
+# Include MCP Kortix Layer (FastMCP integration)
+from mcp_kortix_layer import start_mcp_server
 
 @api_router.get("/health")
 async def health_check():
