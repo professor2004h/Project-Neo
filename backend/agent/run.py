@@ -46,7 +46,7 @@ class AgentConfig:
     stream: bool
     native_max_auto_continues: int = 25
     max_iterations: int = 100
-    model_name: str = "openrouter/moonshotai/kimi-k2"
+    model_name: str = "openrouter/google/gemini-2.5-flash"
     enable_thinking: Optional[bool] = False
     reasoning_effort: Optional[str] = 'low'
     enable_context_manager: bool = True
@@ -318,6 +318,44 @@ class PromptManager:
         
         system_content += datetime_info
 
+        # Inject knowledge base context (both agent and thread-specific) if available
+        if not is_agent_builder:
+            try:
+                from flags.flags import is_enabled
+                
+                # Check if knowledge base feature is enabled
+                if await is_enabled("knowledge_base"):
+                    from services.supabase import DBConnection
+                    db = DBConnection()
+                    client = await db.client
+                    
+                    agent_id = agent_config.get('agent_id') if agent_config else None
+                    
+                    # Get combined knowledge base context (agent + thread) with token limit
+                    # Using 4000 tokens as default, but can be adjusted based on remaining context budget
+                    knowledge_context_result = await client.rpc('get_combined_knowledge_base_context', {
+                        'p_thread_id': thread_id,
+                        'p_agent_id': agent_id,
+                        'p_max_tokens': 4000
+                    }).execute()
+                    
+                    if knowledge_context_result.data and knowledge_context_result.data.strip():
+                        knowledge_context = knowledge_context_result.data
+                        system_content += f"\n\n{knowledge_context}"
+                        
+                        context_source = []
+                        if agent_id:
+                            context_source.append(f"agent {agent_id}")
+                        context_source.append(f"thread {thread_id}")
+                        
+                        logger.info(f"🧠 Injected knowledge base context from {' and '.join(context_source)} (~{len(knowledge_context)} chars)")
+                    else:
+                        logger.debug(f"No knowledge base context found for thread {thread_id}" + (f" and agent {agent_id}" if agent_id else ""))
+                
+            except Exception as e:
+                logger.error(f"Error injecting knowledge base context: {str(e)}")
+                # Continue without knowledge base context rather than failing
+
         return {"role": "system", "content": system_content}
 
 
@@ -509,9 +547,9 @@ class AgentRunner:
     def get_max_tokens(self) -> Optional[int]:
         if "sonnet" in self.config.model_name.lower():
             return 8192
-        elif "gpt-4" in self.config.model_name.lower():
-            return 4096
-        elif "gemini-2.5-pro" in self.config.model_name.lower():
+        elif "gpt" in self.config.model_name.lower():
+            return 8192
+        elif "gemini-2.5" in self.config.model_name.lower():
             return 64000
         elif "kimi-k2" in self.config.model_name.lower():
             return 8192
@@ -703,7 +741,7 @@ async def run_agent(
     thread_manager: Optional[ThreadManager] = None,
     native_max_auto_continues: int = 25,
     max_iterations: int = 100,
-    model_name: str = "openrouter/moonshotai/kimi-k2",
+    model_name: str = "openrouter/google/gemini-2.5-flash",
     enable_thinking: Optional[bool] = False,
     reasoning_effort: Optional[str] = 'low',
     enable_context_manager: bool = True,
@@ -713,10 +751,10 @@ async def run_agent(
     target_agent_id: Optional[str] = None
 ):
     effective_model = model_name
-    if model_name == "openrouter/moonshotai/kimi-k2" and agent_config and agent_config.get('model'):
+    if model_name == "openrouter/google/gemini-2.5-flash" and agent_config and agent_config.get('model'):
         effective_model = agent_config['model']
         logger.debug(f"Using model from agent config: {effective_model} (no user selection)")
-    elif model_name != "openrouter/moonshotai/kimi-k2":
+    elif model_name != "openrouter/google/gemini-2.5-flash":
         logger.debug(f"Using user-selected model: {effective_model}")
     else:
         logger.debug(f"Using default model: {effective_model}")
