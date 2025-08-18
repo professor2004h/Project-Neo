@@ -68,7 +68,6 @@ export async function signUp(prevState: any, formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirmPassword') as string;
-  const returnUrl = formData.get('returnUrl') as string | undefined;
 
   if (!email || !email.includes('@')) {
     return { message: 'Please enter a valid email address' };
@@ -86,7 +85,7 @@ export async function signUp(prevState: any, formData: FormData) {
 
   const { error } = await supabase.auth.signUp({
     email,
-    password,
+    password
   });
 
   if (error) {
