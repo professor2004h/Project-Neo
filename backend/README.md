@@ -88,8 +88,6 @@ MODEL_TO_USE=openrouter/moonshotai/kimi-k2
 
 # Search and Web Scraping
 TAVILY_API_KEY=your-tavily-key
-FIRECRAWL_API_KEY=your-firecrawl-key
-FIRECRAWL_URL=https://api.firecrawl.dev
 
 # Agent Execution
 DAYTONA_API_KEY=your-daytona-key

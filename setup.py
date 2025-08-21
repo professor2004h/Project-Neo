@@ -135,8 +135,6 @@ def load_existing_env_vars():
         },
         "search": {
             "TAVILY_API_KEY": backend_env.get("TAVILY_API_KEY", ""),
-            "FIRECRAWL_API_KEY": backend_env.get("FIRECRAWL_API_KEY", ""),
-            "FIRECRAWL_URL": backend_env.get("FIRECRAWL_URL", ""),
         },
         "rapidapi": {
             "RAPID_API_KEY": backend_env.get("RAPID_API_KEY", ""),
@@ -321,7 +319,6 @@ class SetupWizard:
         # Check Search APIs
         search_configured = (
             self.env_vars["search"]["TAVILY_API_KEY"]
-            and self.env_vars["search"]["FIRECRAWL_API_KEY"]
         )
         if search_configured:
             config_items.append(f"{Colors.GREEN}✓{Colors.ENDC} Search APIs")
@@ -814,9 +811,9 @@ class SetupWizard:
                 "Found existing search API keys. Press Enter to keep current values or type new ones."
             )
         else:
-            print_info("Suna uses Tavily for search and Firecrawl for web scraping.")
+            print_info("Suna uses Tavily for search and web scraping.")
             print_info(
-                "Get a Tavily key at https://tavily.com and a Firecrawl key at https://firecrawl.dev"
+                "Get a Tavily key at https://tavily.com"
             )
             input("Press Enter to continue once you have your keys...")
 
@@ -826,42 +823,9 @@ class SetupWizard:
             "Invalid API key.",
             default_value=self.env_vars["search"]["TAVILY_API_KEY"],
         )
-        self.env_vars["search"]["FIRECRAWL_API_KEY"] = self._get_input(
-            "Enter your Firecrawl API key: ",
-            validate_api_key,
-            "Invalid API key.",
-            default_value=self.env_vars["search"]["FIRECRAWL_API_KEY"],
-        )
 
-        # Handle Firecrawl URL configuration
-        current_url = self.env_vars["search"]["FIRECRAWL_URL"]
-        is_self_hosted_default = (
-            current_url and current_url != "https://api.firecrawl.dev"
-        )
 
-        if current_url:
-            prompt = f"Are you self-hosting Firecrawl? (y/N) [Current: {'y' if is_self_hosted_default else 'N'}]: "
-        else:
-            prompt = "Are you self-hosting Firecrawl? (y/N): "
 
-        response = input(prompt).lower().strip()
-        if not response and current_url:
-            # Use existing configuration
-            is_self_hosted = is_self_hosted_default
-        else:
-            is_self_hosted = response == "y"
-
-        if is_self_hosted:
-            self.env_vars["search"]["FIRECRAWL_URL"] = self._get_input(
-                "Enter your self-hosted Firecrawl URL: ",
-                validate_url,
-                "Invalid URL.",
-                default_value=(
-                    current_url if current_url != "https://api.firecrawl.dev" else ""
-                ),
-            )
-        else:
-            self.env_vars["search"]["FIRECRAWL_URL"] = "https://api.firecrawl.dev"
 
         print_success("Search and scraping keys saved.")
 

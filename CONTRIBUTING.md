@@ -39,8 +39,7 @@ Before contributing, ensure you have access to:
 - Supabase project (database and auth)
 - LLM provider API key (OpenAI, Anthropic, or OpenRouter)
 - Daytona account (for agent execution)
-- Tavily API key (for search)
-- Firecrawl API key (for web scraping)
+- Tavily API key (for search and web scraping)
 
 **Optional:**
 

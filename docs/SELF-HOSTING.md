@@ -52,8 +52,7 @@ Obtain the following API keys:
 
 - **Search and Web Scraping**:
 
-  - [Tavily](https://tavily.com/) - For enhanced search capabilities
-  - [Firecrawl](https://firecrawl.dev/) - For web scraping capabilities
+  - [Tavily](https://tavily.com/) - For enhanced search capabilities and web scraping capabilities
 
 - **Agent Execution**:
   - [Daytona](https://app.daytona.io/) - For secure agent execution
@@ -164,12 +163,8 @@ GEMINI_API_KEY=your-gemini-api-key
 MORPH_API_KEY=
 
 
-# WEB SEARCH
+# WEB SEARCH AND SCRAPE
 TAVILY_API_KEY=your-tavily-key
-
-# WEB SCRAPE
-FIRECRAWL_API_KEY=your-firecrawl-key
-FIRECRAWL_URL=https://api.firecrawl.dev
 
 # Sandbox container provider
 DAYTONA_API_KEY=your-daytona-key
