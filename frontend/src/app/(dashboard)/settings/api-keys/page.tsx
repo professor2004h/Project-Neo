@@ -242,7 +242,6 @@ export default function APIKeysPage() {
           </div>
           <p className="text-muted-foreground">
             Manage your API keys for programmatic access to your agents
-            Manage your API keys for programmatic access to Suna
           </p>
         </div>
 
