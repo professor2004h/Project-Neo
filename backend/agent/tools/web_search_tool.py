@@ -194,24 +194,9 @@ class SandboxWebSearchTool(SandboxToolsBase):
             logging.info(f"Processing {len(url_list)} URLs: {url_list}")
             
             # Process each URL concurrently and collect results
-            tasks = [self._scrape_single_url(url) for url in url_list]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            # Process results, handling exceptions
-            processed_results = []
-            for i, result in enumerate(results):
-                if isinstance(result, Exception):
-                    logging.error(f"Error processing URL {url_list[i]}: {str(result)}")
-                    processed_results.append({
-                        "url": url_list[i],
-                        "success": False,
-                        "error": str(result)
-                    })
-                else:
-                    processed_results.append(result)
-            
-            results = processed_results
-
+            # tasks = [self._scrape_single_url(url) for url in url_list]
+            # results = await asyncio.gather(*tasks, return_exceptions=True)
+            results = await self._scrape_urls(url_list)
             
             # Summarize results
             successful = sum(1 for r in results if r.get("success", False))
@@ -246,51 +231,86 @@ class SandboxWebSearchTool(SandboxToolsBase):
             logging.error(f"Error in scrape_webpage: {error_message}")
             return self.fail_response(f"Error processing scrape request: {error_message[:200]}")
     
-    async def _scrape_single_url(self, url: str) -> dict:
+    async def _scrape_urls(self, url_list: list[str]) -> dict:
         """
-        Helper function to scrape a single URL and return the result information.
+        Helper function to scrape multiple URLs and return the result information.
         """
+        logging.info(f"Scraping URLs: {url_list}")
         
-        # # Add protocol if missing
-        # if not (url.startswith('http://') or url.startswith('https://')):
-        #     url = 'https://' + url
-        #     logging.info(f"Added https:// protocol to URL: {url}")
+        # ---------- Tavily scrape endpoint ----------
+        max_retries = 3
+        retry_count = 0
+        remaining_urls = url_list.copy()
+        all_results = []
+        
+        while retry_count < max_retries and remaining_urls:
+            try:
+                logging.info(f"Sending request to Tavily Extract API (attempt {retry_count + 1}/{max_retries}) for {len(remaining_urls)} URLs")
+                response = await self.tavily_client.extract(
+                    urls=remaining_urls,
+                    include_images=True
+                )
+                logging.info(f"Successfully received response from Tavily for {remaining_urls}")
+                successful_urls = []
+                if response and "results" in response and response["results"]:
+                    logging.info(f"Received {len(response['results'])} results from Tavily")
+
+                    for result_data in response["results"]:
+                        try:
+                            processed_result = await self._process_single_result(result_data)
+                            all_results.append(processed_result)
+                            successful_urls.append(result_data["url"])
+                        except Exception as e:
+                            logging.error(f"Error processing result for {result_data.get('url', 'unknown')}: {str(e)}")
+                            all_results.append({
+                                "url": result_data.get('url', 'unknown'),
+                                "success": False,
+                                "error": f"Error processing result: {str(e)}"
+                            })
+                
+                failed_results = response.get("failed_results", [])
+                if failed_results:
+                    logging.warning(f"API reported {len(failed_results)} failed results")
+                    for failed_result in failed_results:
+                        url = failed_result.get("url")
+                        error = failed_result.get("error", "Failed to extract content")
+                        all_results.append({
+                            "url": url,
+                            "success": False,
+                            "error": error
+                        })
+                        logging.warning(f"Failed: {url} - {error}")
+                remaining_urls = []  # All URLs processed, exit retry loop
+                break
+            except Exception as e:
+                retry_count += 1
+                logging.warning(f"Request failed (attempt {retry_count}/{max_retries}): {str(e)}")
+                if retry_count >= max_retries:
+                    # add all remaining urls as failed
+                    for url in remaining_urls:
+                        all_results.append({
+                            "url": url,
+                            "success": False,
+                            "error": f"Request failed after {max_retries} attempts: {str(e)}"
+                        })
+                    break
+                # Exponential backoff
+                logging.info(f"Waiting {2 ** retry_count}s before retry")
+                await asyncio.sleep(2 ** retry_count)
+
+        # All URLs should be handled by the API response
+        logging.info(f"Batch scraping completed. Total results: {len(all_results)} (successful: {sum(1 for r in all_results if r.get('success'))}, failed: {sum(1 for r in all_results if not r.get('success'))})")
+        return all_results
+
             
-        logging.info(f"Scraping single URL: {url}")
+    async def _process_single_result(self, data: dict) -> dict:
+        """
+        Process a single result from the Tavily API response and save to file.
+        """
+        url = data.get("url", "unknown")
         
         try:
-            # ---------- Tavily scrape endpoint ----------
-            logging.info(f"Sending request to Tavily for URL: {url}")
-            max_retries = 3
-            retry_count = 0
-            
-            while retry_count < max_retries:
-                try:
-                    logging.info(f"Sending request to Tavily Extract API (attempt {retry_count + 1}/{max_retries})")
-                    response = await self.tavily_client.extract(
-                        urls=[url],
-                        include_images=True
-                    )
-                    logging.info(f"Successfully received response from Tavily for {url}")
-                    break
-                except Exception as e:
-                    retry_count += 1
-                    logging.warning(f"Request timed out (attempt {retry_count}/{max_retries}): {str(e)}")
-                    if retry_count >= max_retries:
-                        raise Exception(f"Request failed after {max_retries} attempts: {str(e)}")
-                    # Exponential backoff
-                    logging.info(f"Waiting {2 ** retry_count}s before retry")
-                    await asyncio.sleep(2 ** retry_count)
-
-            if not response or "results" not in response or not response["results"]:
-                raise Exception(f"No results returned from Tavily Extract API for URL: {url}")
-            
-            # Get the first result for this URL
-            data = next((r for r in response["results"] if r["url"] == url), None)
-            
-            if not data:
-                raise Exception(f"URL {url} not found in Tavily Extract API response")
-            # Format the response
+            # Extract content
             markdown_content = data.get("raw_content", "")
             logging.info(f"Extracted content from {url}: content length={len(markdown_content)}")
             
