@@ -14,7 +14,7 @@ import logging
 # TODO: add subpages, etc... in filters as sometimes its necessary 
 
 class SandboxWebSearchTool(SandboxToolsBase):
-    """Tool for performing web searches using Tavily API and web scraping using Firecrawl."""
+    """Tool for performing web searches and web scraping using Tavily API."""
 
     def __init__(self, project_id: str, thread_manager: ThreadManager):
         super().__init__(project_id, thread_manager)
@@ -22,13 +22,9 @@ class SandboxWebSearchTool(SandboxToolsBase):
         load_dotenv()
         # Use API keys from config
         self.tavily_api_key = config.TAVILY_API_KEY
-        self.firecrawl_api_key = config.FIRECRAWL_API_KEY
-        self.firecrawl_url = config.FIRECRAWL_URL
         
         if not self.tavily_api_key:
             raise ValueError("TAVILY_API_KEY not found in configuration")
-        if not self.firecrawl_api_key:
-            raise ValueError("FIRECRAWL_API_KEY not found in configuration")
 
         # Tavily asynchronous search client
         self.tavily_client = AsyncTavilyClient(api_key=self.tavily_api_key)
@@ -263,64 +259,45 @@ class SandboxWebSearchTool(SandboxToolsBase):
         logging.info(f"Scraping single URL: {url}")
         
         try:
-            # ---------- Firecrawl scrape endpoint ----------
-            logging.info(f"Sending request to Firecrawl for URL: {url}")
-            async with httpx.AsyncClient() as client:
-                headers = {
-                    "Authorization": f"Bearer {self.firecrawl_api_key}",
-                    "Content-Type": "application/json",
-                }
-                payload = {
-                    "url": url,
-                    "formats": ["markdown"]
-                }
-                
-                # Use longer timeout and retry logic for more reliability
-                max_retries = 3
-                timeout_seconds = 30
-                retry_count = 0
-                
-                while retry_count < max_retries:
-                    try:
-                        logging.info(f"Sending request to Firecrawl (attempt {retry_count + 1}/{max_retries})")
-                        response = await client.post(
-                            f"{self.firecrawl_url}/v1/scrape",
-                            json=payload,
-                            headers=headers,
-                            timeout=timeout_seconds,
-                        )
-                        response.raise_for_status()
-                        data = response.json()
-                        logging.info(f"Successfully received response from Firecrawl for {url}")
-                        break
-                    except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.ReadError) as timeout_err:
-                        retry_count += 1
-                        logging.warning(f"Request timed out (attempt {retry_count}/{max_retries}): {str(timeout_err)}")
-                        if retry_count >= max_retries:
-                            raise Exception(f"Request timed out after {max_retries} attempts with {timeout_seconds}s timeout")
-                        # Exponential backoff
-                        logging.info(f"Waiting {2 ** retry_count}s before retry")
-                        await asyncio.sleep(2 ** retry_count)
-                    except Exception as e:
-                        # Don't retry on non-timeout errors
-                        logging.error(f"Error during scraping: {str(e)}")
-                        raise e
+            # ---------- Tavily scrape endpoint ----------
+            logging.info(f"Sending request to Tavily for URL: {url}")
+            max_retries = 3
+            retry_count = 0
+            
+            while retry_count < max_retries:
+                try:
+                    logging.info(f"Sending request to Tavily Extract API (attempt {retry_count + 1}/{max_retries})")
+                    response = await self.tavily_client.extract(
+                        urls=[url],
+                        include_images=True
+                    )
+                    logging.info(f"Successfully received response from Tavily for {url}")
+                    break
+                except Exception as e:
+                    retry_count += 1
+                    logging.warning(f"Request timed out (attempt {retry_count}/{max_retries}): {str(e)}")
+                    if retry_count >= max_retries:
+                        raise Exception(f"Request failed after {max_retries} attempts: {str(e)}")
+                    # Exponential backoff
+                    logging.info(f"Waiting {2 ** retry_count}s before retry")
+                    await asyncio.sleep(2 ** retry_count)
 
+            if not response or "results" not in response or not response["results"]:
+                raise Exception(f"No results returned from Tavily Extract API for URL: {url}")
+            
+            # Get the first result for this URL
+            data = next((r for r in response["results"] if r["url"] == url), None)
+            
+            if not data:
+                raise Exception(f"URL {url} not found in Tavily Extract API response")
             # Format the response
-            title = data.get("data", {}).get("metadata", {}).get("title", "")
-            markdown_content = data.get("data", {}).get("markdown", "")
-            logging.info(f"Extracted content from {url}: title='{title}', content length={len(markdown_content)}")
+            markdown_content = data.get("raw_content", "")
+            logging.info(f"Extracted content from {url}: content length={len(markdown_content)}")
             
             formatted_result = {
-                "title": title,
                 "url": url,
                 "text": markdown_content
             }
-            
-            # Add metadata if available
-            if "metadata" in data.get("data", {}):
-                formatted_result["metadata"] = data["data"]["metadata"]
-                logging.info(f"Added metadata: {data['data']['metadata'].keys()}")
             
             # Create a simple filename from the URL domain and date
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -352,7 +329,6 @@ class SandboxWebSearchTool(SandboxToolsBase):
             return {
                 "url": url,
                 "success": True,
-                "title": title,
                 "file_path": results_file_path,
                 "content_length": len(markdown_content)
             }
