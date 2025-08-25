@@ -81,7 +81,6 @@ Backend keys (by purpose):
 | Billing       | STRIPE\_\*                          |                                       No | -                          | Only if you enable billing                                          |
 | Admin         | KORTIX_ADMIN_API_KEY                |                                       No | -                          | Protects admin APIs                                                 |
 | Integrations  | COMPOSIO\_\*                        |                                       No | -                          | Optional Composio integration                                       |
-| Slack         | SLACK_CLIENT_ID/SECRET/REDIRECT_URI |                                       No | -                          | Optional Slack OAuth                                                |
 
 Frontend keys:
 
