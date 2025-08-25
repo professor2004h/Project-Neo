@@ -32,6 +32,7 @@ class LLMError(Exception):
     """Base exception for LLM-related errors."""
     pass
 
+
 def setup_api_keys() -> None:
     """Set up API keys from environment variables."""
     providers = [
@@ -51,11 +52,20 @@ def setup_api_keys() -> None:
         else:
             logger.warning(f"No API key found for provider: {provider}")
 
-    # Set up OpenRouter API base if not already set
-    if config.OPENROUTER_API_KEY and config.OPENROUTER_API_BASE:
-        os.environ["OPENROUTER_API_BASE"] = config.OPENROUTER_API_BASE
-        logger.debug(f"Set OPENROUTER_API_BASE to {config.OPENROUTER_API_BASE}")
+    # Ensure OpenRouter credentials are available to LiteLLM via env vars
+    if config.OPENROUTER_API_KEY:
+        # Avoid logging secrets
+        os.environ["OPENROUTER_API_KEY"] = config.OPENROUTER_API_KEY
+        logger.debug("Exported OPENROUTER_API_KEY to environment for LiteLLM")
+    else:
+        logger.warning(
+            "OPENROUTER_API_KEY is not configured; OpenRouter models will fail")
 
+    # Set up OpenRouter API base if not already set
+    if config.OPENROUTER_API_BASE:
+        os.environ["OPENROUTER_API_BASE"] = config.OPENROUTER_API_BASE
+        logger.debug(
+            f"Set OPENROUTER_API_BASE to {config.OPENROUTER_API_BASE}")
 
     # Set up AWS Bedrock credentials
     aws_access_key = config.AWS_ACCESS_KEY_ID
@@ -63,20 +73,22 @@ def setup_api_keys() -> None:
     aws_region = config.AWS_REGION_NAME
 
     if aws_access_key and aws_secret_key and aws_region:
-        logger.debug(f"AWS credentials set for Bedrock in region: {aws_region}")
+        logger.debug(
+            f"AWS credentials set for Bedrock in region: {aws_region}")
         # Configure LiteLLM to use AWS credentials
         os.environ["AWS_ACCESS_KEY_ID"] = aws_access_key
         os.environ["AWS_SECRET_ACCESS_KEY"] = aws_secret_key
         os.environ["AWS_REGION_NAME"] = aws_region
     else:
-        logger.warning(f"Missing AWS credentials for Bedrock integration - access_key: {bool(aws_access_key)}, secret_key: {bool(aws_secret_key)}, region: {aws_region}")
+        logger.warning(
+            f"Missing AWS credentials for Bedrock integration - access_key: {bool(aws_access_key)}, secret_key: {bool(aws_secret_key)}, region: {aws_region}")
 
 
 def setup_provider_router(openai_compatible_api_key: str = None, openai_compatible_api_base: str = None):
     global provider_router
     model_list = [
         {
-            "model_name": "openai-compatible/*", # support OpenAI-Compatible LLM provider
+            "model_name": "openai-compatible/*",  # support OpenAI-Compatible LLM provider
             "litellm_params": {
                 "model": "openai/*",
                 "api_key": openai_compatible_api_key or config.OPENAI_COMPATIBLE_API_KEY,
@@ -84,7 +96,7 @@ def setup_provider_router(openai_compatible_api_key: str = None, openai_compatib
             },
         },
         {
-            "model_name": "*", # supported LLM provider by LiteLLM
+            "model_name": "*",  # supported LLM provider by LiteLLM
             "litellm_params": {
                 "model": "*",
             },
@@ -98,7 +110,7 @@ def get_openrouter_fallback(model_name: str) -> Optional[str]:
     # Skip if already using OpenRouter
     if model_name.startswith("openrouter/"):
         return None
-    
+
     # Map models to their OpenRouter equivalents
     fallback_mapping = {
         "anthropic/claude-3-7-sonnet-latest": "openrouter/anthropic/claude-3.7-sonnet",
@@ -106,39 +118,42 @@ def get_openrouter_fallback(model_name: str) -> Optional[str]:
         "xai/grok-4": "openrouter/x-ai/grok-4",
         "gemini/gemini-2.5-pro": "openrouter/google/gemini-2.5-pro",
     }
-    
+
     # Check for exact match first
     if model_name in fallback_mapping:
         return fallback_mapping[model_name]
-    
+
     # Check for partial matches (e.g., bedrock models)
     for key, value in fallback_mapping.items():
         if key in model_name:
             return value
-    
+
     # Default fallbacks by provider
     if "claude" in model_name.lower() or "anthropic" in model_name.lower():
         return "openrouter/anthropic/claude-sonnet-4"
     elif "xai" in model_name.lower() or "grok" in model_name.lower():
         return "openrouter/x-ai/grok-4"
-    
+
     return None
+
 
 def _configure_token_limits(params: Dict[str, Any], model_name: str, max_tokens: Optional[int]) -> None:
     """Configure token limits based on model type."""
     if max_tokens is None:
         return
-    
+
     if model_name.startswith("bedrock/") and "claude-3-7" in model_name:
         # For Claude 3.7 in Bedrock, do not set max_tokens or max_tokens_to_sample
         # as it causes errors with inference profiles
         logger.debug(f"Skipping max_tokens for Claude 3.7 model: {model_name}")
         return
-    
+
     is_openai_o_series = 'o1' in model_name
     is_openai_gpt5 = 'gpt-5' in model_name
-    param_name = "max_completion_tokens" if (is_openai_o_series or is_openai_gpt5) else "max_tokens"
+    param_name = "max_completion_tokens" if (
+        is_openai_o_series or is_openai_gpt5) else "max_tokens"
     params[param_name] = max_tokens
+
 
 def _apply_anthropic_caching(messages: List[Dict[str, Any]]) -> None:
     """Apply Anthropic caching to the messages."""
@@ -146,16 +161,17 @@ def _apply_anthropic_caching(messages: List[Dict[str, Any]]) -> None:
     # Apply cache control to the first 4 text blocks across all messages
     cache_control_count = 0
     max_cache_control_blocks = 3
-    
+
     for message in messages:
         if cache_control_count >= max_cache_control_blocks:
             break
-            
+
         content = message.get("content")
-        
+
         if isinstance(content, str):
             message["content"] = [
-                {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}
+                {"type": "text", "text": content,
+                    "cache_control": {"type": "ephemeral"}}
             ]
             cache_control_count += 1
         elif isinstance(content, list):
@@ -166,22 +182,24 @@ def _apply_anthropic_caching(messages: List[Dict[str, Any]]) -> None:
                     item["cache_control"] = {"type": "ephemeral"}
                     cache_control_count += 1
 
+
 def _configure_anthopic(params: Dict[str, Any], model_name: str, messages: List[Dict[str, Any]]) -> None:
     """Configure Anthropic-specific parameters."""
     if not ("claude" in model_name.lower() or "anthropic" in model_name.lower()):
         return
-    
+
     params["extra_headers"] = {
         "anthropic-beta": "output-128k-2025-02-19"
     }
     logger.debug("Added Anthropic-specific headers")
     _apply_anthropic_caching(messages)
 
+
 def _configure_openrouter(params: Dict[str, Any], model_name: str) -> None:
     """Configure OpenRouter-specific parameters."""
     if not model_name.startswith("openrouter/"):
         return
-    
+
     logger.debug(f"Preparing OpenRouter parameters for model: {model_name}")
 
     # Add optional site URL and app name from config
@@ -196,23 +214,30 @@ def _configure_openrouter(params: Dict[str, Any], model_name: str) -> None:
         params["extra_headers"] = extra_headers
         logger.debug(f"Added OpenRouter site URL and app name to headers")
 
+    # Sanity: confirm key presence (without exposing it)
+    if not (os.getenv("OPENROUTER_API_KEY") or getattr(config, "OPENROUTER_API_KEY", None)):
+        logger.warning(
+            "Attempting to call OpenRouter without OPENROUTER_API_KEY; request will fail")
+
+
 def _configure_bedrock(params: Dict[str, Any], model_name: str, model_id: Optional[str]) -> None:
     """Configure Bedrock-specific parameters."""
     if not model_name.startswith("bedrock/"):
         return
-    
+
     logger.debug(f"Preparing AWS Bedrock parameters for model: {model_name}")
 
     # Auto-set model_id for Claude 3.7 Sonnet if not provided
     if not model_id and "anthropic.claude-3-7-sonnet" in model_name:
         params["model_id"] = "arn:aws:bedrock:us-west-2:935064898258:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0"
-        logger.debug(f"Auto-set model_id for Claude 3.7 Sonnet: {params['model_id']}")
+        logger.debug(
+            f"Auto-set model_id for Claude 3.7 Sonnet: {params['model_id']}")
+
 
 def _configure_openai_gpt5(params: Dict[str, Any], model_name: str) -> None:
     """Configure OpenAI GPT-5 specific parameters."""
     if "gpt-5" not in model_name:
         return
-    
 
     # Drop unsupported temperature param (only default 1 allowed)
     if "temperature" in params and params["temperature"] != 1:
@@ -228,33 +253,42 @@ def _configure_openai_gpt5(params: Dict[str, Any], model_name: str) -> None:
             extra_body["service_tier"] = "priority"
         params["extra_body"] = extra_body
 
+
 def _configure_kimi_k2(params: Dict[str, Any], model_name: str) -> None:
     """Configure Kimi K2-specific parameters."""
     is_kimi_k2 = "kimi-k2" in model_name.lower() or model_name.startswith("moonshotai/kimi-k2")
     if not is_kimi_k2:
         return
-    
-    params["provider"] = {
-        "order": ["groq", "moonshotai"] #, "groq", "together/fp8", "novita/fp8", "baseten/fp8", 
-    }
+
+    # Forward OpenRouter provider routing via extra_body so LiteLLM doesn't drop it
+    extra_body = params.get("extra_body", {})
+    provider_cfg = extra_body.get("provider", {})
+    # Prefer MoonshotAI first for Kimi; allow Groq as backup if available via OpenRouter
+    provider_cfg["order"] = provider_cfg.get("order") or ["moonshotai", "groq"]
+    extra_body["provider"] = provider_cfg
+    params["extra_body"] = extra_body
+
 
 def _configure_thinking(params: Dict[str, Any], model_name: str, enable_thinking: Optional[bool], reasoning_effort: Optional[str]) -> None:
     """Configure reasoning/thinking parameters for supported models."""
     if not enable_thinking:
         return
-    
 
     effort_level = reasoning_effort or 'low'
     is_anthropic = "anthropic" in model_name.lower() or "claude" in model_name.lower()
     is_xai = "xai" in model_name.lower() or model_name.startswith("xai/")
-    
+
     if is_anthropic:
         params["reasoning_effort"] = effort_level
-        params["temperature"] = 1.0  # Required by Anthropic when reasoning_effort is used
-        logger.info(f"Anthropic thinking enabled with reasoning_effort='{effort_level}'")
+        # Required by Anthropic when reasoning_effort is used
+        params["temperature"] = 1.0
+        logger.info(
+            f"Anthropic thinking enabled with reasoning_effort='{effort_level}'")
     elif is_xai:
         params["reasoning_effort"] = effort_level
-        logger.info(f"xAI thinking enabled with reasoning_effort='{effort_level}'")
+        logger.info(
+            f"xAI thinking enabled with reasoning_effort='{effort_level}'")
+
 
 def _add_fallback_model(params: Dict[str, Any], model_name: str, messages: List[Dict[str, Any]]) -> None:
     """Add fallback model to the parameters."""
@@ -264,18 +298,21 @@ def _add_fallback_model(params: Dict[str, Any], model_name: str, messages: List[
             "model": fallback_model,
             "messages": messages,
         }]
-        logger.debug(f"Added OpenRouter fallback for model: {model_name} to {fallback_model}")
+        logger.debug(
+            f"Added OpenRouter fallback for model: {model_name} to {fallback_model}")
+
 
 def _add_tools_config(params: Dict[str, Any], tools: Optional[List[Dict[str, Any]]], tool_choice: str) -> None:
     """Add tools configuration to parameters."""
     if tools is None:
         return
-    
+
     params.update({
         "tools": tools,
         "tool_choice": tool_choice
     })
     logger.debug(f"Added {len(tools)} tools to API parameters")
+
 
 def prepare_params(
     messages: List[Dict[str, Any]],
@@ -295,8 +332,9 @@ def prepare_params(
 ) -> Dict[str, Any]:
     from models import model_manager
     resolved_model_name = model_manager.resolve_model_id(model_name)
-    logger.debug(f"Model resolution: '{model_name}' -> '{resolved_model_name}'")
-    
+    logger.debug(
+        f"Model resolution: '{model_name}' -> '{resolved_model_name}'")
+
     params = {
         "model": resolved_model_name,
         "messages": messages,
@@ -322,7 +360,7 @@ def prepare_params(
             raise LLMError(
                 "OPENAI_COMPATIBLE_API_KEY and OPENAI_COMPATIBLE_API_BASE is required for openai-compatible models. If just updated the environment variables,  wait a few minutes or restart the service to ensure they are loaded."
             )
-        
+
         setup_provider_router(api_key, api_base)
 
     # Handle token limits
@@ -335,15 +373,17 @@ def prepare_params(
     _configure_openrouter(params, resolved_model_name)
     # Add Bedrock-specific parameters
     _configure_bedrock(params, resolved_model_name, model_id)
-    
+
     _add_fallback_model(params, resolved_model_name, messages)
     # Add OpenAI GPT-5 specific parameters
     _configure_openai_gpt5(params, resolved_model_name)
     # Add Kimi K2-specific parameters
     _configure_kimi_k2(params, resolved_model_name)
-    _configure_thinking(params, resolved_model_name, enable_thinking, reasoning_effort)
+    _configure_thinking(params, resolved_model_name,
+                        enable_thinking, reasoning_effort)
 
     return params
+
 
 async def make_llm_api_call(
     messages: List[Dict[str, Any]],
@@ -388,7 +428,8 @@ async def make_llm_api_call(
         LLMError: For other API-related errors
     """
     # debug <timestamp>.json messages
-    logger.debug(f"Making LLM API call to model: {model_name} (Thinking: {enable_thinking}, Effort: {reasoning_effort})")
+    logger.debug(
+        f"Making LLM API call to model: {model_name} (Thinking: {enable_thinking}, Effort: {reasoning_effort})")
     logger.debug(f"📡 API Call: Using model {model_name}")
     params = prepare_params(
         messages=messages,
@@ -413,7 +454,8 @@ async def make_llm_api_call(
         return response
 
     except Exception as e:
-        logger.error(f"Unexpected error during API call: {str(e)}", exc_info=True)
+        logger.error(
+            f"Unexpected error during API call: {str(e)}", exc_info=True)
         raise LLMError(f"API call failed: {str(e)}")
 
 # Initialize API keys on module import

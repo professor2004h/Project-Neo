@@ -17,7 +17,7 @@ export async function POST(
       }
     });
     
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const backendUrl = process.env.BACKEND_URL || 'https://api.agentiqtest.site';
     const targetUrl = `${backendUrl}/api/webhooks/trigger/${workflowId}`;
     
     console.log(`[Webhook Proxy] Backend URL: ${backendUrl}`);
@@ -72,7 +72,7 @@ export async function GET(
 ) {
   try {
     const { workflowId } = await params;
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const backendUrl = process.env.BACKEND_URL || 'https://api.agentiqtest.site';
     
     const response = await fetch(`${backendUrl}/api/webhooks/test/${workflowId}`, {
       method: 'GET',

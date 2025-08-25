@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     const templateResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/templates/share/${shareId}`
+      `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.agentiqtest.site'}/api/templates/share/${shareId}`
     );
 
     if (!templateResponse.ok) {

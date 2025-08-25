@@ -35,7 +35,7 @@ USER nextjs
 
 # Health check implementation
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+  CMD curl -f https://api.agentiqtest.site/health || exit 1
 ```
 
 ### Docker Compose Patterns
@@ -179,8 +179,8 @@ docker-compose -f docker-compose.dev.yml exec backend python -m alembic upgrade 
 echo "✅ Database migrations completed"
 
 echo "🚀 Development environment is ready!"
-echo "Frontend: http://localhost:3000"
-echo "Backend: http://localhost:8000"
+echo "Frontend: https://agentiqtest.site"
+echo "Backend: https://api.agentiqtest.site"
 echo "Redis: localhost:6379"
 ```
 

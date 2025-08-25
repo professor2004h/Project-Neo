@@ -43,12 +43,14 @@ def get_setup_method():
 def check_docker_available():
     """Check if Docker is available and running."""
     try:
-        result = subprocess.run(["docker", "version"], capture_output=True, shell=IS_WINDOWS, check=True)
+        result = subprocess.run(
+            ["docker", "version"], capture_output=True, shell=IS_WINDOWS, check=True)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         print(f"{Colors.RED}❌ Docker is not running or not installed.{Colors.ENDC}")
         print(f"{Colors.YELLOW}Please start Docker and try again.{Colors.ENDC}")
         return False
+
 
 def check_docker_compose_up():
     result = subprocess.run(
@@ -80,7 +82,7 @@ def print_manual_instructions():
         f"{Colors.CYAN}   cd backend && uv run dramatiq run_agent_background{Colors.ENDC}\n"
     )
 
-    print("Once all services are running, access Suna at: http://localhost:3000\n")
+    print("Once all services are running, access Suna at: https://agentiqtest.site\n")
 
     print(
         f"{Colors.YELLOW}💡 Tip:{Colors.ENDC} You can use '{Colors.CYAN}./start.py{Colors.ENDC}' to start/stop the infrastructure services."
@@ -143,12 +145,14 @@ def main():
 
         if action == "stop":
             subprocess.run(["docker", "compose", "down"], shell=IS_WINDOWS)
-            print(f"\n{Colors.GREEN}✅ Infrastructure services stopped.{Colors.ENDC}")
+            print(
+                f"\n{Colors.GREEN}✅ Infrastructure services stopped.{Colors.ENDC}")
         else:
             subprocess.run(
                 ["docker", "compose", "up", "redis", "-d"], shell=IS_WINDOWS
             )
-            print(f"\n{Colors.GREEN}✅ Infrastructure services started.{Colors.ENDC}")
+            print(
+                f"\n{Colors.GREEN}✅ Infrastructure services started.{Colors.ENDC}")
             print_manual_instructions()
 
     else:  # docker setup
@@ -161,7 +165,7 @@ def main():
 
         if not check_docker_available():
             return
-            
+
         is_up = check_docker_compose_up()
 
         if is_up:
@@ -188,7 +192,8 @@ def main():
         else:
             subprocess.run(["docker", "compose", "up", "-d"], shell=IS_WINDOWS)
             print(f"\n{Colors.GREEN}✅ All Suna services started.{Colors.ENDC}")
-            print(f"{Colors.CYAN}🌐 Access Suna at: http://localhost:3000{Colors.ENDC}")
+            print(
+                f"{Colors.CYAN}🌐 Access Suna at: https://agentiqtest.site{Colors.ENDC}")
 
 
 if __name__ == "__main__":
