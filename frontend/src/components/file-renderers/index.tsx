@@ -11,6 +11,7 @@ import { HtmlRenderer } from './html-renderer';
 import { constructHtmlPreviewUrl } from '@/lib/utils/url';
 import { CsvRenderer } from './csv-renderer';
 import { XlsxRenderer } from './xlsx-renderer';
+import type { Project } from '@/lib/api';
 
 export type FileType =
   | 'markdown'
@@ -28,14 +29,7 @@ interface FileRendererProps {
   fileName: string;
   filePath?: string;
   className?: string;
-  project?: {
-    sandbox?: {
-      id?: string;
-      sandbox_url?: string;
-      vnc_preview?: string;
-      pass?: string;
-    };
-  };
+  project?: Project;
   markdownRef?: React.RefObject<HTMLDivElement>;
   onDownload?: () => void;
   isDownloading?: boolean;
@@ -205,12 +199,9 @@ export function FileRenderer({
         <CsvRenderer content={content || ''} />
       ) : fileType === 'xlsx' ? (
         <XlsxRenderer 
-          content={content}
           filePath={filePath}
           fileName={fileName}
           project={project}
-          onDownload={onDownload}
-          isDownloading={isDownloading}
         />
       ) : isHtmlFile ? (
         <HtmlRenderer
