@@ -11,7 +11,6 @@ import { HtmlRenderer } from './html-renderer';
 import { constructHtmlPreviewUrl } from '@/lib/utils/url';
 import { CsvRenderer } from './csv-renderer';
 import { XlsxRenderer } from './xlsx-renderer';
-import type { Project } from '@/lib/api';
 
 export type FileType =
   | 'markdown'
@@ -29,7 +28,14 @@ interface FileRendererProps {
   fileName: string;
   filePath?: string;
   className?: string;
-  project?: Project;
+  project?: {
+    sandbox?: {
+      id?: string;
+      sandbox_url?: string;
+      vnc_preview?: string;
+      pass?: string;
+    };
+  };
   markdownRef?: React.RefObject<HTMLDivElement>;
   onDownload?: () => void;
   isDownloading?: boolean;
@@ -173,7 +179,10 @@ export function FileRenderer({
   // Construct HTML file preview URL if we have a sandbox and the file is HTML
   const htmlPreviewUrl =
     isHtmlFile && project?.sandbox?.sandbox_url && (filePath || fileName)
-      ? constructHtmlPreviewUrl(project.sandbox.sandbox_url, filePath || fileName)
+      ? constructHtmlPreviewUrl(
+          project.sandbox.sandbox_url,
+          filePath || fileName,
+        )
       : blobHtmlUrl; // Use blob URL as fallback
 
   // Clean up blob URL on unmount
@@ -188,20 +197,32 @@ export function FileRenderer({
   return (
     <div className={cn('w-full h-full', className)}>
       {fileType === 'binary' ? (
-        <BinaryRenderer url={binaryUrl || ''} fileName={fileName} onDownload={onDownload} isDownloading={isDownloading} />
+        <BinaryRenderer
+          url={binaryUrl || ''}
+          fileName={fileName}
+          onDownload={onDownload}
+          isDownloading={isDownloading}
+        />
       ) : fileType === 'image' && binaryUrl ? (
         <ImageRenderer url={binaryUrl} />
       ) : fileType === 'pdf' && binaryUrl ? (
         <PdfRenderer url={binaryUrl} />
       ) : fileType === 'markdown' ? (
-        <MarkdownRenderer content={content || ''} ref={markdownRef} project={project} />
+        <MarkdownRenderer
+          content={content || ''}
+          ref={markdownRef}
+          project={project}
+        />
       ) : fileType === 'csv' ? (
         <CsvRenderer content={content || ''} />
       ) : fileType === 'xlsx' ? (
-        <XlsxRenderer 
+        <XlsxRenderer
+          content={content}
           filePath={filePath}
           fileName={fileName}
           project={project}
+          onDownload={onDownload}
+          isDownloading={isDownloading}
         />
       ) : isHtmlFile ? (
         <HtmlRenderer
