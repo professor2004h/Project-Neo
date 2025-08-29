@@ -4,9 +4,8 @@ version = "1.0"
 description = "open source generalist AI Worker"
 authors = [{ name = "marko-kraemer", email = "mail@markokraemer.com" }]
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 classifiers = [
-  "License :: OSI Approved :: Apache-2.0 License",
   "Programming Language :: Python :: 3.11",
 ]
 requires-python = ">=3.11"
@@ -82,4 +81,23 @@ package = false
 [dependency-groups]
 dev = [
     "orjson>=3.11.1",
+]
+
+[tool.setuptools.packages.find]
+include = [
+  "admin*",
+  "agent*",
+  "flags*",
+  "models*",
+  "sandbox*",
+  "services*",
+  "supabase*",
+  "triggers*",
+  "pipedream*",
+  "templates*",
+  "agentpress*",
+  "mcp_module*",
+  "credentials*",
+  "knowledge_base*",
+  "composio_integration*",
 ]
