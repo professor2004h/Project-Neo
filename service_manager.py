@@ -35,7 +35,8 @@ class ServiceManager:
     def __init__(self, project_root: str):
         self.project_root = Path(project_root).absolute()
         self.backend_dir = self.project_root / "backend"
-        self.frontend_dir = self.project_root / "frontend"
+        # Frontend is now at root level
+        self.frontend_dir = self.project_root
         self.processes: Dict[str, subprocess.Popen] = {}
         self.service_logs: Dict[str, List[str]] = {}
         self.running = False
@@ -63,12 +64,13 @@ class ServiceManager:
             "npm": "npm",
         }
         
-        # Check for uv (Python package manager)
+        # Try to use pip instead of uv for now
         try:
-            subprocess.run(["uv", "--version"], capture_output=True, check=True)
-            deps["uv"] = "UV Python package manager"
+            subprocess.run(["pip", "--version"], capture_output=True, check=True)
+            deps["pip"] = "Python package manager (pip)"
+            self.print_info("Using pip instead of uv for Python package management")
         except (subprocess.CalledProcessError, FileNotFoundError):
-            self.print_error("UV is not installed. Please install: https://github.com/astral-sh/uv")
+            self.print_error("Neither pip nor uv is available")
             return False
             
         # Check Redis availability
@@ -210,9 +212,10 @@ class ServiceManager:
         backend_env["REDIS_HOST"] = "localhost"
         backend_env["REDIS_PORT"] = str(self.redis_port)
         
-        # Use uvicorn for development, gunicorn for production
+        # Use python directly instead of uv
+        python_cmd = "python" if IS_WINDOWS else "python3"
         cmd = [
-            "uv", "run", "uvicorn", 
+            python_cmd, "-m", "uvicorn", 
             "api:app",
             "--host", "0.0.0.0",
             "--port", "8000",
@@ -260,8 +263,9 @@ class ServiceManager:
         worker_env["REDIS_HOST"] = "localhost"
         worker_env["REDIS_PORT"] = str(self.redis_port)
         
+        python_cmd = "python" if IS_WINDOWS else "python3"
         cmd = [
-            "uv", "run", "dramatiq",
+            python_cmd, "-m", "dramatiq",
             "--processes", "2",
             "--threads", "4",
             "run_agent_background"
