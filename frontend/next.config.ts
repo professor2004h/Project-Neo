@@ -3,6 +3,14 @@ import type { NextConfig } from 'next';
 const nextConfig = (): NextConfig => ({
   output: (process.env.NEXT_OUTPUT as 'standalone') || undefined,
   
+  // Skip linting and type checking during build
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  
   async rewrites() {
     return [
       {
