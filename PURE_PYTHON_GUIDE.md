@@ -1,8 +1,8 @@
 # Pure Python Setup Guide
 
-Suna now runs completely without Docker! This guide explains the new Pure Python mode.
+Suna runs completely natively in Python! This guide explains the Pure Python mode.
 
-## What's Changed
+## What's New
 
 - **No Docker Required**: All services run as native Python/Node.js processes
 - **Better Performance**: No container overhead, direct access to system resources  
@@ -42,9 +42,6 @@ python service_manager.py start    # Start services
 python service_manager.py stop     # Stop services
 python service_manager.py status   # Check status
 python service_manager.py logs     # View logs
-
-# Legacy Docker mode (if needed)
-python start.py --legacy
 ```
 
 ## Architecture
@@ -82,24 +79,6 @@ The setup wizard automatically configures environment files:
 - `frontend/.env.local` - Frontend configuration
 - Both files include `PURE_PYTHON_MODE=true` flag
 
-## Migrating from Docker
-
-If you're upgrading from Docker mode:
-
-1. **Keep Existing Config**: Your existing `.env` files work unchanged
-2. **Choose Pure Python**: Run `python setup.py` and select Pure Python mode  
-3. **Dependencies**: The wizard installs additional Pure Python dependencies
-4. **Start Services**: Use `python start.py` instead of `docker compose up`
-
-### Legacy Docker Support
-
-Docker files are preserved as `.legacy` for backward compatibility:
-- `docker-compose.yaml.legacy`
-- `backend/Dockerfile.legacy` 
-- `frontend/Dockerfile.legacy`
-
-Use `python start.py --legacy` to run in Docker mode.
-
 ## Troubleshooting
 
 ### Common Issues
@@ -133,17 +112,6 @@ For development work:
 - Logs available in real-time with `python service_manager.py logs`
 - Debug individual services by running them manually
 
-## Comparison: Pure Python vs Docker
-
-| Feature | Pure Python | Docker |
-|---------|-------------|--------|
-| **Setup Time** | ~2 minutes | ~5-10 minutes |
-| **Memory Usage** | ~200MB | ~500MB+ |
-| **Start Time** | ~10 seconds | ~30-60 seconds |
-| **Debug Experience** | Native tools | Container debugging |
-| **Performance** | Native speed | Container overhead |
-| **Dependencies** | System Python/Node | Docker required |
-
 ## Next Steps
 
 - **Production**: Consider using native Redis and reverse proxy
@@ -151,4 +119,4 @@ For development work:
 - **Monitoring**: Integrate with your preferred monitoring solution
 - **Security**: Review sandbox isolation for your security requirements
 
-The Pure Python mode provides a more streamlined, performant, and developer-friendly experience while maintaining all of Suna's powerful capabilities.
+The Pure Python mode provides a streamlined, performant, and developer-friendly experience maintaining all of Suna's powerful capabilities.

@@ -137,7 +137,7 @@ Python/FastAPI service that powers the agent platform with REST endpoints, threa
 Next.js/React application providing a comprehensive agent management interface with chat interfaces, agent configuration dashboards, workflow builders, monitoring tools, and deployment controls.
 
 ### 🐳 Agent Runtime
-Isolated Docker execution environments for each agent instance featuring browser automation, code interpreter, file system access, tool integration, security sandboxing, and scalable agent deployment.
+Isolated execution environments for each agent instance featuring browser automation, code interpreter, file system access, tool integration, security sandboxing, and scalable agent deployment.
 
 ### 🗄️ Database & Storage
 Supabase-powered data layer handling authentication, user management, agent configurations, conversation history, file storage, workflow state, analytics, and real-time subscriptions for live agent monitoring.
@@ -156,10 +156,8 @@ cd suna
 ```bash
 python setup.py
 ```
-The wizard will guide you through setup with three options:
-- **🐍 Pure Python** (recommended) - Docker-free, native performance
-- **🐳 Docker Compose** - Containerized setup
-- **🔧 Manual** - Traditional manual service management
+The wizard will guide you through setup:
+- **🐍 Pure Python** - Native performance with embedded services
 
 ### 3️⃣ Start the Platform
 ```bash
@@ -168,7 +166,7 @@ python start.py
 
 That's it! Your Kortix platform will be running with Suna ready to assist you.
 
-> **New**: Pure Python mode runs without Docker containers for better performance and easier debugging. See [Pure Python Guide](./PURE_PYTHON_GUIDE.md) for details.
+Kortix runs natively in Pure Python mode for optimal performance and easier debugging. See [Pure Python Guide](./PURE_PYTHON_GUIDE.md) for details.
 
 ## 🏠 Self-Hosting
 

@@ -155,8 +155,6 @@ class ServiceManager:
         # Create data directory
         self.redis_data_dir.mkdir(exist_ok=True)
         
-        redis_conf = self.backend_dir / "services" / "docker" / "redis.conf"
-        
         cmd = [
             "redis-server",
             "--port", str(self.redis_port),
@@ -167,10 +165,6 @@ class ServiceManager:
             "--maxmemory", "1gb",
             "--maxmemory-policy", "allkeys-lru",
         ]
-        
-        # Add custom config if it exists
-        if redis_conf.exists():
-            cmd.extend(["--include", str(redis_conf)])
         
         try:
             self.redis_process = subprocess.Popen(
