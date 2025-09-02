@@ -1,7 +1,8 @@
 import { ThemeProvider } from '@/components/home/theme-provider';
 import { siteConfig } from '@/lib/site';
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+// Temporarily using local fonts due to network connectivity issues
+// import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { Toaster } from '@/components/ui/sonner';
@@ -12,15 +13,16 @@ import Script from 'next/script';
 import { PostHogIdentify } from '@/components/posthog-identify';
 import '@/lib/polyfills'; // Load polyfills early
 
-const geistSans = Geist({
+// Use system fonts temporarily
+const geistSans = {
   variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
+  className: 'font-sans',
+};
 
-const geistMono = Geist_Mono({
+const geistMono = {
   variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+  className: 'font-mono',
+};
 
 export const viewport: Viewport = {
   themeColor: 'black',

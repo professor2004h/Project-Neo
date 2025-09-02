@@ -222,3 +222,13 @@ apps/mobile/*.pem
 apps/mobile/.env
 apps/mobile/.env*.local
 apps/mobile/app-example
+# Next.js unified application
+node_modules/
+.next/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.vercel
+*.tsbuildinfo
+next-env.d.ts
