@@ -1,0 +1,27 @@
+# Pure Python Mode Requirements
+# Additional dependencies for Docker-free operation
+
+# Browser automation and web scraping
+playwright>=1.40.0
+playwright-stealth>=1.0.6
+
+# System process management
+psutil>=5.9.0
+
+# Embedded Redis alternative
+fakeredis[json]>=2.20.0
+
+# Additional document processing
+python-docx>=1.1.0
+PyPDF2>=3.0.1
+openpyxl>=3.1.2
+
+# Web and HTTP utilities
+httpx>=0.27.0
+aiohttp>=3.12.0
+
+# Security and isolation
+cryptography>=41.0.0
+
+# Optional but recommended for development
+uvicorn[standard]>=0.27.0
