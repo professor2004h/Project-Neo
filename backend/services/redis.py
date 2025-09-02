@@ -6,6 +6,22 @@ from utils.logger import logger
 from typing import List, Any
 from utils.retry import retry
 
+# Check if we're in Pure Python mode
+PURE_PYTHON_MODE = os.getenv("PURE_PYTHON_MODE", "false").lower() == "true"
+USE_EMBEDDED_REDIS = os.getenv("USE_EMBEDDED_REDIS", "false").lower() == "true"
+
+# Try to import fakeredis for embedded mode
+if PURE_PYTHON_MODE and USE_EMBEDDED_REDIS:
+    try:
+        import fakeredis.aioredis as fake_redis
+        EMBEDDED_REDIS_AVAILABLE = True
+        logger.info("Using embedded Redis (fakeredis) for Pure Python mode")
+    except ImportError:
+        EMBEDDED_REDIS_AVAILABLE = False
+        logger.warning("fakeredis not available, falling back to standard Redis")
+else:
+    EMBEDDED_REDIS_AVAILABLE = False
+
 # Redis client and connection pool
 client: redis.Redis | None = None
 pool: redis.ConnectionPool | None = None
@@ -23,7 +39,14 @@ def initialize():
     # Load environment variables if not already loaded
     load_dotenv()
 
-    # Get Redis configuration
+    # Check if we should use embedded Redis
+    if PURE_PYTHON_MODE and USE_EMBEDDED_REDIS and EMBEDDED_REDIS_AVAILABLE:
+        logger.info("Initializing embedded Redis for Pure Python mode")
+        # Create fakeredis client
+        client = fake_redis.FakeRedis(decode_responses=True)
+        return client
+
+    # Get Redis configuration for standard Redis
     redis_host = os.getenv("REDIS_HOST", "redis")
     redis_port = int(os.getenv("REDIS_PORT", 6379))
     redis_password = os.getenv("REDIS_PASSWORD", "")
@@ -90,19 +113,25 @@ async def close():
     if client:
         logger.debug("Closing Redis connection")
         try:
-            await asyncio.wait_for(client.aclose(), timeout=5.0)
-        except asyncio.TimeoutError:
+            # Handle embedded Redis differently
+            if PURE_PYTHON_MODE and USE_EMBEDDED_REDIS and EMBEDDED_REDIS_AVAILABLE:
+                # For fakeredis, just clear the reference
+                client = None
+            else:
+                # For real Redis, close properly
+                await asyncio.wait_for(client.aclose(), timeout=5.0)
+        except asyncio.TimeoutExpired:
             logger.warning("Redis close timeout, forcing close")
         except Exception as e:
             logger.warning(f"Error closing Redis client: {e}")
         finally:
             client = None
     
-    if pool:
+    if pool and not (PURE_PYTHON_MODE and USE_EMBEDDED_REDIS):
         logger.debug("Closing Redis connection pool")
         try:
             await asyncio.wait_for(pool.aclose(), timeout=5.0)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutExpired:
             logger.warning("Redis pool close timeout, forcing close")
         except Exception as e:
             logger.warning(f"Error closing Redis pool: {e}")

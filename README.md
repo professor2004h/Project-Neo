@@ -156,7 +156,10 @@ cd suna
 ```bash
 python setup.py
 ```
-The wizard will guide you through 14 steps with progress saving, so you can resume if interrupted.
+The wizard will guide you through setup with three options:
+- **🐍 Pure Python** (recommended) - Docker-free, native performance
+- **🐳 Docker Compose** - Containerized setup
+- **🔧 Manual** - Traditional manual service management
 
 ### 3️⃣ Start the Platform
 ```bash
@@ -164,6 +167,8 @@ python start.py
 ```
 
 That's it! Your Kortix platform will be running with Suna ready to assist you.
+
+> **New**: Pure Python mode runs without Docker containers for better performance and easier debugging. See [Pure Python Guide](./PURE_PYTHON_GUIDE.md) for details.
 
 ## 🏠 Self-Hosting
 

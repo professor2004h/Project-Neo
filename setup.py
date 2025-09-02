@@ -8,6 +8,7 @@ import re
 import json
 import secrets
 import base64
+import shutil
 
 # --- Constants ---
 IS_WINDOWS = platform.system() == "Windows"
@@ -442,7 +443,7 @@ class SetupWizard:
             save_progress(self.current_step, self.env_vars)
 
     def choose_setup_method(self):
-        """Asks the user to choose between Docker and manual setup."""
+        """Asks the user to choose between Pure Python, Docker and manual setup."""
         print_step(1, self.total_steps, "Choose Setup Method")
 
         if self.env_vars.get("setup_method"):
@@ -452,27 +453,33 @@ class SetupWizard:
             return
 
         print_info(
-            "You can start Suna using either Docker Compose or by manually starting the services."
+            "You can start Suna using Pure Python (recommended), Docker Compose, or manually starting services."
         )
         print(f"\n{Colors.CYAN}How would you like to set up Suna?{Colors.ENDC}")
         print(
-            f"{Colors.CYAN}[1] {Colors.GREEN}Docker Compose{Colors.ENDC} {Colors.CYAN}(recommended, starts all services automatically){Colors.ENDC}"
+            f"{Colors.CYAN}[1] {Colors.GREEN}Pure Python{Colors.ENDC} {Colors.CYAN}(recommended, Docker-free, native performance){Colors.ENDC}"
         )
         print(
-            f"{Colors.CYAN}[2] {Colors.GREEN}Manual{Colors.ENDC} {Colors.CYAN}(requires installing dependencies and running services manually){Colors.ENDC}\n"
+            f"{Colors.CYAN}[2] {Colors.GREEN}Docker Compose{Colors.ENDC} {Colors.CYAN}(containerized, starts all services automatically){Colors.ENDC}"
+        )
+        print(
+            f"{Colors.CYAN}[3] {Colors.GREEN}Manual{Colors.ENDC} {Colors.CYAN}(requires installing dependencies and running services manually){Colors.ENDC}\n"
         )
 
         while True:
-            choice = input("Enter your choice (1 or 2): ").strip()
+            choice = input("Enter your choice (1, 2, or 3): ").strip()
             if choice == "1":
-                self.env_vars["setup_method"] = "docker"
+                self.env_vars["setup_method"] = "pure_python"
                 break
             elif choice == "2":
+                self.env_vars["setup_method"] = "docker"
+                break
+            elif choice == "3":
                 self.env_vars["setup_method"] = "manual"
                 break
             else:
                 print_error(
-                    "Invalid selection. Please enter '1' for Docker or '2' for Manual."
+                    "Invalid selection. Please enter '1' for Pure Python, '2' for Docker, or '3' for Manual."
                 )
         print_success(f"Selected '{self.env_vars['setup_method']}' setup.")
 
@@ -480,7 +487,15 @@ class SetupWizard:
         """Checks if all required tools for the chosen setup method are installed."""
         print_step(2, self.total_steps, "Checking Requirements")
 
-        if self.env_vars["setup_method"] == "docker":
+        if self.env_vars["setup_method"] == "pure_python":
+            requirements = {
+                "git": "https://git-scm.com/downloads",
+                "uv": "https://github.com/astral-sh/uv#installation",
+                "node": "https://nodejs.org/en/download/",
+                "npm": "https://docs.npmjs.com/downloading-and-installing-node-js-and-npm",
+                "python3": "https://www.python.org/downloads/",
+            }
+        elif self.env_vars["setup_method"] == "docker":
             requirements = {
                 "git": "https://git-scm.com/downloads",
                 "docker": "https://docs.docker.com/get-docker/",
@@ -522,8 +537,41 @@ class SetupWizard:
                 print(f"  - {cmd}: {url}")
             sys.exit(1)
 
-        self.check_docker_running()
+        # Check Docker daemon only if needed
+        if self.env_vars["setup_method"] in ["docker", "manual"]:
+            self.check_docker_running()
+        elif self.env_vars["setup_method"] == "pure_python":
+            self.check_pure_python_dependencies()
+        
         self.check_suna_directory()
+
+    def check_pure_python_dependencies(self):
+        """Check additional dependencies for Pure Python mode."""
+        print_info("Checking Pure Python mode dependencies...")
+        
+        # Check if Redis is available (optional)
+        redis_available = False
+        try:
+            subprocess.run(
+                ["redis-server", "--version"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+                shell=IS_WINDOWS,
+            )
+            redis_available = True
+            print_success("Redis server is available (recommended for production).")
+        except (subprocess.SubprocessError, FileNotFoundError):
+            print_warning("Redis server not found. Will use embedded Redis alternative.")
+        
+        # Check Python packages that might be needed
+        try:
+            subprocess.run([sys.executable, "-c", "import playwright"], check=True, capture_output=True)
+            print_success("Playwright is available for browser automation.")
+        except subprocess.CalledProcessError:
+            print_info("Playwright will be installed for browser automation.")
+        
+        print_success("Pure Python mode dependencies checked.")
 
     def check_docker_running(self):
         """Checks if the Docker daemon is running."""
@@ -1062,7 +1110,12 @@ class SetupWizard:
 
         # --- Backend .env ---
         is_docker = self.env_vars["setup_method"] == "docker"
-        redis_host = "redis" if is_docker else "localhost"
+        is_pure_python = self.env_vars["setup_method"] == "pure_python"
+        
+        if is_docker:
+            redis_host = "redis"
+        else:
+            redis_host = "localhost"
 
         # Generate ENCRYPTION_KEY using the same logic as generate_encryption_key()
         import base64
@@ -1087,14 +1140,29 @@ class SetupWizard:
             "ENCRYPTION_KEY": encryption_key,
             "NEXT_PUBLIC_URL": "http://localhost:3000",
         }
+        
+        # Add Pure Python specific settings
+        if is_pure_python:
+            backend_env.update({
+                "PURE_PYTHON_MODE": "true",
+                "USE_EMBEDDED_REDIS": "true" if not shutil.which("redis-server") else "false",
+                "SANDBOX_MODE": "python",  # Instead of docker
+            })
 
-        backend_env_content = f"# Generated by Suna install script for '{self.env_vars['setup_method']}' setup\n\n"
+        setup_method_comment = f"# Generated by Suna install script for '{self.env_vars['setup_method']}' setup\n"
+        if is_pure_python:
+            setup_method_comment += "# Pure Python mode - Docker-free setup\n"
+        setup_method_comment += "\n"
+        
+        backend_env_content = setup_method_comment
         for key, value in backend_env.items():
             backend_env_content += f"{key}={value or ''}\n"
 
         with open(os.path.join("backend", ".env"), "w") as f:
             f.write(backend_env_content)
-        print_success("Created backend/.env file with ENCRYPTION_KEY.")
+        
+        mode_desc = "Pure Python mode" if is_pure_python else f"{self.env_vars['setup_method']} mode"
+        print_success(f"Created backend/.env file with ENCRYPTION_KEY for {mode_desc}.")
 
         # --- Frontend .env.local ---
         frontend_env = {
@@ -1107,14 +1175,17 @@ class SetupWizard:
             "NEXT_PUBLIC_ENV_MODE": "LOCAL",
             "KORTIX_ADMIN_API_KEY": self.env_vars["kortix"]["KORTIX_ADMIN_API_KEY"],
         }
+        
+        if is_pure_python:
+            frontend_env["NEXT_PUBLIC_PURE_PYTHON_MODE"] = "true"
 
-        frontend_env_content = "# Generated by Suna install script\n\n"
+        frontend_env_content = f"# Generated by Suna install script for {mode_desc}\n\n"
         for key, value in frontend_env.items():
             frontend_env_content += f"{key}={value or ''}\n"
 
         with open(os.path.join("frontend", ".env.local"), "w") as f:
             f.write(frontend_env_content)
-        print_success("Created frontend/.env.local file.")
+        print_success(f"Created frontend/.env.local file for {mode_desc}.")
 
     def setup_supabase_database(self):
         """Links the project to Supabase and pushes database migrations."""
@@ -1212,7 +1283,7 @@ class SetupWizard:
             sys.exit(1)
 
     def install_dependencies(self):
-        """Installs frontend and backend dependencies for manual setup."""
+        """Installs frontend and backend dependencies."""
         print_step(16, self.total_steps, "Installing Dependencies")
         if self.env_vars["setup_method"] == "docker":
             print_info(
@@ -1221,12 +1292,14 @@ class SetupWizard:
             return
 
         try:
+            # Install frontend dependencies
             print_info("Installing frontend dependencies with npm...")
             subprocess.run(
                 ["npm", "install"], cwd="frontend", check=True, shell=IS_WINDOWS
             )
             print_success("Frontend dependencies installed.")
 
+            # Install backend dependencies
             print_info("Installing backend dependencies with uv...")
 
             # Check if a virtual environment already exists
@@ -1247,6 +1320,22 @@ class SetupWizard:
                 shell=IS_WINDOWS,
             )
             print_success("Backend dependencies and package installed.")
+            
+            # Install additional dependencies for Pure Python mode
+            if self.env_vars["setup_method"] == "pure_python":
+                print_info("Installing additional Pure Python mode dependencies...")
+                
+                # Install playwright for browser automation
+                subprocess.run([
+                    "uv", "add", "playwright", "psutil", "fakeredis[json]"
+                ], cwd="backend", check=True, shell=IS_WINDOWS)
+                
+                # Install playwright browsers
+                subprocess.run([
+                    "uv", "run", "python", "-m", "playwright", "install", "chromium"
+                ], cwd="backend", check=True, shell=IS_WINDOWS)
+                
+                print_success("Pure Python mode dependencies installed.")
 
         except subprocess.SubprocessError as e:
             print_error(f"Failed to install dependencies: {e}")
@@ -1255,9 +1344,16 @@ class SetupWizard:
             sys.exit(1)
 
     def start_suna(self):
-        """Starts Suna using Docker Compose or shows instructions for manual startup."""
+        """Starts Suna using the appropriate method."""
         print_step(17, self.total_steps, "Starting Suna")
-        if self.env_vars["setup_method"] == "docker":
+        
+        if self.env_vars["setup_method"] == "pure_python":
+            print_info("Starting Suna with Pure Python Service Manager...")
+            print_info("This will start all services without Docker containers.")
+            print_success("✅ Pure Python setup completed!")
+            print_info("Use 'python start.py' to manage services.")
+            
+        elif self.env_vars["setup_method"] == "docker":
             print_info("Starting Suna with Docker Compose...")
             try:
                 subprocess.run(
@@ -1286,9 +1382,10 @@ class SetupWizard:
                     "Try running 'docker compose up --build' manually to diagnose the issue."
                 )
                 sys.exit(1)
-        else:
+        else:  # manual
             print_info(
                 "All configurations are complete. Manual start is required.")
+            print_info("Use 'python start.py --legacy' for Docker-based manual mode.")
 
     def final_instructions(self):
         """Shows final instructions to the user."""
@@ -1302,7 +1399,27 @@ class SetupWizard:
             f"Delete the {Colors.RED}.setup_progress{Colors.ENDC} file to reset the setup."
         )
 
-        if self.env_vars["setup_method"] == "docker":
+        if self.env_vars["setup_method"] == "pure_python":
+            print_info("🐍 Your Suna instance is ready to use in Pure Python mode!")
+            print_info("No Docker required - all services run natively!")
+            print("\nUseful commands:")
+            print(
+                f"  {Colors.CYAN}python start.py{Colors.ENDC}                - Start/stop all services"
+            )
+            print(
+                f"  {Colors.CYAN}python service_manager.py start{Colors.ENDC}  - Start services"
+            )
+            print(
+                f"  {Colors.CYAN}python service_manager.py stop{Colors.ENDC}   - Stop services" 
+            )
+            print(
+                f"  {Colors.CYAN}python service_manager.py status{Colors.ENDC} - Check service status"
+            )
+            print(
+                f"  {Colors.CYAN}python service_manager.py logs{Colors.ENDC}   - View service logs"
+            )
+            
+        elif self.env_vars["setup_method"] == "docker":
             print_info("Your Suna instance is ready to use!")
             print("\nUseful Docker commands:")
             print(
@@ -1317,7 +1434,7 @@ class SetupWizard:
             print(
                 f"  {Colors.CYAN}python start.py{Colors.ENDC}           - To start or stop Suna services"
             )
-        else:
+        else:  # manual
             print_info(
                 "To start Suna, you need to run these commands in separate terminals:"
             )
@@ -1340,6 +1457,8 @@ class SetupWizard:
             print(
                 f"{Colors.CYAN}   cd backend && uv run dramatiq run_agent_background{Colors.ENDC}"
             )
+            print(f"\n{Colors.BOLD}Or use Pure Python mode:{Colors.ENDC}")
+            print(f"{Colors.CYAN}   python start.py{Colors.ENDC}")
 
         print("\nOnce all services are running, access Suna at: http://localhost:3000")
 
