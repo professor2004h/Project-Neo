@@ -122,7 +122,6 @@ export function SidebarLeft({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Don't handle sidebar shortcuts when document modal is open
-      console.log('Sidebar-left handler - document modal open:', isDocumentModalOpen, 'key:', event.key);
       if (isDocumentModalOpen) return;
       
       if ((event.metaKey || event.ctrlKey) && event.key === 'b') {

@@ -19,10 +19,7 @@ const safetyTimeouts = new Map<string, number>();
 const cleanupEventSource = (agentRunId: string, reason?: string): void => {
   const stream = activeStreams.get(agentRunId);
   if (stream) {
-    if (reason) {
-      console.log(`[STREAM] Cleaning up EventSource for ${agentRunId}: ${reason}`);
-    }
-    
+
     // Close the connection
     if (stream.readyState !== EventSource.CLOSED) {
       stream.close();
@@ -45,7 +42,6 @@ const cleanupEventSource = (agentRunId: string, reason?: string): void => {
  * Should be called periodically or during app teardown
  */
 const cleanupAllEventSources = (reason = 'batch cleanup'): void => {
-  console.log(`[STREAM] Running batch cleanup: ${activeStreams.size} active streams`);
   
   const streamIds = Array.from(activeStreams.keys());
   streamIds.forEach(agentRunId => {
@@ -283,7 +279,6 @@ export const getProjects = async (): Promise<Project[]> => {
     // Get the current user's ID to filter projects
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) {
-      console.error('Error getting current user:', userError);
       return [];
     }
 
@@ -1039,7 +1034,6 @@ export const streamAgent = (
       safetyTimeouts.set(agentRunId, safetyTimeout as unknown as number);
 
       eventSource.onopen = () => {
-        console.log(`[STREAM] EventSource opened for ${agentRunId}`);
       };
 
       eventSource.onmessage = (event) => {
@@ -1936,7 +1930,6 @@ export const createPortalSession = async (
 export const getSubscription = async (): Promise<SubscriptionStatus> => {
   try {
     // Log when subscription API is called for debugging
-    console.log('🔍 [BILLING] Making subscription API call:', new Date().toISOString());
     
     const supabase = createClient();
     const {
