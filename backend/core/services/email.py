@@ -219,7 +219,7 @@ You received this email because you signed up for a Suna account."""
             logger.warning(f"Failed to get cached disposable domains: {e}")
         
         try:
-            url = "https://disposable.github.io/disposable-email-domains/domains.json"
+            url = "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.json"
             response = httpx.get(url, timeout=5.0)
             response.raise_for_status()
             domains = set(response.json())
