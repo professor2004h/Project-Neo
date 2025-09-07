@@ -82,6 +82,28 @@ export async function signUp(prevState: any, formData: FormData) {
     return { message: 'Passwords do not match' };
   }
 
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const adminApiKey = process.env.KORTIX_ADMIN_API_KEY;
+  
+  if (adminApiKey) {
+    const response = await fetch(`${backendUrl}/is-temp-email/${email}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Api-Key': adminApiKey,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.is_temp_email) {
+        return { message: 'Please use a non-temporary email address' };
+      }
+    }
+  } else {
+    console.error('KORTIX_ADMIN_API_KEY not configured');
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signUp({

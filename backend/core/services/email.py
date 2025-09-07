@@ -1,7 +1,13 @@
-import os
+import json
 import logging
-from typing import Optional
+import os
+from functools import lru_cache
+from typing import Optional, Set
+
+import dns.resolver
+import httpx
 import mailtrap as mt
+from core.services import redis
 from core.utils.config import config
 
 logger = logging.getLogger(__name__)
@@ -189,4 +195,48 @@ Go to the platform: https://www.suna.so/
 © 2025 Suna. All rights reserved.
 You received this email because you signed up for a Suna account."""
 
-email_service = EmailService() 
+    async def is_temp_email(self, email: str) -> bool:
+        domain = email.split('@')[-1].lower()
+        
+        disposable_domains = await self._get_disposable_domains()
+        if domain in disposable_domains:
+            logger.debug(f"Disposable domain detected: {domain}")
+            return True
+
+        if not self._has_mx_record(domain):
+            logger.debug(f"No MX record found for domain: {domain}")
+            return True
+       
+        return False
+    
+    async def _get_disposable_domains(self) -> Set[str]:
+        cache_key = "disposable_domains"
+        try:
+            cached_data = await redis.get(cache_key)
+            if cached_data:
+                return set(json.loads(cached_data))
+        except Exception as e:
+            logger.warning(f"Failed to get cached disposable domains: {e}")
+        
+        try:
+            url = "https://disposable.github.io/disposable-email-domains/domains.json"
+            response = httpx.get(url, timeout=5.0)
+            response.raise_for_status()
+            domains = set(response.json())
+            
+            await redis.set(cache_key, json.dumps(list(domains)), ex=3600)
+            logger.debug(f"Cached {len(domains)} disposable domains")
+            return domains
+        except Exception as e:
+            logger.warning(f"Failed to fetch disposable domains: {e}")
+            return set()
+
+    @lru_cache(maxsize=1000)
+    def _has_mx_record(self, domain: str) -> bool:
+        try:
+            dns.resolver.resolve(domain, 'MX')
+            return True
+        except Exception:
+            return False
+
+email_service = EmailService()

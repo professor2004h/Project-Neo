@@ -44,3 +44,22 @@ async def send_welcome_email(
             status_code=500,
             detail="Internal server error while sending welcome email"
         ) 
+
+class TempEmailResponse(BaseModel):
+    is_temp_email: bool
+
+@router.get("/is-temp-email/{email}", response_model=TempEmailResponse)
+async def is_temp_email(
+    email: EmailStr,
+    _: bool = Depends(verify_admin_api_key)
+):
+    try:
+        result = await email_service.is_temp_email(email)
+        return TempEmailResponse(is_temp_email=result)
+    except Exception as e:
+        logger.error(f"Error checking if {email} is a temp email: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while checking email"
+        )
+    
