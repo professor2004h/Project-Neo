@@ -223,8 +223,8 @@ You received this email because you signed up for a Suna account."""
             response = httpx.get(url, timeout=5.0)
             response.raise_for_status()
             domains = set(response.json())
-            
-            await redis.set(cache_key, json.dumps(list(domains)), ex=3600)
+
+            await redis.set(cache_key, json.dumps(list(domains)), ex=86400) # Cache for 24 hours
             logger.debug(f"Cached {len(domains)} disposable domains")
             return domains
         except Exception as e:
