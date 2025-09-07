@@ -278,14 +278,10 @@ export const getProjects = async (): Promise<Project[]> => {
 
     // Get the current user's ID to filter projects
     const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError) {
-      return [];
-    }
+    if (userError) return []
 
     // If no user is logged in, return an empty array
-    if (!userData.user) {
-      return [];
-    }
+    if (!userData.user) return []
 
     // Query only projects where account_id matches the current user's ID
     const { data, error } = await supabase
@@ -1032,9 +1028,6 @@ export const streamAgent = (
 
       // Store the timeout ID for cleanup
       safetyTimeouts.set(agentRunId, safetyTimeout as unknown as number);
-
-      eventSource.onopen = () => {
-      };
 
       eventSource.onmessage = (event) => {
         try {
